@@ -1,0 +1,18 @@
+<%- include('../partials/pay_head') %>
+<div class="login-band">
+  <div class="pw login-wrap">
+    <div class="login-card">
+      <div class="users">👥</div>
+      <h1>ÜYE GİRİŞİ</h1>
+      <p class="sub">ONLİNE ÖDEME İÇİN GİRİŞ YAPINIZ</p>
+      <form method="post" action="/odeme/giris">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label class="field"><span class="ic">✉</span><input type="email" name="email" placeholder="E-posta" required autocomplete="username"></label>
+        <label class="field"><span class="ic">🔒</span><input type="password" name="password" placeholder="Şifre" required autocomplete="current-password"></label>
+        <p class="forgot"><a href="/iletisim">Şifremi Unuttum</a></p>
+        <button class="btn-green" type="submit">GİRİŞ YAP <span>›</span></button>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/pay_foot') %>

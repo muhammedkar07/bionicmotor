@@ -1,0 +1,28 @@
+<%- include('../partials/site_head') %>
+<section class="wrap contact">
+  <div class="contact-grid">
+    <div>
+      <h2 class="uline"><%= s.company %></h2>
+      <ul class="contact-list">
+        <li><span class="ci">⌂</span><%= s.branch %></li>
+        <li><span class="ci">⚲</span>Adres: <%= s.address %></li>
+        <li><span class="ci">☎</span>Telefon : <%= s.phone %></li>
+        <li><span class="ci">✉</span>Email : <%= s.email %></li>
+      </ul>
+    </div>
+    <form method="post" action="/iletisim" class="cform">
+      <%- include('../partials/flash') %>
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="fl"><span>AD SOYAD</span><input name="name" required maxlength="120"></label>
+      <label class="fl"><span>EMAİL ADRESİ</span><input type="email" name="email" required maxlength="160"></label>
+      <label class="fl"><span>TELEFON</span><input name="phone" maxlength="40"></label>
+      <label class="fl"><span>MESAJ</span><textarea name="message" rows="6" required maxlength="3000"></textarea></label>
+      <button class="btn-red" type="submit">Mesaj Gönder</button>
+    </form>
+  </div>
+  <div class="map">
+    <iframe title="Harita" loading="lazy"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=<%= (+s.map_lng-0.03) %>%2C<%= (+s.map_lat-0.02) %>%2C<%= (+s.map_lng+0.03) %>%2C<%= (+s.map_lat+0.02) %>&amp;layer=mapnik&amp;marker=<%= s.map_lat %>%2C<%= s.map_lng %>"></iframe>
+  </div>
+</section>
+<%- include('../partials/site_foot') %>

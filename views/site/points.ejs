@@ -1,0 +1,9 @@
+<%- include('../partials/site_head') %>
+<section class="wrap section narrow">
+  <h2 class="title-red">SATIŞ VE SERVİS NOKTALARI</h2>
+  <div class="table-wrap"><table class="tbl">
+    <thead><tr><th>Ad</th><th>Tür</th><th>İl</th><th>Adres</th><th>Telefon</th></tr></thead>
+    <tbody><% points.forEach(p => { %><tr><td><%= p.name %></td><td><%= p.type %></td><td><%= p.city %></td><td><%= p.address %></td><td><%= p.phone %></td></tr><% }) %></tbody>
+  </table></div>
+</section>
+<%- include('../partials/site_foot') %>

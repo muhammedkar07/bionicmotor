@@ -1,0 +1,17 @@
+<%- include('../partials/admin_head') %>
+<h1>Site Ayarları</h1>
+<form method="post" action="/admin/ayarlar" enctype="multipart/form-data" class="fcard">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% groups.forEach(([g, items]) => { %>
+    <h2><%= g %></h2>
+    <% items.forEach(([key, label, type]) => { %>
+      <div class="fg"><label><%= label %></label>
+        <% if (type === 'image') { %>
+          <% if (s[key]) { %><div><img src="<%= s[key] %>" style="max-height:60px;background:#eee" alt=""></div><label class="ck"><input type="checkbox" name="clear_<%= key %>" value="1"> Kaldır</label><% } %>
+          <input type="file" name="<%= key %>" accept="image/*">
+        <% } else { %><input name="<%= key %>" value="<%= s[key] || '' %>"><% } %></div>
+    <% }) %>
+  <% }) %>
+  <div class="fbtn"><button class="btn btn-primary">Kaydet</button></div>
+</form>
+<%- include('../partials/admin_foot') %>

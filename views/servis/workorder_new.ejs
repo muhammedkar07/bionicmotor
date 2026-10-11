@@ -1,0 +1,16 @@
+<%- include('../partials/servis_head') %>
+<div class="pc narrow">
+  <h1 class="h5">İş Emri Oluştur</h1>
+  <form method="post" action="/servis/is-emri/yeni" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label>Şase No:<input name="serial_no" required maxlength="40"></label>
+    <label>Model:<input name="model" maxlength="80"></label>
+    <label>Km:<input name="km" maxlength="20"></label>
+    <label>Açıklama:<textarea name="description" rows="4" required maxlength="3000"></textarea></label>
+    <label>Görsel (zorunlu):<input type="file" name="image" accept="image/*,.pdf" required></label>
+    <p class="muted">Arıza, hasar veya yapılan işlemi net gösteren görsel ekleyin. Alakasız görselli iş emirleri onaylanmayabilir.</p>
+    <p class="muted">İş emrinin türü (Garanti / Ücretli / Sevkiyat Hasarı) yönetici tarafından belirlenir.</p>
+    <div><button class="btn btn-success">İş Emri Oluştur</button></div>
+  </form>
+</div>
+<%- include('../partials/servis_foot') %>

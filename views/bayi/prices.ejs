@@ -1,0 +1,9 @@
+<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Toptan Fiyat Listesi</h1>
+  <table class="ptbl striped">
+    <thead class="dark"><tr><th>Kod</th><th>Ürün</th><th>Kategori</th><th class="r">Toptan Fiyat</th></tr></thead>
+    <tbody><% list.forEach(p => { %><tr><td><%= p.code %></td><td><%= p.name %></td><td><%= p.category %></td><td class="r"><%= money(p.price) %> ₺</td></tr><% }) %></tbody>
+  </table>
+</div>
+<%- include('../partials/bayi_foot') %>

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | <%= s.brand_1 %><%= s.brand_2 %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body class="portal plain">
+<% if (flash) { %><div class="alert alert-<%= flash.type %> top"><%= flash.msg %></div><% } %>
+<main class="form-page">
+  <div class="logo-center"><%- include('logo') %></div>

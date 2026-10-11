@@ -1,0 +1,23 @@
+<%- include('../partials/servis_head') %>
+<div class="pc narrow">
+  <h1 class="h5">Yeni Ürün Garanti Kaydı</h1>
+  <form method="post" action="/servis/garanti/yeni" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label>Şase No:<input name="serial_no" required maxlength="40"></label>
+    <label>Model:<input name="model" maxlength="80"></label>
+    <label>Müşteri:<input name="customer" maxlength="120"></label>
+    <label>Fatura No:<input name="invoice_no" required maxlength="60"></label>
+    <label>Satış Tarihi:<input type="date" name="sale_date" id="sale_date" value="<%= today %>" required></label>
+    <label>Garanti Bitiş Tarihi (otomatik):<input id="warranty_end_ro" value="" readonly tabindex="-1" aria-readonly="true"></label>
+    <p class="muted">Garanti bitiş tarihi, satış tarihinden itibaren 2 yıl olarak otomatik belirlenir ve değiştirilemez.</p>
+    <div><button class="btn btn-success">Garanti Kaydını Oluştur</button></div>
+  </form>
+</div>
+<script>
+  (() => {
+    const sd=document.getElementById('sale_date'), ro=document.getElementById('warranty_end_ro');
+    const calc=()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(sd.value); if(!m){ro.value='';return;} const d=new Date(Date.UTC(+m[1]+2,+m[2]-1,+m[3])); const iso=d.toISOString().slice(0,10); ro.value=iso.slice(8,10)+'.'+iso.slice(5,7)+'.'+iso.slice(0,4);};
+    sd.addEventListener('input',calc); calc();
+  })();
+</script>
+<%- include('../partials/servis_foot') %>

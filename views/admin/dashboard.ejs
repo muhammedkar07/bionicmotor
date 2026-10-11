@@ -1,0 +1,6 @@
+<%- include('../partials/admin_head') %>
+<h1>Panel</h1>
+<div class="stats">
+  <% stats.forEach(s => { %><a class="stat" href="/admin/r/<%= s[2] %>"><b><%= s[1] %></b><span><%= s[0] %></span></a><% }) %>
+</div>
+<%- include('../partials/admin_foot') %>

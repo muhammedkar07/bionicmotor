@@ -1,0 +1,19 @@
+<footer class="site-footer">
+  <div class="wrap foot-in">
+    <div><%- include('logo') %></div>
+    <div><strong><%= s.company %></strong><br><%= s.address %><br><%= s.phone %> · <%= s.email %></div>
+    <div class="foot-links">
+      <a href="/bayi">Bayi Girişi</a><a href="/odeme">Online Ödeme</a><a href="/bayilik-basvurusu">Bayilik Başvurusu</a>
+    </div>
+  </div>
+  <div class="copy"><%= s.footer_note %></div>
+</footer>
+<script src="/static/js/site.js"></script>
+<script>
+document.querySelectorAll('a[href]').forEach(function (a) {
+  var h = a.getAttribute('href');
+  if (h && !/^(#|javascript:|tel:|mailto:)/.test(h)) { a.target = '_blank'; a.rel = 'noopener'; }
+});
+</script>
+</body>
+</html>

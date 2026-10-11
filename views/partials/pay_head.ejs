@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Online Ödeme</title>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/pay.css">
+</head>
+<body class="pay">
+<header>
+  <div class="pw top">
+    <a href="/"><%- include('logo') %></a>
+    <div class="topr">
+      <% if (pu) { %><a href="/odeme">▭ Ödeme Sayfası</a><% } %>
+      <span class="flag">●</span>
+      <% if (pu) { %><form method="post" action="/odeme/cikis" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="uname" title="Çıkış"><%= pu.name %></button></form><% } %>
+    </div>
+  </div>
+  <nav class="subnav">
+    <a href="/" aria-label="Ana sayfa">⌂</a>
+    <a href="/sayfa/kisisel-bilgi-guvenligi">Kişisel Bilgi Güvenliği</a>
+    <a href="/sayfa/iptal-iade">İptal&İade</a>
+    <a href="/sayfa/hizmet-sozlesmesi">Hizmet Sözleşmesi</a>
+    <a href="/iletisim">İletişim</a>
+  </nav>
+</header>
+<% if (flash) { %><div class="pw"><div class="alert alert-<%= flash.type %>"><%= flash.msg %></div></div><% } %>

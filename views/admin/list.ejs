@@ -1,0 +1,27 @@
+<%- include('../partials/admin_head') %>
+<div class="bar">
+  <h1><%= title %></h1>
+  <form method="get" class="search" style="display:flex; gap:8px; align-items:center;">
+    <input name="q" value="<%= q || '' %>" placeholder="Ara...">
+    <% if (res.key === 'movements') { %>
+      <select name="firm" onchange="this.form.submit()">
+        <option value="">Tüm Bayiler</option>
+        <% (firms||[]).forEach(f => { %><option value="<%= f.id %>" <%= (firm && parseInt(firm)===f.id)?'selected':'' %>><%= f.name %></option><% }) %>
+      </select>
+    <% } %>
+    <button class="btn btn-sm">Ara</button>
+  </form>
+  <% if (!res.noCreate) { %><a class="btn btn-primary" href="/admin/r/<%= res.key %>/new">+ Yeni Ekle</a><% } %>
+</div>
+<div class="tw"><table class="tbl">
+  <thead><tr><% cols.forEach(c => { %><th><%= c.label %></th><% }) %><th style="width:130px"></th></tr></thead>
+  <tbody>
+  <% rows.forEach(r => { %>
+    <tr><% cols.forEach(c => { %><td><%= cell(c, r[c.name], refs) %></td><% }) %>
+      <td class="act"><a class="btn btn-sm" href="/admin/r/<%= res.key %>/<%= r._id %>">Düzenle</a>
+        <form method="post" action="/admin/r/<%= res.key %>/<%= r._id %>/delete" class="inline" onsubmit="return confirm('Bu kayıt silinsin mi?')">
+          <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form></td></tr>
+  <% }) %>
+  <% if (!rows.length) { %><tr><td colspan="<%= cols.length+1 %>" class="muted">Kayıt yok.</td></tr><% } %>
+  </tbody></table></div>
+<%- include('../partials/admin_foot') %>

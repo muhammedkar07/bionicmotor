@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Servis Portalı</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body class="portal">
+<nav class="pnav">
+  <a class="pbrand" href="/servis"><%- include('logo') %></a>
+  <button class="pnav-toggle" onclick="document.querySelector('.pnav').classList.toggle('open')">☰</button>
+  <ul class="plinks">
+    <li><a href="/servis">Anasayfa</a></li>
+    <li><a href="/servis/garanti/yeni">Yeni Ürün Garanti Kaydı</a></li>
+    <li><a href="/servis/garanti">Garanti Kayıtları</a></li>
+    <li><a href="/servis/is-emri/yeni">İş Emri Oluştur</a></li>
+    <li><a href="/servis/is-emirlerim">İş Emirlerim</a></li>
+    <li><a href="/servis/yedek-parca/yeni">Yedek Parça Sipariş Oluştur</a></li>
+    <li><a href="/servis/yedek-parca-siparisleri">Yedek Parça Siparişlerim</a></li>
+  </ul>
+  <div class="puser">
+    <div><%= su.name %><br><small class="pucode">Kullanıcı Kodu: <%= su.code %></small></div>
+    <form method="post" action="/servis/cikis" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn">Oturumu Kapat</button></form>
+  </div>
+</nav>
+<main class="pmain">
+<%- include('flash') %>

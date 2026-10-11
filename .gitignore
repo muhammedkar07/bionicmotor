@@ -1,0 +1,11 @@
+node_modules/
+*.log
+_*.log
+_pid.txt
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+public/uploads/*
+!public/uploads/.gitkeep
+.env

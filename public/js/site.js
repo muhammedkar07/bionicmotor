@@ -1,0 +1,26 @@
+(function () {
+  var s = document.getElementById('slider');
+  if (s) {
+    var slides = s.querySelectorAll('.slide'), dots = s.querySelectorAll('.dots span'), i = 0, t;
+    var go = function (n) {
+      slides[i].classList.remove('on'); if (dots[i]) dots[i].classList.remove('on');
+      i = (n + slides.length) % slides.length;
+      slides[i].classList.add('on'); if (dots[i]) dots[i].classList.add('on');
+    };
+    var auto = function () { clearInterval(t); t = setInterval(function () { go(i + 1); }, 6000); };
+    var p = s.querySelector('.sl-prev'), n = s.querySelector('.sl-next');
+    if (p) p.onclick = function () { go(i - 1); auto(); };
+    if (n) n.onclick = function () { go(i + 1); auto(); };
+    dots.forEach(function (d, k) { d.onclick = function () { go(k); auto(); }; });
+    if (slides.length > 1) auto();
+  }
+  document.querySelectorAll('.faq-q').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var it = b.parentElement, open = it.classList.toggle('open');
+      b.querySelector('.plus').textContent = open ? 'âˆ’' : '+';
+    });
+  });
+})();
+
+// Sayfadaki tüm baðlantýlar yeni sekmede açýlýr
+document.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href'); if (h && !h.startsWith('#') && !h.startsWith('javascript:') && !h.startsWith('tel:') && !h.startsWith('mailto:')) { a.target = '_blank'; a.rel = 'noopener'; } });

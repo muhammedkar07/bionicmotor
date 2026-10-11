@@ -1,0 +1,13 @@
+<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5 center">Duyurular</h1>
+  <table class="ptbl ann">
+    <thead><tr><th style="width:90px">Sıra</th><th>Duyuru Metni</th></tr></thead>
+    <tbody>
+    <% list.forEach((a, i) => { %>
+      <tr><td><%= i+1 %><% if (a.isNew) { %> <span class="newdot" title="Yeni duyuru"></span><% } %></td><td><% if (a.isNew) { %><span class="newtag">YENİ</span> <% } %><div class="pre"><%= a.text %></div><b><%= a.author %></b></td></tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/bayi_foot') %>

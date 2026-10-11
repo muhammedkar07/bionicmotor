@@ -1,0 +1,11 @@
+<%- include('../partials/servis_head') %>
+<div class="pc">
+  <h1 class="h5">Garanti Kayıtları</h1>
+  <form class="inline-form" method="get"><input name="q" value="<%= q %>" placeholder="Şase no / müşteri / fatura no ara"><button class="btn btn-success btn-sm">Ara</button></form>
+  <table class="ptbl striped">
+    <thead class="dark"><tr><th>Şase No</th><th>Model</th><th>Müşteri</th><th>Fatura No</th><th>Satış Tarihi</th><th>Garanti Bitiş</th><th>Durum</th></tr></thead>
+    <tbody><% rows.forEach(r=>{ %><tr><td><%= r.serial_no %></td><td><%= r.model %></td><td><%= r.customer %></td><td><%= r.invoice_no %></td><td><%= date(r.sale_date) %></td><td><%= date(r.warranty_end) %></td><td><%= r.status %></td></tr><% }) %>
+    <% if(!rows.length){ %><tr><td colspan="7" class="muted">Kayıt bulunamadı.</td></tr><% } %></tbody>
+  </table>
+</div>
+<%- include('../partials/servis_foot') %>

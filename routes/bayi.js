@@ -1,0 +1,230 @@
+const router = require('express').Router();
+const bcrypt = require('bcryptjs');
+const { db, tx, syncOrderDebit, nextNo } = require('../db');
+const { flash, throttle, regenerate, luhn, addYears } = require('../lib/core');
+const { accountSummary } = require('../lib/account');
+
+const DUMMY = bcrypt.hashSync('x', 10);
+
+router.get('/giris', (req, res) => {
+  if (req.session.dealer) return res.redirect('/bayi');
+  res.render('bayi/login', { title: 'Bayi Girişi' });
+});
+
+router.post('/giris', (req, res) => {
+  const code = String(req.body.code || '').trim().slice(0, 50);
+  const pass = String(req.body.password || '').slice(0, 200);
+  const t = throttle('bayi:' + req.ip + ':' + code);
+  if (t.blocked) {
+    flash(req, 'danger', 'Çok fazla hatalı deneme. Lütfen daha sonra tekrar deneyin.');
+    return res.redirect('/bayi/giris');
+  }
+  const u = db.prepare("SELECT * FROM dealer_users WHERE code=? AND active=1 AND (role='bayi' OR role IS NULL)").get(code);
+  const ok = bcrypt.compareSync(pass, u ? u.password_hash : DUMMY) && u;
+  if (!ok) {
+    t.hit();
+    flash(req, 'danger', 'Kullanıcı kodu veya parola hatalı.');
+    return res.redirect('/bayi/giris');
+  }
+  if (u.role === null || u.role === '') db.prepare("UPDATE dealer_users SET role='bayi' WHERE id=?").run(u.id);
+  const firms = db.prepare('SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1').all(u.id);
+  if (!firms.length) {
+    flash(req, 'danger', 'Hesabınıza tanımlı aktif firma bulunmuyor.');
+    return res.redirect('/bayi/giris');
+  }
+  regenerate(req, res, 'dealer');
+  req.session.dealer = { userId: u.id, firmId: firms[0].id };
+  req.saveSession();
+  res.redirect('/bayi');
+});
+
+router.use((req, res, next) => {
+  const d = req.session.dealer;
+  const u = d && db.prepare('SELECT * FROM dealer_users WHERE id=? AND active=1').get(d.userId);
+  const f = u && db.prepare(
+    'SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1').get(u.id, d.firmId);
+  if (!f) return res.redirect('/bayi/giris');
+  res.locals.bu = u; res.locals.bf = f;
+  res.locals.multiFirm = db.prepare('SELECT COUNT(*) c FROM user_firms WHERE user_id=?').get(u.id).c > 1;
+  res.locals.bell = db.prepare(
+    'SELECT COUNT(*) c FROM announcements WHERE active=1 AND (? IS NULL OR created_at > ?)').get(u.ann_seen_at, u.ann_seen_at).c;
+  next();
+});
+
+const page = (res, view, title, extra = {}) => res.render('bayi/' + view, { title, ...extra });
+
+router.get('/', (req, res) => page(res, 'home', 'Bayi Portalı'));
+
+router.post('/cikis', (req, res) => {
+  regenerate(req, res, 'dealer');
+  flash(req, 'danger', 'Başarıyla çıkış yaptınız.');
+  res.redirect('/bayi/giris');
+});
+
+router.get('/firma-degistir', (req, res) => {
+  const firms = db.prepare(
+    'SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name').all(res.locals.bu.id);
+  page(res, 'firms', 'Firma Değiştir', { firms });
+});
+router.post('/firma-degistir', (req, res) => {
+  const f = db.prepare(
+    'SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
+    .get(res.locals.bu.id, +req.body.firm_id);
+  if (f) { req.session.dealer.firmId = f.id; req.saveSession(); }
+  res.redirect('/bayi');
+});
+
+router.get('/siparisler', (req, res) => {
+  const orders = db.prepare('SELECT * FROM orders WHERE firm_id=? ORDER BY request_date,id').all(res.locals.bf.id);
+  page(res, 'orders', 'Sipariş Taleplerim', { orders });
+});
+router.get('/siparisler/:id', (req, res, next) => {
+  const order = db.prepare('SELECT * FROM orders WHERE id=? AND firm_id=?').get(+req.params.id, res.locals.bf.id);
+  if (!order) return next();
+  const items = db.prepare('SELECT * FROM order_items WHERE order_id=?').all(order.id);
+  page(res, 'order_detail', 'Talep İçeriği', { order, items });
+});
+
+router.get('/hesap-ozeti', (req, res) => {
+  page(res, 'account', 'Hesap Özeti', { a: accountSummary(res.locals.bf.id, 'ana'), heading: 'Hesap Özeti', showCards: true });
+});
+router.get('/yedek-parca-ekstre', (req, res) => {
+  page(res, 'account', 'Yedek Parça Hesap Ekstresi',
+    { a: accountSummary(res.locals.bf.id, 'parca'), heading: 'Yedek Parça Hesap Ekstresi', showCards: false });
+});
+
+router.get('/duyurular', (req, res) => {
+  const list = db.prepare('SELECT * FROM announcements WHERE active=1 ORDER BY created_at DESC, id DESC').all();
+  const seen = res.locals.bu.ann_seen_at;
+  list.forEach(a => { a.isNew = !seen || a.created_at > seen; });
+  db.prepare("UPDATE dealer_users SET ann_seen_at=datetime('now') WHERE id=?").run(res.locals.bu.id);
+  res.locals.bell = 0;
+  page(res, 'announcements', 'Duyurular', { list });
+});
+
+router.get('/fiyat-listesi', (req, res) => {
+  const list = db.prepare("SELECT * FROM products WHERE kind='arac' AND active=1 ORDER BY category,name").all();
+  page(res, 'prices', 'Toptan Fiyat Listesi', { list });
+});
+
+router.get('/garanti', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const rows = db.prepare("SELECT * FROM warranty_records WHERE firm_id=? AND (?='' OR serial_no LIKE ? OR customer LIKE ? OR invoice_no LIKE ?) ORDER BY sale_date DESC")
+    .all(res.locals.bf.id, q, `%${q}%`, `%${q}%`, `%${q}%`);
+  page(res, 'warranty', 'Garanti Kayıtları', { rows, q });
+});
+
+router.get('/garanti/yeni', (req, res) => page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0, 10) }));
+
+router.post('/garanti/yeni', (req, res) => {
+  const b = req.body, clip = (v, n) => String(v || '').trim().slice(0, n);
+  const back = m => { flash(req, 'danger', m); return res.redirect('/bayi/garanti/yeni'); };
+  const serial = clip(b.serial_no, 40), invoice = clip(b.invoice_no, 60), saleDate = clip(b.sale_date, 10);
+  if (!serial || !saleDate) return back('Şase no ve satış tarihi zorunludur.');
+  if (!invoice) return back('Fatura numarası zorunludur.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(saleDate)) return back('Geçerli bir satış tarihi girin.');
+  const warrantyEnd = addYears(saleDate, 2);
+  db.prepare('INSERT INTO warranty_records(firm_id,serial_no,model,customer,sale_date,warranty_end,status,invoice_no) VALUES(?,?,?,?,?,?,?,?)')
+    .run(res.locals.bf.id, serial, clip(b.model, 80), clip(b.customer, 120), saleDate, warrantyEnd, 'Aktif', invoice);
+  flash(req, 'success', 'Ürün garanti kaydı oluşturuldu. Garanti bitiş tarihi satış tarihinden itibaren 2 yıl olarak tanımlandı.');
+  res.redirect('/bayi/garanti');
+});
+
+router.get('/servis-gecmisi', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const rows = q ? db.prepare('SELECT * FROM work_orders WHERE firm_id=? AND serial_no LIKE ? ORDER BY created_at DESC')
+    .all(res.locals.bf.id, `%${q}%`) : [];
+  page(res, 'service_history', 'Servis Geçmişi', { rows, q });
+});
+
+router.get('/is-emri/yeni', (req, res) => page(res, 'workorder_new', 'İş Emri Oluştur'));
+router.post('/is-emri/yeni', (req, res) => {
+  const b = req.body, clip = (v, n) => String(v || '').trim().slice(0, n);
+  const img = (req.files || []).find(f => f.fieldname === 'image');
+  if (!clip(b.serial_no, 40) || !clip(b.description, 3000)) {
+    flash(req, 'danger', 'Şase no ve açıklama zorunludur.'); return res.redirect('/bayi/is-emri/yeni');
+  }
+  if (!img) {
+    flash(req, 'danger', 'İş emri için görsel eklemek zorunludur (JPG, PNG, WEBP veya PDF).'); return res.redirect('/bayi/is-emri/yeni');
+  }
+  // İş emri türü bayi/servis tarafından seçilemez; yönetici belirler.
+  const n = db.prepare('SELECT COUNT(*) c FROM work_orders').get().c + 1;
+  const no = 'IE' + new Date().getFullYear() + String(n).padStart(6, '0');
+  db.prepare('INSERT INTO work_orders(firm_id,user_id,no,serial_no,model,km,type,description,image) VALUES(?,?,?,?,?,?,?,?,?)')
+    .run(res.locals.bf.id, res.locals.bu.id, no, clip(b.serial_no, 40), clip(b.model, 80), clip(b.km, 20), '',
+      clip(b.description, 3000), '/static/uploads/' + img.filename);
+  flash(req, 'success', `İş emriniz oluşturuldu: ${no}. İş emri türü yönetici tarafından belirlenecektir.`);
+  res.redirect('/bayi/is-emirlerim');
+});
+router.get('/is-emirlerim', (req, res) => {
+  const rows = db.prepare('SELECT * FROM work_orders WHERE firm_id=? ORDER BY id DESC').all(res.locals.bf.id);
+  page(res, 'workorders', 'İş Emirlerim', { rows });
+});
+
+router.get('/yedek-parca/yeni', (req, res) => {
+  const parts = db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
+  const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
+  page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst });
+});
+router.post('/yedek-parca/yeni', (req, res) => {
+  const b = req.body, back = m => { flash(req, 'danger', m); return res.redirect('/bayi/yedek-parca/yeni'); };
+  const ids = [].concat(b.part_id || []), qtys = [].concat(b.qty || []);
+  const lines = [];
+  ids.forEach((id, i) => {
+    const qty = Math.floor(+qtys[i]);
+    const p = id && db.prepare("SELECT * FROM products WHERE id=? AND kind='parca' AND active=1").get(+id);
+    if (p && qty > 0 && qty <= 10000) lines.push({ p, qty });
+  });
+  if (!lines.length) return back('Sepete en az bir parça ve adet eklemelisiniz.');
+  const total = lines.reduce((s, l) => s + l.qty * l.p.price, 0);
+  const method = { kart: 'Kredi Kartı', nakit: 'Nakit', havale: 'Havale / EFT' }[b.pay_method];
+  if (!method) return back('Ödeme yöntemini seçin.');
+  const payer = String(b.payer_name || '').trim().slice(0, 120);
+  if (b.pay_method === 'havale' && !payer) return back('Havale / EFT için gönderen hesap ad soyad bilgisini giriniz.');
+
+  let card = null;
+  if (b.pay_method === 'kart') {
+    const inst = db.prepare('SELECT * FROM installments WHERE id=? AND active=1').get(+b.installment_id);
+    const holder = String(b.holder || '').trim().slice(0, 80);
+    const number = String(b.number || '').replace(/\s/g, '');
+    const month = +b.month, year = +b.year, cvc = String(b.cvc || '');
+    const now = new Date();
+    if (!inst) return back('Taksit seçeneği seçin.');
+    if (!holder) return back('Kart bilgileri geçersiz.');
+    if (!(month >= 1 && month <= 12) || year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth() + 1))
+      return back('Kartın son kullanma tarihi geçersiz.');
+    if (!/^\d{3,4}$/.test(cvc)) return back('CVC geçersiz.');
+    card = { inst, holder, last4: number.slice(-4) };
+  }
+
+  let no;
+  tx(() => {
+    no = String(nextNo('spare_orders', 'no'));
+    let payId = null;
+    if (card) {
+      const commission = Math.round(total * card.inst.rate) / 100;
+      // Kart no / CVC kaydedilmez. Gerçek sanal POS entegrasyonu bu noktada yapılacak.
+      payId = db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(res.locals.bu.id, res.locals.bf.id, 'odeme', total, 'TL', 'Yedek Parça Siparişi #' + no,
+        card.inst.label, commission, total + commission, card.holder, card.last4, 'Sanal POS Bekliyor').lastInsertRowid;
+    }
+    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,note,request_date,pay_method,payment_id,payer_name) VALUES(?,?,?,?,date('now'),?,?,?)")
+      .run(res.locals.bf.id, res.locals.bu.id, no, String(b.note || '').slice(0, 1000), method, payId, payer || null).lastInsertRowid;
+    const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
+    lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
+    // Sipariş ve (varsa) ödeme yedek parça cari hesabına işlenir
+    syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
+  });
+  flash(req, 'success', card ? `Ödemeniz alındı ve ${no} numaralı siparişiniz iletildi. (Sanal POS entegrasyonu henüz aktif değil; tahsilat yapılmamıştır.)`
+    : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi.`);
+  res.redirect('/bayi/yedek-parca-siparisleri');
+});router.get('/yedek-parca-siparisleri', (req, res) => {
+  const orders = db.prepare('SELECT * FROM spare_orders WHERE firm_id=? ORDER BY id DESC').all(res.locals.bf.id);
+  orders.forEach(o => {
+    o.items = db.prepare('SELECT * FROM spare_order_items WHERE order_id=?').all(o.id);
+    o.total = o.items.reduce((s, i) => s + i.qty * i.unit_price, 0);
+  });
+  page(res, 'spare_orders', 'Yedek Parça Siparişlerim', { orders });
+});
+
+module.exports = router;

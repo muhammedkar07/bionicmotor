@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | <%= s.brand_1 %><%= s.brand_2 %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/site.css">
+</head>
+<body class="site">
+<header class="site-header">
+  <div class="topbar">
+    <div class="wrap topbar-in">
+      <div class="contact-chips"><span><%= s.phone %></span><a href="mailto:<%= s.email %>"><%= s.email %></a></div>
+      <nav class="top-links">
+        <a href="/sayfa/dijital-katalog">DİJİTAL KATALOG</a>
+        <a href="/sayfa/medya">MEDYA</a>
+        <a href="/odeme">ONLİNE ÖDEME</a>
+        <a href="/bayi">BAYİ VE SERVİS GİRİŞİ</a>
+        <a href="/bayilik-basvurusu">BAYİLİK BAŞVURUSU</a>
+        <a href="/perakende-fiyat-listesi">PERAKENDE FİYAT LİSTESİ</a>
+      </nav>
+      <div class="social">
+        <a href="<%= s.facebook %>" aria-label="Facebook">f</a>
+        <a href="<%= s.instagram %>" aria-label="Instagram">◎</a>
+        <a href="<%= s.youtube %>" aria-label="YouTube">▶</a>
+      </div>
+    </div>
+  </div>
+  <div class="mainbar">
+    <div class="wrap mainbar-in">
+      <a class="brand" href="/"><%- include('logo') %></a>
+      <button class="nav-toggle" aria-label="Menü" onclick="document.body.classList.toggle('nav-open')">☰</button>
+      <nav class="main-nav">
+        <a href="/" class="<%= active==='home'?'on':'' %>">ANA SAYFA</a>
+        <a href="/sayfa/kurumsal" class="<%= active==='kurumsal'?'on':'' %>">KURUMSAL</a>
+        <a href="/modeller" class="<%= active==='models'?'on':'' %>">MODELLER</a>
+        <a href="/satis-ve-servis" class="<%= active==='points'?'on':'' %>">SATIŞ VE SERVİS</a>
+        <a href="/destek" class="<%= active==='support'?'on':'' %>">DESTEK</a>
+        <a href="/iletisim" class="<%= active==='contact'?'on':'' %>">İLETİŞİM</a>
+      </nav>
+    </div>
+  </div>
+</header>

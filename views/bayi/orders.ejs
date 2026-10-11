@@ -1,0 +1,15 @@
+﻿<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Sipariş Taleplerim</h1>
+  <table class="ptbl">
+    <thead><tr><th>Talep Tarihi</th><th>Talep No</th><th>Teslim Tarihi</th><th>Teslim Şekli</th><th>Talep Durumu</th><th></th></tr></thead>
+    <tbody>
+    <% orders.forEach(o => { %>
+      <tr><td><%= date(o.request_date) %></td><td><%= o.request_no %></td><td><%= o.delivery_date ? date(o.delivery_date) : "-" %></td><td><%= o.delivery_type %></td><td><%= o.status %></td>
+        <td class="r"><a class="btn btn-success btn-sm" href="/bayi/siparisler/<%= o.id %>">Talep İçeriği</a></td></tr>
+    <% }) %>
+    <% if (!orders.length) { %><tr><td colspan="6" class="muted">Kayıt bulunamadı.</td></tr><% } %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/bayi_foot') %>

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yönetici Girişi</title><link rel="stylesheet" href="/static/css/admin.css"></head>
+<body class="admin login">
+<form method="post" action="/admin/giris" class="lcard">
+  <div class="lcenter"><%- include('../partials/logo') %></div>
+  <h1>Yönetici Girişi</h1>
+  <% if (flash) { %><div class="alert alert-<%= flash.type %>"><%= flash.msg %></div><% } %>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <label>Kullanıcı Adı<input name="username" required autofocus autocomplete="username"></label>
+  <label>Parola<input type="password" name="password" required autocomplete="current-password"></label>
+  <button class="btn btn-primary block">Giriş Yap</button>
+</form>
+</body></html>

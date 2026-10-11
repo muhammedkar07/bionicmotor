@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Bayi Portalı</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body class="portal">
+<nav class="pnav">
+  <a class="pbrand" href="/bayi"><%- include('logo') %></a>
+  <button class="pnav-toggle" onclick="document.querySelector('.pnav').classList.toggle('open')">☰</button>
+  <ul class="plinks">
+    <li><a href="/bayi/siparisler">Sipariş Taleplerim</a></li>
+    <li><a href="/bayi/hesap-ozeti">Hesap Özetim</a></li>
+    <li><a href="/bayi/duyurular">Duyurular</a></li>
+    <li><a href="/bayi/fiyat-listesi">Toptan Fiyat Listesi</a></li>
+    <li class="dd"><a href="#" class="dd-t" onclick="this.parentNode.classList.toggle('open');return false">Satış Sonrası İşlemleri <span class="caret"></span></a>
+      <div class="dd-m">
+        <a href="/bayi/garanti">Garanti Kayıtları</a>
+        <a href="/bayi/servis-gecmisi">Servis Geçmişi Görüntüle</a>
+        <a href="/bayi/is-emri/yeni">İş Emri Oluştur</a>
+        <a href="/bayi/is-emirlerim">İş Emirlerim</a>
+        <a href="/bayi/yedek-parca/yeni">Yedek Parça Sipariş Oluştur</a>
+        <a href="/bayi/yedek-parca-siparisleri">Yedek Parça Siparişlerim</a>
+        <a href="/bayi/yedek-parca-ekstre">Yedek Parça Hesap Ekstresi</a>
+      </div></li>
+    <li><a class="bell" href="/bayi/duyurular" aria-label="Duyurular">🔔<% if (bell > 0) { %><span class="badge"><%= bell %></span><% } %></a></li>
+  </ul>
+  <div class="puser">
+    <div><%= bu.name %><br><small class="pucode">Bayi Kodu: <%= bf.code %></small></div>
+    <form method="post" action="/bayi/cikis" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn">Oturumu Kapat</button></form>
+    <a class="btn btn-success btn-sm" href="/bayi/firma-degistir">Firma Değiştir</a>
+  </div>
+</nav>
+<main class="pmain">
+<%- include('flash') %>

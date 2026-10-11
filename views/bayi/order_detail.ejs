@@ -1,0 +1,16 @@
+﻿<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Talep İçeriği - <%= order.request_no %></h1>
+  <p class="muted"><%= date(order.request_date) %> · Teslim: <%= order.delivery_date ? date(order.delivery_date) + " · " : "" %><%= order.delivery_type %> · <%= order.status %></p>
+  <table class="ptbl">
+    <thead><tr><th>Ürün</th><th class="r">Adet</th><th class="r">Birim Fiyat</th><th class="r">Tutar</th></tr></thead>
+    <tbody>
+    <% let total = 0; items.forEach(i => { total += i.qty*i.unit_price; %>
+      <tr><td><%= i.product_name %></td><td class="r"><%= i.qty %></td><td class="r"><%= money(i.unit_price) %> ₺</td><td class="r"><%= money(i.qty*i.unit_price) %> ₺</td></tr>
+    <% }) %>
+      <tr><td colspan="3" class="r"><b>Toplam</b></td><td class="r"><b><%= money(total) %> ₺</b></td></tr>
+    </tbody>
+  </table>
+  <a class="btn btn-secondary" href="/bayi/siparisler">Geri</a>
+</div>
+<%- include('../partials/bayi_foot') %>

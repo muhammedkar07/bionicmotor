@@ -1,0 +1,18 @@
+<%- include('../partials/site_head') %>
+<section class="wrap section narrow">
+  <div class="support-boxes">
+    <a href="#sss" class="sbox"><span class="ico">?</span><span>Sıkça Sorulara<br>Buradan Ulaşabilirsiniz</span></a>
+    <a href="/sayfa/garanti" class="sbox"><span class="ico ico-or">✓</span><span>Garanti<br>İşlemleri</span></a>
+    <a href="/sayfa/bakim-onarim" class="sbox"><span class="ico">⚙</span><span>Bakım ve Onarım<br>İşlemleri</span></a>
+  </div>
+  <h2 class="title-red big" id="sss">SIKÇA SORULAN SORULAR</h2>
+  <div class="faq">
+    <% faqs.forEach(f => { %>
+    <div class="faq-item">
+      <button class="faq-q" type="button"><span class="plus">+</span><span class="q"><%= f.question %></span></button>
+      <div class="faq-a"><%= f.answer %></div>
+    </div>
+    <% }) %>
+  </div>
+</section>
+<%- include('../partials/site_foot') %>

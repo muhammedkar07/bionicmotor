@@ -1,0 +1,90 @@
+<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Yedek Parça Sipariş Oluştur</h1>
+  <form method="post" action="/bayi/yedek-parca/yeni" class="stack" id="sform" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2 class="h6">Sepet</h2>
+    <table class="ptbl" id="lines">
+      <thead><tr><th>Parça</th><th style="width:110px">Adet</th><th class="r" style="width:130px">Tutar</th><th></th></tr></thead>
+      <tbody></tbody>
+      <tfoot><tr><td colspan="2" class="r"><b>Genel Toplam</b></td><td class="r"><b id="gtotal">0,00 ₺</b></td><td></td></tr></tfoot>
+    </table>
+    <div><button type="button" class="btn btn-secondary btn-sm" id="add">+ Parça Ekle</button></div>
+    <label>Not:<textarea name="note" rows="2" maxlength="1000"></textarea></label>
+
+    <h2 class="h6">Ödeme Yöntemi</h2>
+    <div class="paym">
+      <label><input type="radio" name="pay_method" value="kart" checked> Kredi Kartı ile Öde</label>
+      <label><input type="radio" name="pay_method" value="nakit"> Nakit</label>
+      <label><input type="radio" name="pay_method" value="havale"> Havale / EFT</label>
+    </div>
+
+    <div id="cardbox" class="box">
+      <label>Kart Üzerindeki Ad Soyad<input name="holder" maxlength="80"></label>
+      <label>Kart Numarası<input name="number" id="number" inputmode="numeric" maxlength="23"></label>
+      <div style="display:flex;gap:10px">
+        <label style="flex:1">Ay<select name="month"><option value="">Ay</option><% for (let m=1;m<=12;m++){ %><option value="<%= m %>"><%= String(m).padStart(2,'0') %></option><% } %></select></label>
+        <label style="flex:1">Yıl<select name="year"><option value="">Yıl</option><% for (let y=new Date().getFullYear(); y<new Date().getFullYear()+12; y++){ %><option><%= y %></option><% } %></select></label>
+        <label style="flex:1">CVC<input name="cvc" inputmode="numeric" maxlength="4"></label>
+      </div>
+      <table class="ptbl">
+        <thead><tr><th>Seç</th><th>Taksit</th><th class="r">Komisyon</th><th class="r">Taksit Tutarı</th><th class="r">Toplam</th></tr></thead>
+        <tbody id="itbody"></tbody>
+      </table>
+    </div>
+    <p class="muted" id="cashnote" hidden>Nakit veya Havale / EFT seçildiğinde sipariş ödeme alınmadan doğrudan kaydedilir.</p>
+    <div id="havalebox" class="box" hidden>
+      <p class="alert alert-warning" style="margin-top:0">Havale / EFT işlemlerinde açıklama kısmına <b>bayi kodunuzu ve adınızı soyadınızı</b> yazmayı unutmayınız.</p>
+      <label>Gönderen Hesap Ad Soyad:<input name="payer_name" id="payer_name" maxlength="120" placeholder="Havale/EFT'yi gönderen hesabın ad soyadı"></label>
+    </div>
+    <div><button class="btn btn-success" id="sbtn">Öde ve Siparişi Gönder</button></div>
+  </form>
+</div>
+<template id="tpl"><tr>
+  <td><select name="part_id"><option value="">Seçiniz</option>
+    <% parts.forEach(p => { %><option value="<%= p.id %>" data-price="<%= p.price %>"><%= p.code %> - <%= p.name %> (<%= money(p.price) %> ₺)</option><% }) %></select></td>
+  <td><input type="number" name="qty" min="1" value="1"></td>
+  <td class="r lt">0,00 ₺</td>
+  <td><button type="button" class="btn btn-danger btn-sm rm">Sil</button></td></tr></template>
+<script>
+  const INST = <%- JSON.stringify(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const body = document.querySelector('#lines tbody'), tpl = $('tpl');
+  let total = 0;
+  function renderInst() {
+    const checked = (document.querySelector('input[name=installment_id]:checked') || {}).value || INST[0]?.id;
+    $('itbody').innerHTML = INST.map(i => {
+      const t = total + total * i.rate / 100;
+      return `<tr><td><input type="radio" name="installment_id" value="${i.id}" ${i.id == checked ? 'checked' : ''} style="display:inline;width:auto;margin:0"></td>
+        <td>${i.label}</td><td class="r">%${fmt(i.rate)}</td><td class="r">${fmt(t / i.count)} ₺</td><td class="r">${fmt(t)} ₺</td></tr>`;
+    }).join('');
+  }
+  function calc() {
+    total = 0;
+    body.querySelectorAll('tr').forEach(tr => {
+      const o = tr.querySelector('select').selectedOptions[0], price = +(o && o.dataset.price) || 0;
+      const line = price * (Math.floor(+tr.querySelector('input').value) || 0);
+      tr.querySelector('.lt').textContent = fmt(line) + ' ₺'; total += line;
+    });
+    $('gtotal').textContent = fmt(total) + ' ₺'; renderInst();
+  }
+  function method() {
+    const m = document.querySelector('input[name=pay_method]:checked').value;
+    const card = m === 'kart', havale = m === 'havale';
+    $('cardbox').hidden = !card; $('cashnote').hidden = card;
+    $('havalebox').hidden = !havale;
+    $('payer_name').required = havale;
+    $('sbtn').textContent = card ? 'Öde ve Siparişi Gönder' : 'Siparişi Kaydet';
+  }
+  $('add').onclick = () => { body.appendChild(tpl.content.cloneNode(true)); calc(); };
+  body.addEventListener('click', e => { if (e.target.classList.contains('rm')) { e.target.closest('tr').remove(); calc(); } });
+  body.addEventListener('input', calc); body.addEventListener('change', calc);
+  document.querySelectorAll('input[name=pay_method]').forEach(r => r.onchange = method);
+  $('number').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim(); });
+  $('sform').addEventListener('submit', e => {
+    if (!total) { e.preventDefault(); alert('Sepete en az bir parça ekleyin.'); }
+  });
+  $('add').click(); method();
+</script>
+<%- include('../partials/bayi_foot') %>

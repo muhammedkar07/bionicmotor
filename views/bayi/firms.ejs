@@ -1,0 +1,12 @@
+<%- include('../partials/bayi_head') %>
+<div class="pc narrow">
+  <h1 class="h5">Firma Değiştir</h1>
+  <form method="post" action="/bayi/firma-degistir" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% firms.forEach(f => { %>
+    <label class="radio"><input type="radio" name="firm_id" value="<%= f.id %>" <%= f.id===bf.id?'checked':'' %>> <%= f.name %> <span class="muted"><%= f.city %></span></label>
+    <% }) %>
+    <div><button class="btn btn-success">Seç</button></div>
+  </form>
+</div>
+<%- include('../partials/bayi_foot') %>

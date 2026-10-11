@@ -1,0 +1,146 @@
+<%- include('../partials/admin_head') %>
+<h1><%= title %></h1>
+<form method="post" action="/admin/r/<%= res.key %>/save" enctype="multipart/form-data" class="fcard">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (row) { %><input type="hidden" name="_id" value="<%= row._id %>"><% } %>
+  <% res.fields.forEach(f => { const v = row ? row[f.name] : (f.def ?? (f.today ? today : '')); %>
+    <% if (f.type === 'multi') { %>
+      <div class="fg"><label>Erişebildiği Firmalar</label>
+        <div id="msel">
+          <select id="msq"><option value="">Firma seçiniz</option></select>
+          <div class="chips" id="chips"></div>
+          <div hidden id="mlist">
+            <% multi.all.forEach(m => { %><label class="mi"><input type="checkbox" name="firms" value="<%= m.id %>" data-label="<%= m.name %>" <%= multi.sel.includes(m.id)?'checked':'' %>></label><% }) %>
+          </div>
+        </div>
+        <small class="muted">En son eklenen firma en üstte listelenir.</small></div>
+    <% } else if (f.type === 'auto') { %>
+      <div class="fg"><label><%= f.label %></label>
+        <div class="ro" id="autoval_<%= f.name %>"><%= row ? v : 'Otomatik' %></div>
+        <% if (f.hint && !row) { %><small class="muted"><%= f.hint %></small><% } %></div>
+    <% } else if (f.type === 'readonly') { %>
+      <div class="fg"><label><%= f.label %></label>
+        <div class="ro"><% if (f.image && v) { %><a href="<%= v %>" target="_blank"><img src="<%= v %>" style="max-width:320px" alt=""></a>
+          <% } else if (f.ref) { const m = (refs[f.name]||[]).find(x => x.id === v); %><%= m ? m.label : v %>
+          <% } else { %><span class="pre"><%= v %></span><% } %></div></div>
+    <% } else if (f.type === 'checkbox') { %>
+      <div class="fg"><label class="ck"><input type="checkbox" name="<%= f.name %>" value="1" <%= (row ? v : f.def) ? 'checked' : '' %>> <%= f.label %></label></div>
+    <% } else { %>
+      <div class="fg" data-field="<%= f.name %>"><label for="f_<%= f.name %>"><%= f.label %><%= f.required ? ' *' : '' %></label>
+        <% if (f.type === 'textarea') { %><textarea id="f_<%= f.name %>" name="<%= f.name %>" rows="<%= f.rows || 4 %>"><%= v %></textarea>
+        <% } else if (f.type === 'select') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><% f.options.forEach(o => { %><option <%= (v||f.def)===o?'selected':'' %>><%= o %></option><% }) %></select>
+        <% } else if (f.type === 'ref') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">Seçiniz</option><% (refs[f.name]||[]).forEach(o => { %><option value="<%= o.id %>" <%= v===o.id?'selected':'' %>><%= o.label %></option><% }) %></select>
+        <% } else if (f.type === 'category') { %>
+          <div class="catrow">
+            <select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">Seçiniz</option>
+              <% categories.forEach(c => { %><option <%= v===c?'selected':'' %>><%= c %></option><% }) %>
+              <% if (v && !categories.includes(v)) { %><option selected><%= v %></option><% } %></select>
+            <input type="text" id="newcat" placeholder="Yeni kategori adı" maxlength="80">
+            <button type="button" class="btn" id="addcat">+ Yeni Kategori Ekle</button>
+          </div>
+          <small class="muted" id="catmsg">Eklenen kategoriler listede kalır, her seferinde yeniden yazmanız gerekmez.</small>
+        <% } else if (f.type === 'file') { %><% if (v) { %><div><a href="<%= v %>" target="_blank">Mevcut dekontu görüntüle</a></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*,application/pdf">
+        <% } else if (f.type === 'image') { %><% if (v) { %><div><img src="<%= v %>" style="max-height:80px" alt=""></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*">
+        <% } else if (f.type === 'number') { %><input type="number" step="any" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>">
+        <% } else if (f.type === 'date') { %><input type="date" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>">
+        <% } else if (f.type === 'password') { %><input type="password" id="f_<%= f.name %>" name="<%= f.name %>" autocomplete="new-password">
+        <% } else { %><input id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>" <%= f.required ? 'required' : '' %>><% } %>
+        <% if (f.help) { %><small class="muted"><%= f.help %></small><% } %></div>
+    <% } %>
+  <% }) %>
+
+  <% if (res.children) { const ch = res.children;
+     const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+     const opts = (sel) => { const groups = {}; catalog.forEach(p => { (groups[p.category || 'Diğer'] = groups[p.category || 'Diğer'] || []).push(p); });
+       return Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">` + ps.map(p => `<option value="${esc(p.name)}" data-code="${esc(p.code)}" data-price="${p.price}"${p.name===sel?' selected':''}>${esc((p.code ? p.code + ' - ' : '') + p.name)}</option>`).join('') + '</optgroup>').join(''); };
+  %>
+  <h2><%= ch.title %></h2>
+  <table class="tbl" id="kids"><thead><tr><% ch.cols.forEach(c => { %><th><%= c.label %></th><% }) %><th></th></tr></thead>
+    <tbody>
+    <% kids.forEach(k => { %><tr><% ch.cols.forEach(c => { %><td>
+      <% if (c.type === 'product') { %><select name="ch_<%= c.name %>" class="pp"><option value="">Ürün seçin</option><%- opts(k[c.name]) %>
+          <% if (k[c.name] && !catalog.some(p => p.name === k[c.name])) { %><option value="<%= k[c.name] %>" selected><%= k[c.name] %></option><% } %></select>
+      <% } else { %><input name="ch_<%= c.name %>" value="<%= k[c.name] %>" data-col="<%= c.name %>" <%= c.type==='number'?'type=number step=any':'' %>><% } %></td><% }) %>
+      <td><button type="button" class="btn btn-sm btn-danger rm">×</button></td></tr><% }) %>
+    </tbody></table>
+  <button type="button" class="btn btn-sm" id="addrow">+ Satır Ekle</button>
+  <template id="rowtpl"><tr><% ch.cols.forEach(c => { %><td>
+    <% if (c.type === 'product') { %><select name="ch_<%= c.name %>" class="pp"><option value="">Ürün seçin</option><%- opts('') %></select>
+    <% } else { %><input name="ch_<%= c.name %>" data-col="<%= c.name %>" <%= c.type==='number'?'type=number step=any':'' %> value="<%= c.def ?? '' %>"><% } %></td><% }) %>
+    <td><button type="button" class="btn btn-sm btn-danger rm">×</button></td></tr></template>
+  <% if (!catalog.length) { %><p class="muted">Seçilebilir ürün yok. Önce "Ürünler / Fiyat Listesi" sayfasından ürün ekleyin.</p><% } %>
+  <script>
+    const tb = document.querySelector('#kids tbody');
+    const fillRow = sel => {
+      const o = sel.selectedOptions[0], tr = sel.closest('tr');
+      if (!o || !o.value) return;
+      const price = tr.querySelector('[data-col=unit_price]'), code = tr.querySelector('[data-col=part_code]');
+      if (price) price.value = o.dataset.price;
+      if (code) code.value = o.dataset.code;
+    };
+    document.getElementById('addrow').onclick = () => tb.appendChild(document.getElementById('rowtpl').content.cloneNode(true));
+    tb.addEventListener('click', e => { if (e.target.classList.contains('rm')) e.target.closest('tr').remove(); });
+    tb.addEventListener('change', e => { if (e.target.classList.contains('pp')) fillRow(e.target); });
+  </script>
+  <% } %>
+  <div class="fbtn"><button class="btn btn-primary">Kaydet</button> <a class="btn" href="/admin/r/<%= res.key %>">Vazgeç</a></div>
+</form>
+<script>
+(() => {
+  const ms = document.getElementById('msel');
+  if (ms) {
+    const q = document.getElementById('msq'), list = document.getElementById('mlist'), chips = document.getElementById('chips');
+    const items = [...list.querySelectorAll('label.mi')];
+    const draw = () => {
+      chips.innerHTML = '';
+      const checked = items.filter(l => l.querySelector('input').checked);
+      q.innerHTML = '<option value="">Firma seçiniz</option>';
+      items.forEach(l => { const i = l.querySelector('input'); if (!i.checked) q.add(new Option(i.dataset.label, i.value)); });
+      const out = document.getElementById('autoval_code');
+      if (out && !document.querySelector('input[name=_id]')) {
+        if (!checked.length) out.textContent = 'Firma seçildiğinde verilir';
+        else fetch('/admin/kullanici-kodu?firm=' + checked[0].querySelector('input').value).then(r => r.json()).then(j => { out.textContent = j.code || 'Otomatik'; });
+      }
+      checked.forEach(l => {
+        const c = document.createElement('span'); c.className = 'chip'; c.textContent = l.querySelector('input').dataset.label + ' ×';
+        c.onclick = () => { l.querySelector('input').checked = false; draw(); };
+        chips.appendChild(c);
+      });
+    };
+    q.addEventListener('change', () => { const i = items.map(l => l.querySelector('input')).find(x => x.value === q.value); if (i) i.checked = true; draw(); });
+    draw();
+  }
+  const add = document.getElementById('addcat');
+  if (add) {
+    const sel = document.getElementById('f_category'), inp = document.getElementById('newcat'), msg = document.getElementById('catmsg');
+    const doAdd = async () => {
+      const name = inp.value.trim(); if (!name) return;
+      const body = new URLSearchParams({ name, _csrf: document.querySelector('input[name=_csrf]').value });
+      const r = await fetch('/admin/kategori-ekle', { method: 'POST', body });
+      const j = await r.json();
+      if (!r.ok) { msg.textContent = j.error || 'Eklenemedi'; return; }
+      let o = [...sel.options].find(x => x.value.toLocaleLowerCase('tr') === j.name.toLocaleLowerCase('tr'));
+      if (!o) { o = new Option(j.name, j.name); sel.add(o); }
+      sel.value = o.value; inp.value = ''; msg.textContent = '"' + j.name + '" kategorisi eklendi ve seçildi.';
+    };
+    add.onclick = doAdd;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+  }
+})();
+</script>
+<% if (res.key === 'movements') { %>
+<script>
+(() => {
+  const sel = document.getElementById('f_doc_type');
+  if (!sel) return;
+  const fields = ['bank', 'cheque_no', 'cheque_type', 'cheque_due'];
+  const toggle = () => {
+    const on = sel.value === 'Çek/Senet';
+    fields.forEach(n => { const el = document.querySelector('[data-field="' + n + '"]'); if (el) el.hidden = !on; });
+  };
+  sel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
+<% } %>
+<%- include('../partials/admin_foot') %>

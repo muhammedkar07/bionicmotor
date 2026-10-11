@@ -1,0 +1,9 @@
+<%- include('../partials/site_head') %>
+<section class="wrap section narrow">
+  <h2 class="title-red">PERAKENDE FİYAT LİSTESİ</h2>
+  <div class="table-wrap"><table class="tbl">
+    <thead><tr><th>Model</th><th>Kategori</th><th class="r">Tavsiye Edilen Nakit Perakende Fiyat</th></tr></thead>
+    <tbody><% models.forEach(m => { %><tr><td><%= m.name %></td><td><%= m.category %></td><td class="r"><%= money(m.price) %> TL</td></tr><% }) %></tbody>
+  </table></div>
+</section>
+<%- include('../partials/site_foot') %>

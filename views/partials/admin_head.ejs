@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Yönetim Paneli</title>
+  <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body class="admin">
+<aside class="side">
+  <a class="sbrand" href="/admin"><%- include('logo') %><small>Yönetim Paneli</small></a>
+  <nav>
+    <a href="/admin" class="<%= path==='/'?'on':'' %>">▣ Panel</a>
+    <% Object.entries(menu).forEach(([g, items]) => { %>
+      <div class="grp"><%= g %></div>
+      <% items.forEach(it => { %>
+        <a href="/admin/r/<%= it.key %>" class="<%= res && res.key===it.key ? 'on' : '' %>"><%= it.title %>
+          <% if (badges[it.key] > 0) { %><span class="bdg"><%= badges[it.key] %></span><% } %></a>
+      <% }) %>
+    <% }) %>
+    <div class="grp">Sistem</div>
+    <a href="/admin/ayarlar" class="<%= path==='/ayarlar'?'on':'' %>">Site Ayarları</a>
+    <a href="/admin/sifre" class="<%= path==='/sifre'?'on':'' %>">Parola Değiştir</a>
+    <a href="/" target="_blank">Siteyi Görüntüle ↗</a>
+    <a href="/bayi" target="_blank">Bayi Paneli ↗</a>
+  </nav>
+</aside>
+<div class="content">
+  <header class="atop"><span><%= admin.name || admin.username %></span>
+    <form method="post" action="/admin/cikis" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm">Çıkış</button></form></header>
+  <main>
+  <% if (flash) { %><div class="alert alert-<%= flash.type %>"><%= flash.msg %></div><% } %>

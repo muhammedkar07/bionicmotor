@@ -1,0 +1,26 @@
+<%- include('../partials/plain_head') %>
+  <h1 class="h5 mt">Bayilik Başvuru Formu</h1>
+  <form method="post" action="/bayilik-basvurusu" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label>Adınız Soyadınız:<input name="name" required maxlength="120"></label>
+    <label>Bayilik İstediğiniz İl:
+      <select name="city" id="il" required><option value="">Seçiniz</option></select></label>
+    <label>Bayilik İstediğiniz İlçe:
+      <input name="district" id="ilce" list="ilceler" placeholder="Önce il seçiniz" maxlength="60" autocomplete="off">
+      <datalist id="ilceler"></datalist></label>
+    <label>Telefon Numaranız:<input name="phone" type="tel" required maxlength="40"></label>
+    <label>Açıklamalar<textarea name="note" rows="4" maxlength="2000"></textarea></label>
+    <div class="row-btn"><button class="btn btn-success" type="submit">Başvurumu Gönder</button>
+      <a class="btn btn-secondary" href="/">Web Sitesine Git</a></div>
+  </form>
+  <script src="/static/js/iller.js"></script>
+  <script>
+    const il = document.getElementById('il'), dl = document.getElementById('ilceler'), ilce = document.getElementById('ilce');
+    ILLER.forEach(n => il.add(new Option(n, n)));
+    il.addEventListener('change', () => {
+      dl.innerHTML = ''; ilce.value = '';
+      (ILCELER[il.value] || []).forEach(d => dl.appendChild(new Option(d)));
+      ilce.placeholder = il.value ? 'İlçe seçin veya yazın' : 'Önce il seçiniz';
+    });
+  </script>
+<%- include('../partials/plain_foot') %>

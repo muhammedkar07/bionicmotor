@@ -1,0 +1,32 @@
+<%- include('../partials/site_head') %>
+<section class="slider" id="slider">
+  <% slides.forEach((sl, i) => { %>
+  <div class="slide <%= i===0?'on':'' %>" style="background:<%= sl.image ? `url('${sl.image}') center/cover` : (sl.bg || '#111') %>">
+    <% if (!sl.image) { %>
+    <div class="wrap slide-in">
+      <p class="slide-sub"><%= sl.subtitle %></p>
+      <h1><%= sl.title %></h1>
+      <% if (sl.old_price) { %><div class="price-old"><s><%= sl.old_price %></s></div><% } %>
+      <% if (sl.new_price) { %><div class="price-new"><%= sl.new_price %></div><% } %>
+      <% if (sl.link) { %><a class="btn-red" href="<%= sl.link %>">İncele</a><% } %>
+    </div>
+    <% } else if (sl.link) { %><a href="<%= sl.link %>" class="slide-link" aria-label="<%= sl.title %>"></a><% } %>
+  </div>
+  <% }) %>
+  <% if (slides.length > 1) { %>
+  <button class="sl-prev" aria-label="Önceki">‹</button><button class="sl-next" aria-label="Sonraki">›</button>
+  <div class="dots"><% slides.forEach((_, i) => { %><span class="<%= i===0?'on':'' %>"></span><% }) %></div>
+  <% } %>
+</section>
+<section class="wrap section">
+  <h2 class="title-red">MODELLERİMİZ</h2>
+  <div class="cards">
+    <% models.forEach(m => { %>
+    <a class="model-card" href="/modeller">
+      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>"><% } else { %><span><%= m.name %></span><% } %></div>
+      <h3><%= m.name %></h3><p><%= m.category %> · <%= m.cc %></p>
+    </a>
+    <% }) %>
+  </div>
+</section>
+<%- include('../partials/site_foot') %>

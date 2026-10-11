@@ -1,0 +1,13 @@
+﻿<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Yedek Parça Siparişlerim</h1>
+  <% orders.forEach(o => { %>
+  <details class="box">
+    <summary><b><%= o.no %></b> · <%= date(o.request_date || o.created_at) %> · <%= o.delivery_date ? "Teslim: " + date(o.delivery_date) + " · " : "" %><%= o.delivery_method ? o.delivery_method + " · " : "" %><%= o.pay_method ? o.pay_method + " · " : "" %><%= o.status %> · <%= money(o.total) %> ₺</summary>
+    <table class="ptbl"><thead><tr><th>Kod</th><th>Parça</th><th class="r">Adet</th><th class="r">Birim</th></tr></thead>
+    <tbody><% o.items.forEach(i => { %><tr><td><%= i.part_code %></td><td><%= i.part_name %></td><td class="r"><%= i.qty %></td><td class="r"><%= money(i.unit_price) %> ₺</td></tr><% }) %></tbody></table>
+  </details>
+  <% }) %>
+  <% if (!orders.length) { %><p class="muted">Kayıt bulunamadı.</p><% } %>
+</div>
+<%- include('../partials/bayi_foot') %>
