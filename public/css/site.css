@@ -6,7 +6,8 @@ a{color:inherit;text-decoration:none}
 .narrow{max-width:960px}
 .site-header{background:#000;color:#fff}
 .topbar-in{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:36px;font-size:12px}
-.contact-chips{display:flex;gap:0}
+.top-right{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:flex-end;flex:1}
+.contact-chips{display:flex;gap:0;flex:none}
 .contact-chips>*{border-left:1px solid #fff;padding:6px 12px;font-size:11px}
 .contact-chips>*:last-child{border-right:1px solid #fff}
 .top-links{display:flex;gap:22px;flex-wrap:wrap;font-weight:400;opacity:.92}
