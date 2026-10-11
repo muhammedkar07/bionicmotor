@@ -202,7 +202,8 @@ router.get('/r/:res', (req, res) => {
   if (r.table === 'account_movements' && firm) where.push('firm_id=@firm');
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const sql = `SELECT rowid AS _id, * FROM ${r.table} ${whereSql} ORDER BY ${r.order || 'rowid DESC'} LIMIT 500`;
-  const params = { q: `%${q}%` };
+  const params = {};
+  if (q && textCols.length) params.q = `%${q}%`;
   if (r.table === 'account_movements' && firm) params.firm = firm;
   const rows = db.prepare(sql).all(params);
   const firms = db.prepare('SELECT id,name FROM firms ORDER BY name').all();
