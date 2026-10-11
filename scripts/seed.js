@@ -9,7 +9,7 @@ function ensureSeed() {
       .run('admin', 'Yönetici', bcrypt.hashSync(adminPass, 10));
 
     const S = {
-      brand_1: 'Bionic ', brand_2: 'Motor', logo_image: '/static/uploads/bionic-logo.png',
+      brand_1: 'Bionic ', brand_2: 'Motor', logo_image: '/static/img/bionic-logo.png',
       company: 'SANCARLAR MOTOR İTHALAT İHRACAT SAN. VE TİC. LTD. ŞTİ.',
       phone: '0544 733 73 73', email: 'info@bionicmotorsiklet.com',
       branch: 'MERKEZ',

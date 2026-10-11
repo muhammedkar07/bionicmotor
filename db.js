@@ -119,6 +119,13 @@ addCol('account_movements', 'cheque_due', 'TEXT');
 addCol('account_movements', 'payer_name', 'TEXT');
 db.exec("UPDATE spare_orders SET request_date=date(created_at) WHERE request_date IS NULL");
 
+// Varsayılan logo artık paket içinde kalıcı public/img klasöründedir
+// (public/uploads git'ten hariç tutulduğu için eski değer bozuk kalırdı).
+if (get('logo_image') && get('logo_image').startsWith('/static/uploads/') &&
+    !fs.existsSync(path.join(__dirname, 'public', 'uploads', path.basename(get('logo_image'))))) {
+  set('logo_image', '/static/img/bionic-logo.png');
+}
+
 // Sıradaki otomatik numara (yalnızca rakamlardan oluşan değerler dikkate alınır)
 const nextNo = (table, col) =>
   (db.prepare(`SELECT MAX(CAST(${col} AS INTEGER)) m FROM ${table} WHERE ${col} GLOB '[0-9]*' AND ${col} NOT GLOB '*[^0-9]*'`).get().m || 0) + 1;
