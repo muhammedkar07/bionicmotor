@@ -112,6 +112,7 @@ addCol('spare_orders', 'pay_movement_id', 'INTEGER');
 addCol('spare_orders', 'payer_name', 'TEXT');
 addCol('warranty_records', 'invoice_no', 'TEXT');
 addCol('work_orders', 'type_locked', 'INTEGER NOT NULL DEFAULT 0');
+addCol('dealer_users', 'role', "TEXT NOT NULL DEFAULT 'bayi'");
 addCol('account_movements', 'bank', 'TEXT');
 addCol('account_movements', 'cheque_no', 'TEXT');
 addCol('account_movements', 'cheque_type', 'TEXT');
