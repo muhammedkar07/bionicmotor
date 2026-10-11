@@ -344,8 +344,35 @@ router.post('/r/:res/save', (req, res) => {
     res.redirect('/admin/r/' + req.params.res);
   } catch (e) {
     const msg = /UNIQUE/.test(e.message) ? 'Bu kayıt zaten mevcut (benzersiz alan çakışması).' : e.message;
-    flash(req, 'danger', msg);
-    res.redirect(id ? `/admin/r/${req.params.res}/${id}` : `/admin/r/${req.params.res}/new`);
+    // Girilen veriler kaybolmasın: hata mesajıyla formu yeniden göster
+    try {
+      const f = loadForm(req, res, id || null);
+      const posted = { ...(f.row || {}) };
+      for (const fld of r.fields) {
+        if (['readonly', 'auto', 'multi'].includes(fld.type)) continue;
+        if (b[fld.name] !== undefined) {
+          if (fld.type === 'password') posted[fld.name] = '';
+          else if (fld.type === 'checkbox') posted[fld.name] = b[fld.name] ? 1 : 0;
+          else posted[fld.name] = String(b[fld.name] ?? '').trim();
+        }
+      }
+      posted._id = id || 0;
+      f.row = posted;
+      if (r.table === 'dealer_users' && f.multi) f.multi.sel = [].concat(b.firms || []).map(Number).filter(Boolean);
+      if (r.children) {
+        const names = r.children.cols.map(c => c.name);
+        f.kids = [].concat(b['ch_' + names[0]] || []).map((_, i) => {
+          const k = {};
+          r.children.cols.forEach(c => { k[c.name] = String([].concat(b['ch_' + c.name] || [])[i] ?? '').trim(); });
+          return k;
+        }).filter(k => k[names[0]] !== '');
+      }
+      res.locals.flash = { type: 'danger', msg };
+      res.render('admin/form', { title: r.title + (id ? ' - Düzenle' : ' - Yeni'), ...f });
+    } catch (e2) {
+      flash(req, 'danger', msg);
+      res.redirect(id ? `/admin/r/${req.params.res}/${id}` : `/admin/r/${req.params.res}/new`);
+    }
   }
 });
 

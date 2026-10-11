@@ -1,0 +1,31 @@
+<%- include('../partials/servis_head') %>
+<div class="pc">
+  <h1 class="h5"><%= heading %> (<%= sf ? sf.name : '—' %>)</h1>
+  <% if (showCards) { %>
+  <div class="cards4">
+    <div class="stat bg-green"><div>Önceki Dönemden Devir</div><b><%= money(a.devir) %> ₺</b></div>
+    <div class="stat bg-cyan"><div>Dönem İçi Satışlar</div><b><%= money(a.sales) %> ₺</b></div>
+    <div class="stat bg-yellow"><div>Vadesi Gelmemiş Çekler</div><b><%= money(a.pendingChecks) %> ₺</b></div>
+    <div class="stat bg-blue"><div>Kredi Kartı Ödemeleri</div><b><%= money(a.card) %> ₺</b></div>
+    <div class="stat bg-yellow"><div>Bekleyen Siparişler</div><b><%= money(a.pendingOrders) %> ₺</b></div>
+    <div class="stat bg-red"><div>Bakiye</div><b><%= money(a.balance) %> ₺</b></div>
+  </div>
+  <hr>
+  <% } else { %>
+  <p class="muted">Bakiye: <b><%= money(a.balance) %> ₺</b></p>
+  <% } %>
+  <h2 class="h6">Hesap Hareketleri</h2>
+  <table class="ptbl striped">
+    <thead class="dark"><tr><th>Tarih</th><th>Ödeme Türü</th><th>Dekont</th><th class="r">Tutar</th><th class="r">Bakiye</th></tr></thead>
+    <tbody>
+    <% a.rows.forEach(r => { %>
+      <tr><td><%= date(r.date) %></td>
+        <td><%= r.doc_type %></td>
+        <td><% if (r.receipt) { %><a href="<%= r.receipt %>" target="_blank" class="lnk">Görüntüle</a><% } %></td><td class="r"><%= money(r.amount) %></td>
+        <td class="r"><b><%= r.kind==='bilgi' ? '' : money(r.balance) %></b></td></tr>
+    <% }) %>
+    <% if (!a.rows.length) { %><tr><td colspan="5" class="muted">Hareket bulunamadı.</td></tr><% } %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/servis_foot') %>

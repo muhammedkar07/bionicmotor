@@ -19,19 +19,26 @@ router.post('/giris', (req, res) => {
     flash(req, 'danger', 'Çok fazla hatalı deneme. Lütfen daha sonra tekrar deneyin.');
     return res.redirect('/bayi/giris');
   }
-  const u = db.prepare("SELECT * FROM dealer_users WHERE code=? AND active=1 AND (role='bayi' OR role IS NULL)").get(code);
+  const u = db.prepare('SELECT * FROM dealer_users WHERE code=? AND active=1').get(code);
   const ok = bcrypt.compareSync(pass, u ? u.password_hash : DUMMY) && u;
   if (!ok) {
     t.hit();
     flash(req, 'danger', 'Kullanıcı kodu veya parola hatalı.');
     return res.redirect('/bayi/giris');
   }
-  if (u.role === null || u.role === '') db.prepare("UPDATE dealer_users SET role='bayi' WHERE id=?").run(u.id);
+  t.reset();
   const firms = db.prepare('SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1').all(u.id);
-  if (!firms.length) {
+  if (firms.length === 0) {
     flash(req, 'danger', 'Hesabınıza tanımlı aktif firma bulunmuyor.');
     return res.redirect('/bayi/giris');
   }
+  if (u.role === 'servis') {
+    regenerate(req, res, 'servis');
+    req.session.servis = { userId: u.id, firmId: firms[0].id };
+    req.saveSession();
+    return res.redirect('/servis');
+  }
+  if (u.role === null || u.role === '') db.prepare("UPDATE dealer_users SET role='bayi' WHERE id=?").run(u.id);
   regenerate(req, res, 'dealer');
   req.session.dealer = { userId: u.id, firmId: firms[0].id };
   req.saveSession();
@@ -41,6 +48,7 @@ router.post('/giris', (req, res) => {
 router.use((req, res, next) => {
   const d = req.session.dealer;
   const u = d && db.prepare('SELECT * FROM dealer_users WHERE id=? AND active=1').get(d.userId);
+  if (u && u.role === 'servis') return res.redirect('/servis');
   const f = u && db.prepare(
     'SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1').get(u.id, d.firmId);
   if (!f) return res.redirect('/bayi/giris');
@@ -114,11 +122,13 @@ router.get('/garanti', (req, res) => {
   page(res, 'warranty', 'Garanti Kayıtları', { rows, q });
 });
 
-router.get('/garanti/yeni', (req, res) => page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0, 10) }));
+router.get('/garanti/yeni', (req, res) => page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0, 10), old: null }));
 
 router.post('/garanti/yeni', (req, res) => {
   const b = req.body, clip = (v, n) => String(v || '').trim().slice(0, n);
-  const back = m => { flash(req, 'danger', m); return res.redirect('/bayi/garanti/yeni'); };
+  const old = {};
+  for (const k of ['serial_no', 'model', 'customer', 'invoice_no', 'sale_date']) old[k] = clip(b[k], 120);
+  const back = m => { res.locals.flash = { type: 'danger', msg: m }; page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0, 10), old }); };
   const serial = clip(b.serial_no, 40), invoice = clip(b.invoice_no, 60), saleDate = clip(b.sale_date, 10);
   if (!serial || !saleDate) return back('Şase no ve satış tarihi zorunludur.');
   if (!invoice) return back('Fatura numarası zorunludur.');
@@ -137,16 +147,15 @@ router.get('/servis-gecmisi', (req, res) => {
   page(res, 'service_history', 'Servis Geçmişi', { rows, q });
 });
 
-router.get('/is-emri/yeni', (req, res) => page(res, 'workorder_new', 'İş Emri Oluştur'));
+router.get('/is-emri/yeni', (req, res) => page(res, 'workorder_new', 'İş Emri Oluştur', { old: null }));
 router.post('/is-emri/yeni', (req, res) => {
   const b = req.body, clip = (v, n) => String(v || '').trim().slice(0, n);
   const img = (req.files || []).find(f => f.fieldname === 'image');
-  if (!clip(b.serial_no, 40) || !clip(b.description, 3000)) {
-    flash(req, 'danger', 'Şase no ve açıklama zorunludur.'); return res.redirect('/bayi/is-emri/yeni');
-  }
-  if (!img) {
-    flash(req, 'danger', 'İş emri için görsel eklemek zorunludur (JPG, PNG, WEBP veya PDF).'); return res.redirect('/bayi/is-emri/yeni');
-  }
+  const old = {};
+  for (const k of ['serial_no', 'model', 'km', 'description']) old[k] = clip(b[k], 3000);
+  const back = m => { res.locals.flash = { type: 'danger', msg: m }; page(res, 'workorder_new', 'İş Emri Oluştur', { old }); };
+  if (!clip(b.serial_no, 40) || !clip(b.description, 3000)) return back('Şase no ve açıklama zorunludur.');
+  if (!img) return back('İş emri için görsel eklemek zorunludur (JPG, PNG, WEBP veya PDF).');
   // İş emri türü bayi/servis tarafından seçilemez; yönetici belirler.
   const n = db.prepare('SELECT COUNT(*) c FROM work_orders').get().c + 1;
   const no = 'IE' + new Date().getFullYear() + String(n).padStart(6, '0');
@@ -164,11 +173,27 @@ router.get('/is-emirlerim', (req, res) => {
 router.get('/yedek-parca/yeni', (req, res) => {
   const parts = db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
   const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
-  page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst });
+  page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, old: null });
 });
 router.post('/yedek-parca/yeni', (req, res) => {
-  const b = req.body, back = m => { flash(req, 'danger', m); return res.redirect('/bayi/yedek-parca/yeni'); };
+  const b = req.body;
   const ids = [].concat(b.part_id || []), qtys = [].concat(b.qty || []);
+  const old = {
+    lines: ids.map((id, i) => [+id || '', String(qtys[i] ?? '').trim()]),
+    note: String(b.note || '').slice(0, 1000),
+    pay_method: b.pay_method || 'kart',
+    holder: String(b.holder || '').slice(0, 80),
+    number: String(b.number || '').trim(),
+    month: b.month || '', year: b.year || '', cvc: String(b.cvc || '').slice(0, 4),
+    payer_name: String(b.payer_name || '').slice(0, 120),
+    installment_id: b.installment_id || '',
+  };
+  const renderNew = () => {
+    const parts = db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
+    const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
+    page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, old });
+  };
+  const back = m => { res.locals.flash = { type: 'danger', msg: m }; renderNew(); };
   const lines = [];
   ids.forEach((id, i) => {
     const qty = Math.floor(+qtys[i]);

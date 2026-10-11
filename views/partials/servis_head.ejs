@@ -13,15 +13,20 @@
   <button class="pnav-toggle" onclick="document.querySelector('.pnav').classList.toggle('open')">☰</button>
   <ul class="plinks">
     <li><a href="/servis">Anasayfa</a></li>
-    <li><a href="/servis/garanti/yeni">Yeni Ürün Garanti Kaydı</a></li>
-    <li><a href="/servis/garanti">Garanti Kayıtları</a></li>
-    <li><a href="/servis/is-emri/yeni">İş Emri Oluştur</a></li>
-    <li><a href="/servis/is-emirlerim">İş Emirlerim</a></li>
-    <li><a href="/servis/yedek-parca/yeni">Yedek Parça Sipariş Oluştur</a></li>
-    <li><a href="/servis/yedek-parca-siparisleri">Yedek Parça Siparişlerim</a></li>
+    <li><a href="/servis/hesap-ozeti">Hesap Özetim</a></li>
+    <li class="dd"><a href="#" class="dd-t" onclick="this.parentNode.classList.toggle('open');return false">Satış Sonrası İşlemleri <span class="caret"></span></a>
+      <div class="dd-m">
+        <a href="/servis/garanti">Garanti Kayıtları</a>
+        <a href="/servis/garanti/yeni">Yeni Ürün Garanti Kaydı</a>
+        <a href="/servis/is-emri/yeni">İş Emri Oluştur</a>
+        <a href="/servis/is-emirlerim">İş Emirlerim</a>
+        <a href="/servis/yedek-parca/yeni">Yedek Parça Sipariş Oluştur</a>
+        <a href="/servis/yedek-parca-siparisleri">Yedek Parça Siparişlerim</a>
+      </div></li>
+    <li><a href="/servis/yedek-parca-ekstre">Yedek Parça Hesap Ekstresi</a></li>
   </ul>
   <div class="puser">
-    <div><%= su.name %><br><small class="pucode">Kullanıcı Kodu: <%= su.code %></small></div>
+    <div><%= su.name %><br><small class="pucode">Kullanıcı Kodu: <%= su.code %><% if (sf) { %> · <%= sf.name %><% } %></small></div>
     <form method="post" action="/servis/cikis" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="linkbtn">Oturumu Kapat</button></form>
   </div>
 </nav>

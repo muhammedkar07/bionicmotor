@@ -2,6 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo } = require('../db');
 const { flash, throttle, regenerate, luhn, addYears } = require('../lib/core');
+const { accountSummary } = require('../lib/account');
 
 const DUMMY = bcrypt.hashSync('x', 10);
 const page = (res, view, title, extra = {}) => res.render('servis/' + view, { title, ...extra });
@@ -16,14 +17,21 @@ router.post('/giris', (req, res) => {
   const pass = String(req.body.password || '').slice(0, 200);
   const t = throttle('servis:' + req.ip + ':' + code);
   if (t.blocked) { flash(req, 'danger', 'Çok fazla hatalı deneme. Lütfen daha sonra tekrar deneyin.'); return res.redirect('/servis/giris'); }
-  const u = db.prepare("SELECT * FROM dealer_users WHERE code=? AND active=1 AND (role='servis' OR role IS NULL)").get(code);
+  const u = db.prepare('SELECT * FROM dealer_users WHERE code=? AND active=1').get(code);
   const ok = bcrypt.compareSync(pass, u ? u.password_hash : DUMMY) && u;
   if (!ok) { t.hit(); flash(req, 'danger', 'Kullanıcı kodu veya parola hatalı.'); return res.redirect('/servis/giris'); }
-  if (u.role === null || u.role === '') db.prepare("UPDATE dealer_users SET role='servis' WHERE id=?").run(u.id);
   t.reset();
-  const firmId = db.prepare('SELECT firm_id FROM user_firms WHERE user_id=? ORDER BY firm_id').get(u.id);
+  const firmRow = db.prepare('SELECT firm_id FROM user_firms WHERE user_id=? ORDER BY firm_id').get(u.id);
+  if (u.role !== 'servis') {
+    if (!firmRow) { flash(req, 'danger', 'Hesabınıza tanımlı aktif firma bulunmuyor.'); return res.redirect('/servis/giris'); }
+    if (u.role === null || u.role === '') db.prepare("UPDATE dealer_users SET role='bayi' WHERE id=?").run(u.id);
+    regenerate(req, res, 'dealer');
+    req.session.dealer = { userId: u.id, firmId: firmRow.firm_id };
+    req.saveSession();
+    return res.redirect('/bayi');
+  }
   regenerate(req, res, 'servis');
-  req.session.servis = { userId: u.id, firmId: firmId ? firmId.firm_id : null };
+  req.session.servis = { userId: u.id, firmId: firmRow ? firmRow.firm_id : null };
   req.saveSession();
   res.redirect('/servis');
 });
@@ -32,13 +40,27 @@ router.use((req, res, next) => {
   const s = req.session.servis;
   const u = s && db.prepare("SELECT * FROM dealer_users WHERE id=? AND active=1").get(s.userId);
   if (!u) return res.redirect('/servis/giris');
+  if (u.role !== 'servis') return res.redirect('/bayi');
+  const f = u && s.firmId && db.prepare(
+    'SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1').get(u.id, s.firmId);
   res.locals.su = u;
-  res.locals.sf = null;
+  res.locals.sf = f || null;
   next();
 });
 
 router.get('/', (req, res) => page(res, 'home', 'Servis Portalı'));
 router.post('/cikis', (req, res) => { regenerate(req, res, 'servis'); res.redirect('/servis/giris'); });
+
+router.get('/hesap-ozeti', (req, res) => {
+  const firm = req.session.servis.firmId;
+  if (!firm) return res.redirect('/servis');
+  res.render('servis/account', { title: 'Hesap Özeti', heading: 'Hesap Özeti', a: accountSummary(firm, 'ana'), showCards: true });
+});
+router.get('/yedek-parca-ekstre', (req, res) => {
+  const firm = req.session.servis.firmId;
+  if (!firm) return res.redirect('/servis');
+  res.render('servis/account', { title: 'Yedek Parça Hesap Ekstresi', heading: 'Yedek Parça Hesap Ekstresi', a: accountSummary(firm, 'parca'), showCards: false });
+});
 
 router.get('/garanti', (req, res) => {
   const q = String(req.query.q || '').trim();
@@ -46,9 +68,11 @@ router.get('/garanti', (req, res) => {
   const rows = firm ? db.prepare("SELECT * FROM warranty_records WHERE firm_id=? AND (?='' OR serial_no LIKE ? OR customer LIKE ? OR invoice_no LIKE ?) ORDER BY sale_date DESC").all(firm,q,`%${q}%`,`%${q}%`,`%${q}%`) : [];
   page(res, 'warranty', 'Garanti Kayıtları', { rows, q });
 });
-router.get('/garanti/yeni', (req, res) => page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0,10) }));
+router.get('/garanti/yeni', (req, res) => page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0,10), old: null }));
 router.post('/garanti/yeni', (req, res) => {
-  const b=req.body, clip=(v,n)=>String(v||'').trim().slice(0,n), back=m=>{flash(req,'danger',m);return res.redirect('/servis/garanti/yeni');};
+  const b=req.body, clip=(v,n)=>String(v||'').trim().slice(0,n);
+  const old={}; for(const k of ['serial_no','model','customer','invoice_no','sale_date']) old[k]=clip(b[k],120);
+  const back=m=>{res.locals.flash={type:'danger',msg:m};page(res,'warranty_new','Yeni Ürün Garanti Kaydı',{today:new Date().toISOString().slice(0,10),old});};
   const firm=req.session.servis.firmId; if(!firm) return back('Firma bilgisi bulunamadı.');
   const serial=clip(b.serial_no,40), invoice=clip(b.invoice_no,60), saleDate=clip(b.sale_date,10);
   if(!serial||!saleDate) return back('Şase no ve satış tarihi zorunludur.');
@@ -60,13 +84,15 @@ router.post('/garanti/yeni', (req, res) => {
   res.redirect('/servis/garanti');
 });
 
-router.get('/is-emri/yeni', (req,res)=>page(res,'workorder_new','İş Emri Oluştur'));
+router.get('/is-emri/yeni', (req,res)=>page(res,'workorder_new','İş Emri Oluştur',{old:null}));
 router.post('/is-emri/yeni', (req,res)=>{
   const b=req.body, clip=(v,n)=>String(v||'').trim().slice(0,n), img=(req.files||[]).find(f=>f.fieldname==='image');
+  const old={}; for(const k of ['serial_no','model','km','description']) old[k]=clip(b[k],3000);
+  const back=m=>{res.locals.flash={type:'danger',msg:m};page(res,'workorder_new','İş Emri Oluştur',{old});};
   const firm=req.session.servis.firmId; const uid=req.session.servis.userId;
-  if(!clip(b.serial_no,40)||!clip(b.description,3000)){flash(req,'danger','Şase no ve açıklama zorunludur.');return res.redirect('/servis/is-emri/yeni');}
-  if(!img){flash(req,'danger','İş emri için görsel eklemek zorunludur (JPG, PNG, WEBP veya PDF).');return res.redirect('/servis/is-emri/yeni');}
-  if(!firm){flash(req,'danger','Firma bilgisi bulunamadı.');return res.redirect('/servis/is-emri/yeni');}
+  if(!clip(b.serial_no,40)||!clip(b.description,3000)) return back('Şase no ve açıklama zorunludur.');
+  if(!img) return back('İş emri için görsel eklemek zorunludur (JPG, PNG, WEBP veya PDF).');
+  if(!firm) return back('Firma bilgisi bulunamadı.');
   const n=db.prepare('SELECT COUNT(*) c FROM work_orders').get().c+1;
   const no='IE'+new Date().getFullYear()+String(n).padStart(6,'0');
   db.prepare('INSERT INTO work_orders(firm_id,user_id,no,serial_no,model,km,type,description,image) VALUES(?,?,?,?,?,?,?,?,?)').run(firm,uid,no,clip(b.serial_no,40),clip(b.model,80),clip(b.km,20),'',clip(b.description,3000),'/static/uploads/'+img.filename);
@@ -81,12 +107,16 @@ router.get('/is-emirlerim', (req,res)=>{
 router.get('/yedek-parca/yeni', (req,res)=>{
   const parts=db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
   const inst=db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
-  page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst});
+  page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,old:null});
 });
 router.post('/yedek-parca/yeni', (req,res)=>{
-  const b=req.body, back=m=>{flash(req,'danger',m);return res.redirect('/servis/yedek-parca/yeni');};
+  const b=req.body;
+  const ids=[].concat(b.part_id||[]), qtys=[].concat(b.qty||[]);
+  const old={lines:ids.map((id,i)=>[+id||'',String(qtys[i]??'').trim()]),note:String(b.note||'').slice(0,1000),pay_method:b.pay_method||'kart',holder:String(b.holder||'').slice(0,80),number:String(b.number||'').trim(),month:b.month||'',year:b.year||'',cvc:String(b.cvc||'').slice(0,4),payer_name:String(b.payer_name||'').slice(0,120),installment_id:b.installment_id||''};
+  const renderNew=()=>{const parts=db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();const inst=db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,old});};
+  const back=m=>{res.locals.flash={type:'danger',msg:m};renderNew();};
   const firm=req.session.servis.firmId, uid=req.session.servis.userId; if(!firm) return back('Firma bilgisi bulunamadı.');
-  const ids=[].concat(b.part_id||[]), qtys=[].concat(b.qty||[]); const lines=[];
+  const lines=[];
   ids.forEach((id,i)=>{const qty=Math.floor(+qtys[i]); const p=id&&db.prepare("SELECT * FROM products WHERE id=? AND kind='parca' AND active=1").get(+id); if(p&&qty>0&&qty<=10000) lines.push({p,qty});});
   if(!lines.length) return back('Sepete en az bir parça ve adet eklemelisiniz.');
   const total=lines.reduce((s,l)=>s+l.qty*l.p.price,0); const method={kart:'Kredi Kartı',nakit:'Nakit',havale:'Havale / EFT'}[b.pay_method];

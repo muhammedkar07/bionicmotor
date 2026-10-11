@@ -48,6 +48,7 @@
   <td><button type="button" class="btn btn-danger btn-sm rm">Sil</button></td></tr></template>
 <script>
   const INST = <%- JSON.stringify(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
+  const OLD = <%- JSON.stringify(old || {}) %>;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const body = document.querySelector('#lines tbody'), tpl = $('tpl');
@@ -85,6 +86,25 @@
   $('sform').addEventListener('submit', e => {
     if (!total) { e.preventDefault(); alert('Sepete en az bir parça ekleyin.'); }
   });
-  $('add').click(); method();
+  document.querySelectorAll('input[name=pay_method]').forEach(r => { r.checked = r.value === (OLD.pay_method || 'kart'); });
+  function addLine(pid, qtyRaw) {
+    const tr = tpl.content.cloneNode(true).querySelector('tr');
+    tr.querySelector('select').value = String(pid || '');
+    tr.querySelector('input[name=qty]').value = qtyRaw || 1;
+    body.appendChild(tr); calc();
+  }
+  const savedLines = (OLD.lines || []).filter(l => +l[0] > 0);
+  if (savedLines.length) savedLines.forEach(l => addLine(l[0], l[1]));
+  else $('add').click();
+  const setV = (sel, v, f) => { const el = document.querySelector(sel); if (el && v !== undefined && v !== null && v !== '') el.value = f ? f(String(v)) : v; };
+  setV('input[name=holder]', OLD.holder);
+  setV('input[name=number]', OLD.number, n => n.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim());
+  setV('select[name=month]', OLD.month);
+  setV('select[name=year]', OLD.year);
+  setV('input[name=cvc]', OLD.cvc);
+  setV('textarea[name=note]', OLD.note);
+  setV('input[name=payer_name]', OLD.payer_name);
+  if (OLD.installment_id) { const rr = document.querySelector('input[name=installment_id][value="' + OLD.installment_id + '"]'); if (rr) { rr.checked = true; renderInst(); } }
+  method();
 </script>
 <%- include('../partials/bayi_foot') %>
