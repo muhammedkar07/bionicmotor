@@ -5,7 +5,7 @@ a{color:inherit;text-decoration:none}
 .sbrand{display:block;padding:0 18px 14px;border-bottom:1px solid #2a2d35}
 .sbrand small{display:block;color:#8a909c;margin-top:4px}
 .logo{font-family:Georgia,serif;font-style:italic;font-weight:900;font-size:30px}
-.logo i{color:#fff}.logo b{color:#e0252f}.logo-img{max-height:40px}
+.logo i{color:#fff}.logo b{color:#e0252f}.logo-img{max-height:48px}
 .side nav a{display:flex;justify-content:space-between;padding:8px 18px;font-size:13.5px}
 .side nav a:hover{background:#20232a}.side nav a.on{background:#e0252f;color:#fff}
 .grp{padding:14px 18px 4px;font-size:11px;text-transform:uppercase;color:#6c7380;letter-spacing:.08em}
