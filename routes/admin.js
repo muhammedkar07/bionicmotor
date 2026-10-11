@@ -196,18 +196,31 @@ router.get('/r/:res', (req, res) => {
   r.fields.filter(f => f.ref).forEach(f => { refs[f.name] = refMap(f); });
   const q = String(req.query.q || '').trim();
   const firm = req.query.firm ? +req.query.firm : null;
-  const textCols = r.fields.filter(f => ['text', 'textarea', 'readonly'].includes(f.type) && !f.ref).map(f => f.name);
+  const textCols = r.fields.filter(f => ['text', 'textarea', 'readonly', 'auto'].includes(f.type) && !f.ref).map(f => f.name);
+  // Bayi (firma) filtresi: firma ile ilişkisi olan tüm listelerde çalışır
+  const firmField = r.fields.find(f => f.ref === 'firms');
+  const firmWhere = firmField ? `${firmField.name}=@firm`
+    : r.table === 'firms' ? 'id=@firm'
+    : r.table === 'dealer_users' ? 'id IN (SELECT user_id FROM user_firms WHERE firm_id=@firm)' : null;
   let where = [];
-  if (q && textCols.length) where.push('(' + textCols.map(c => `${c} LIKE @q`).join(' OR ') + ')');
-  if (r.table === 'account_movements' && firm) where.push('firm_id=@firm');
+  if (q && textCols.length) {
+    const parts = textCols.map(c => `${c} LIKE @q`);
+    // Arama metni bayi adında da aranır
+    if (firmField) parts.push(`${firmField.name} IN (SELECT id FROM firms WHERE name LIKE @q)`);
+    else if (r.table === 'dealer_users') parts.push('id IN (SELECT user_id FROM user_firms WHERE firm_id IN (SELECT id FROM firms WHERE name LIKE @q))');
+    where.push('(' + parts.join(' OR ') + ')');
+  }
+  if (firmWhere && firm) where.push(firmWhere);
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const sql = `SELECT rowid AS _id, * FROM ${r.table} ${whereSql} ORDER BY ${r.order || 'rowid DESC'} LIMIT 500`;
+  // Parametreler yalnızca SQL içinde kullanıldıklarında eklenir (kullanılmayan named parametre hata verir)
   const params = {};
   if (q && textCols.length) params.q = `%${q}%`;
-  if (r.table === 'account_movements' && firm) params.firm = firm;
+  if (firmWhere && firm) params.firm = firm;
   const rows = db.prepare(sql).all(params);
-  const firms = db.prepare('SELECT id,name FROM firms ORDER BY name').all();
-  res.render('admin/list', { title: r.title, cols, rows, refs, cell, q, firm: firm || '', firms: firms });
+  const firmFilter = !!firmWhere;
+  const firms = firmFilter ? db.prepare('SELECT id,name FROM firms ORDER BY name').all() : [];
+  res.render('admin/list', { title: r.title, cols, rows, refs, cell, q, firm: firm || '', firms, firmFilter });
 });
 
 function loadForm(req, res, id) {

@@ -1,13 +1,112 @@
 <%- include('../partials/admin_head') %>
 <div class="bar">
   <h1><%= title %></h1>
-  <form method="get" class="search" style="display:flex; gap:8px; align-items:center;">
-    <input name="q" value="<%= q || '' %>" placeholder="Ara...">
-    <% if (res.key === 'movements') { %>
-      <select name="firm" onchange="this.form.submit()">
-        <option value="">Tüm Bayiler</option>
-        <% (firms||[]).forEach(f => { %><option value="<%= f.id %>" <%= (firm && parseInt(firm)===f.id)?'selected':'' %>><%= f.name %></option><% }) %>
-      </select>
+  <form method="get" class="search" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <% if (typeof firmFilter !== 'undefined' && firmFilter) {
+         const firmList = (firms || []).map(f => ({ id: f.id, name: f.name }));
+         const selFirm = firmList.find(f => f.id === parseInt(firm)); %>
+      <style>
+        .fcombo { position: relative; }
+        .flist { position: absolute; left: 0; right: 0; top: 100%; z-index: 50; max-height: 300px; overflow: auto;
+                 margin: 2px 0 0; padding: 4px 0; list-style: none; background: Canvas; color: CanvasText;
+                 border: 1px solid rgba(128,128,128,.5); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+        .flist li { padding: 7px 12px; cursor: pointer; }
+        .flist li.act, .flist li:hover { background: rgba(128,128,128,.22); }
+        .flist li.sel { font-weight: 600; }
+        .flist li.none { cursor: default; opacity: .65; }
+        .flist li.none:hover { background: none; }
+      </style>
+      <div class="fcombo" id="fcombo">
+        <input type="hidden" name="q" id="qVal" value="<%= selFirm ? '' : (q || '') %>">
+        <input type="hidden" name="firm" id="firmId" value="<%= selFirm ? selFirm.id : '' %>">
+        <input type="text" id="srchInput" autocomplete="off" style="min-width:320px"
+               placeholder="Bayi seçin veya yazarak arayın..."
+               value="<%= selFirm ? selFirm.name : (q || '') %>">
+        <ul class="flist" id="fList" hidden></ul>
+      </div>
+      <script>
+      (() => {
+        const FIRMS = <%- JSON.stringify(firmList).replace(/</g, '\\u003c') %>;
+        const form = document.querySelector('form.search');
+        const combo = document.getElementById('fcombo');
+        const inp = document.getElementById('srchInput'), list = document.getElementById('fList');
+        const hidQ = document.getElementById('qVal'), hidFirm = document.getElementById('firmId');
+        const norm = s => String(s || '').trim().toLocaleLowerCase('tr');
+        const selId = hidFirm.value ? +hidFirm.value : null;
+        const entries = [];
+        let active = -1;
+
+        const render = text => {
+          const t = norm(text);
+          entries.length = 0;
+          if (!t) entries.push({ id: null, name: 'Tüm Bayiler' });
+          FIRMS.forEach(f => { if (!t || norm(f.name).includes(t)) entries.push(f); });
+          list.innerHTML = '';
+          if (!entries.length) {
+            const li = document.createElement('li'); li.className = 'none';
+            li.textContent = 'Eşleşen bayi yok. Enter ile metin araması yapılır.';
+            list.appendChild(li); return;
+          }
+          entries.forEach((en, i) => {
+            const li = document.createElement('li');
+            li.dataset.i = i; li.textContent = en.name;
+            if (en.id !== null && en.id === selId) li.className = 'sel';
+            list.appendChild(li);
+          });
+        };
+        const setActive = i => {
+          const items = list.querySelectorAll('li[data-i]');
+          items.forEach(li => li.classList.remove('act'));
+          active = i;
+          if (i >= 0 && items[i]) { items[i].classList.add('act'); items[i].scrollIntoView({ block: 'nearest' }); }
+        };
+        // Açılırken her zaman tüm bayiler gösterilir; yazdıkça daralır
+        const open = text => {
+          render(text); active = -1; list.hidden = false;
+          const s = list.querySelector('li.sel'); if (s && !text) s.scrollIntoView({ block: 'nearest' });
+        };
+        const close = () => { list.hidden = true; active = -1; };
+        const restore = () => {
+          const cur = FIRMS.find(f => f.id === selId);
+          inp.value = cur ? cur.name : hidQ.value;
+        };
+        const choose = en => {
+          hidFirm.value = en.id === null ? '' : en.id; hidQ.value = '';
+          close(); form.submit();
+        };
+
+        // Kutuya tıklayınca metin seçili gelir (silmeden yazılabilir) ve tüm bayiler listelenir
+        const show = () => { inp.select(); open(''); };
+        inp.addEventListener('focus', show);
+        inp.addEventListener('click', () => { if (list.hidden) show(); });
+        inp.addEventListener('input', () => open(inp.value));
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (list.hidden) open(inp.value);
+            const n = entries.length; if (!n) return;
+            setActive(e.key === 'ArrowDown' ? Math.min(active + 1, n - 1) : Math.max(active - 1, 0));
+          } else if (e.key === 'Enter' && !list.hidden && active >= 0 && entries[active]) {
+            e.preventDefault(); choose(entries[active]);
+          } else if (e.key === 'Escape') { close(); restore(); }
+        });
+        list.addEventListener('mousedown', e => {
+          const li = e.target.closest('li[data-i]'); if (!li) return;
+          e.preventDefault(); choose(entries[+li.dataset.i]);
+        });
+        document.addEventListener('mousedown', e => { if (!combo.contains(e.target) && !list.hidden) { close(); restore(); } });
+
+        // Enter / Ara: kutudaki metin bir bayinin tam adıysa bayi filtresi, boşsa tümü, değilse metin araması
+        form.addEventListener('submit', () => {
+          const t = inp.value.trim();
+          const exact = FIRMS.find(f => norm(f.name) === norm(t));
+          if (exact) { hidFirm.value = exact.id; hidQ.value = ''; }
+          else { hidFirm.value = ''; hidQ.value = t; }
+        });
+      })();
+      </script>
+    <% } else { %>
+      <input name="q" value="<%= q || '' %>" placeholder="Ara...">
     <% } %>
     <button class="btn btn-sm">Ara</button>
   </form>
