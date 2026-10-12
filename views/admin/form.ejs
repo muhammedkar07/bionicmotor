@@ -82,7 +82,9 @@
       if (!cell) return;
       const q = parseFloat((tr.querySelector('[data-col=qty]') || {}).value) || 0;
       const p = parseFloat((tr.querySelector('[data-col=unit_price]') || {}).value) || 0;
-      cell.textContent = fmtTL(q * p);
+      const d = parseFloat((tr.querySelector('[data-col=discount_pct]') || {}).value) || 0;
+      const net = p * q * (1 - Math.min(Math.max(d, 0), 100) / 100);
+      cell.textContent = fmtTL(net);
     };
     const fillRow = sel => {
       const o = sel.selectedOptions[0], tr = sel.closest('tr');
@@ -118,7 +120,8 @@
       tb.querySelectorAll('tr').forEach(tr => {
         const q = parseFloat((tr.querySelector('[data-col="qty"]') || {}).value) || 0;
         const p = parseFloat((tr.querySelector('[data-col="unit_price"]') || {}).value) || 0;
-        gross += q * p;
+        const d = parseFloat((tr.querySelector('[data-col=discount_pct]') || {}).value) || 0;
+        gross += q * p * (1 - Math.min(Math.max(d, 0), 100) / 100);
       });
       const net = gross / (1 + kdv / 100), k = gross - net, g = gross;
       document.getElementById('tot-sub').textContent = fm(net);

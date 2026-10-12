@@ -39,7 +39,7 @@ const RES = {
         help: 'Siparişe dönüştürüldüğünde sipariş tutarı firmanın hesap hareketlerine borç olarak eklenir.' }), A('note', 'Not')],
     debit: { items: 'order_items', ledger: 'ana' },
     children: { table: 'order_items', fk: 'order_id', title: 'Talep İçeriği', kind: 'arac',
-      cols: [PRODUCT('product_name', 'Ürün', 'arac'), N('qty', 'Adet', { def: 1 }), N('unit_price', 'Birim Fiyat')] } },
+      cols: [PRODUCT('product_name', 'Ürün', 'arac'), N('qty', 'Adet', { def: 1 }), N('unit_price', 'Birim Fiyat'), N('discount_pct', 'İndirim (%)')] } },
   movements: { title: 'Hesap Hareketleri', table: 'account_movements', group: 'Bayi Yönetimi',
     list: ['date', 'firm_id', 'ledger', 'doc_type', 'cheque_no', 'amount'], order: 'date DESC, rowid DESC',
     fields: [FIRM, S('ledger', 'Hesap', ['ana', 'parca'], { def: 'ana' }), D('date', 'Tarih'),
@@ -83,7 +83,7 @@ const RES = {
         help: 'Beklemede/İptal dışındaki her durumda tutar firmanın Yedek Parça hesabına borç olarak eklenir.' }), A('note', 'Not')],
     debit: { items: 'spare_order_items', ledger: 'parca' },
     children: { table: 'spare_order_items', fk: 'order_id', title: 'Talep İçeriği', kind: 'parca',
-      cols: [PRODUCT('part_name', 'Parça', 'parca'), T('part_code', 'Kod'), N('qty', 'Adet', { def: 1 }), N('unit_price', 'Birim Fiyat')] } },
+      cols: [PRODUCT('part_name', 'Parça', 'parca'), T('part_code', 'Kod'), N('qty', 'Adet', { def: 1 }), N('unit_price', 'Birim Fiyat'), N('discount_pct', 'İndirim (%)')] } },
   payments: { title: 'Online Ödemeler', table: 'payments', group: 'Satış Sonrası', noCreate: true,
     list: ['created_at', 'kind', 'firm_id', 'amount', 'currency', 'installment', 'card_last4', 'status'],
     fields: [RO('kind', 'Tür'), RO('firm_id', 'Firma', { ref: 'firms' }), RO('amount', 'Tutar'), RO('currency', 'Para Birimi'), RO('installment', 'Taksit'),
@@ -119,7 +119,8 @@ const SETTINGS = [
   ['Sosyal Medya / Bağlantılar', [['facebook', 'Facebook'], ['instagram', 'Instagram'], ['youtube', 'YouTube'], ['eticaret_url', 'E-Ticaret Adresi']]],
   ['Online Ödeme', [['eur_rate', 'EUR Kuru'], ['usd_rate', 'USD Kuru']]],
   ['Vergi Oranı (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)']]],
-  ['Diğer', [['footer_note', 'Alt Bilgi Metni']]]
+  ['Diğer', [['footer_note', 'Alt Bilgi Metni']]],
+  ['Banka Bilgileri', [['bank_info_image', 'Banka Hesap Bilgileri Görseli', 'image']]]
 ];
 
 router.get('/giris', (req, res) => {

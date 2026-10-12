@@ -22,3 +22,19 @@
 </div>
 <% } %>
 <%- include('../partials/bayi_foot') %>
+
+<% if (s.bank_info_image) { %>
+<div class="womodal" id="bankModal" hidden>
+  <div class="wobox" style="max-width:680px">
+    <h3>Banka Hesap Bilgileri</h3>
+    <div style="text-align:center;margin:12px 0"><img src="<%= s.bank_info_image %>" style="max-width:100%;height:auto" alt="Banka hesap bilgileri"></div>
+    <div class="fbtn"><button class="btn btn-success" onclick="document.getElementById('bankModal').hidden=true">Kapat</button></div>
+  </div>
+</div>
+<script>
+  const _ann=document.getElementById("annModal"),_bnk=document.getElementById("bankModal");
+  function showBank(){ if(_bnk){ _bnk.hidden=false; _bnk.addEventListener("click",e=>{if(e.target===_bnk)_bnk.hidden=true},{once:true}); } }
+  if(_ann){ const ob=new MutationObserver(()=>{ if(_ann.hidden){ ob.disconnect(); showBank(); }}); ob.observe(_ann,{attributes:true,attributeFilter:["hidden"]}); } else { showBank(); }
+</script>
+<% } %>
+

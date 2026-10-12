@@ -187,7 +187,7 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
     db.prepare(`UPDATE ${table} SET movement_id=NULL${hasPay ? ',pay_movement_id=NULL' : ''} WHERE rowid=?`).run(id);
     return null;
   }
-  const total = db.prepare(`SELECT COALESCE(SUM(qty*unit_price),0) t FROM ${itemsTable} WHERE order_id=?`).get(id).t;
+  const total = db.prepare(`SELECT COALESCE(SUM(qty*unit_price*(1 - IFNULL(discount_pct,0)/100)),0) t FROM ${itemsTable} WHERE order_id=?`).get(id).t;
   const no = o.request_no || o.no;
   const date = new Date().toISOString().slice(0, 10);
   const ins = (docNo, docType, kind, amt = total) => db.prepare('INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,?,?,?,?,?,0)')
