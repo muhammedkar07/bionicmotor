@@ -84,19 +84,40 @@ router.get('/garanti', (req, res) => {
   const rows = firm ? db.prepare("SELECT * FROM warranty_records WHERE firm_id=? AND (?='' OR serial_no LIKE ? OR customer LIKE ? OR invoice_no LIKE ?) ORDER BY sale_date DESC").all(firm,q,`%${q}%`,`%${q}%`,`%${q}%`) : [];
   page(res, 'warranty', 'Garanti Kayıtları', { rows, q });
 });
-router.get('/garanti/yeni', (req, res) => page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0,10), old: null }));
+router.get('/garanti/yeni', (req, res) => {
+  const models = db.prepare("SELECT id,name,warranty_setup_fee,warranty_setup_desc FROM models WHERE active=1 ORDER BY name").all();
+  page(res, 'warranty_new', 'Yeni Ürün Garanti Kaydı', { today: new Date().toISOString().slice(0,10), old: null, models });
+});
 router.post('/garanti/yeni', (req, res) => {
   const b=req.body, clip=(v,n)=>String(v||'').trim().slice(0,n);
-  const old={}; for(const k of ['serial_no','model','customer','invoice_no','sale_date']) old[k]=clip(b[k],120);
-  const back=m=>{res.locals.flash={type:'danger',msg:m};page(res,'warranty_new','Yeni Ürün Garanti Kaydı',{today:new Date().toISOString().slice(0,10),old});};
+  const old={ model_id: +b.model_id || '', serial_no: clip(b.serial_no,120), customer: clip(b.customer,120), invoice_no: clip(b.invoice_no,120), sale_date: clip(b.sale_date,120) };
+  const back=m=>{
+    const models = db.prepare("SELECT id,name,warranty_setup_fee,warranty_setup_desc FROM models WHERE active=1 ORDER BY name").all();
+    res.locals.flash={type:'danger',msg:m};
+    page(res,'warranty_new','Yeni Ürün Garanti Kaydı',{today:new Date().toISOString().slice(0,10),old,models});
+  };
   const firm=req.session.servis.firmId; if(!firm) return back('Firma bilgisi bulunamadı.');
   const serial=clip(b.serial_no,40), invoice=clip(b.invoice_no,60), saleDate=clip(b.sale_date,10);
+  const mid = +b.model_id || null;
+  if(!mid) return back('Model seçmelisiniz.');
   if(!serial||!saleDate) return back('Şase no ve satış tarihi zorunludur.');
   if(!invoice) return back('Fatura numarası zorunludur.');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(saleDate)) return back('Geçerli bir satış tarihi girin.');
+  const m = db.prepare('SELECT name,warranty_setup_fee FROM models WHERE id=? AND active=1').get(mid);
+  if(!m) return back('Geçersiz model.');
   const warrantyEnd=addYears(saleDate,2);
-  db.prepare('INSERT INTO warranty_records(firm_id,serial_no,model,customer,sale_date,warranty_end,status,invoice_no) VALUES(?,?,?,?,?,?,?,?)').run(firm,serial,clip(b.model,80),clip(b.customer,120),saleDate,warrantyEnd,'Aktif',invoice);
-  flash(req,'success','Ürün garanti kaydı oluşturuldu. Garanti bitiş tarihi satış tarihinden itibaren 2 yıl olarak tanımlandı.');
+  const fee = Math.max(0, +m.warranty_setup_fee || 0);
+  let wrid;
+  tx(()=>{
+    wrid = db.prepare('INSERT INTO warranty_records(firm_id,serial_no,model,customer,sale_date,warranty_end,status,invoice_no,setup_fee) VALUES(?,?,?,?,?,?,?,?,?)')
+      .run(firm,serial,m.name,clip(b.customer,120),saleDate,warrantyEnd,'Aktif',invoice,fee).lastInsertRowid;
+    if(fee>0){
+      const md = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,'parca',date('now'),?,?,?,?,0)")
+        .run(firm,'parca','GR-'+wrid,'Garanti Başlangıç Bedeli','alacak',fee).lastInsertRowid;
+      db.prepare('UPDATE warranty_records SET setup_movement_id=? WHERE rowid=?').run(md,wrid);
+    }
+  });
+  flash(req,'success','Ürün garanti kaydı oluşturuldu.' + (fee>0 ? ` (Test/devreye alma bedeli ${fmtMoney(fee)} ₺ yedek parça hesabına alacak olarak işlendi)` : ''));
   res.redirect('/servis/garanti');
 });
 
