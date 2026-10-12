@@ -175,3 +175,6 @@ router.get('/yedek-parca-siparisleri', (req,res)=>{
 });
 
 module.exports = router;
+
+
+
