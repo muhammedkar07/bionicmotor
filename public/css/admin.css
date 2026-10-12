@@ -25,6 +25,7 @@ h1{font-size:22px;margin:0 0 18px;font-weight:600}h2{font-size:17px;margin:26px 
 .tbl{width:100%;border-collapse:collapse}
 .tbl th{background:#f7f8fa;text-align:left;padding:10px 12px;font-weight:600;border-bottom:1px solid #e1e4e8;white-space:nowrap}
 .tbl td{padding:9px 12px;border-bottom:1px solid #eef0f3;vertical-align:middle}
+.tbl td.lt{text-align:right;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums;color:#333}
 .tbl input{width:100%;padding:6px 8px;border:1px solid #cdd2d9;border-radius:4px}
 .act{white-space:nowrap}.muted{color:#7a818c}
 .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}

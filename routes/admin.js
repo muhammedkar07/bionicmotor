@@ -16,6 +16,7 @@ const RO = (name, label, extra = {}) => ({ name, label, type: 'readonly', ...ext
 const AUTO = (name, label, hint) => ({ name, label, type: 'auto', hint });
 const FIRM = R('firm_id', 'Firma', 'firms', 'name', { required: true });
 const DELIVERY = ['İleri Vadeli Teslim', 'Peşin Teslim', 'Fabrikadan Teslim', 'Kargo ile Gönderim', 'Nakliye ile Sevk'];
+const PAYMETHOD = ['Kredi Kartı', 'Nakit', 'Havale / EFT'];
 const PRODUCT = (name, label, kind) => ({ name, label, type: 'product', kind });
 
 const RES = {
@@ -48,7 +49,7 @@ const RES = {
       S('cheque_type', 'Çek Türü', ['Senet', 'Çek'], { def: 'Çek' }),
       D('cheque_due', 'Vadesi', { nullable: true }),
       { name: 'receipt', label: 'Dekont (isteğe bağlı)', type: 'file' },
-      S('kind', 'Yön', ['borc', 'alacak', 'bilgi'], { help: 'borç: bakiyeyi düşürür · alacak: artırır · bilgi: bakiyeyi etkilemez (vadesi gelmemiş çek)' }),
+      S('kind', 'Yön', ['borc', 'alacak', 'bilgi'], { def: 'alacak', help: 'alacak: ödeme/tahsilat (bakiyeyi düşürür) · borç: satış/borçlandırma (bakiyeyi artırır) · bilgi: bakiyeyi etkilemez (vadesi gelmemiş çek)' }),
       T('payer_name', 'Gönderen Adı Soyadı', { nullable: true }),
       T('doc_no', 'Belge No', { nullable: true }),
       N('amount', 'Tutar (₺)', { required: true })] },
@@ -77,7 +78,7 @@ const RES = {
     list: ['request_date', 'no', 'firm_id', 'pay_method', 'delivery_date', 'delivery_method', 'status'], order: 'CAST(no AS INTEGER) DESC, rowid DESC',
     fields: [FIRM, D('request_date', 'Talep Tarihi', { today: true }), AUTO('no', 'Talep No', 'Otomatik verilir (1\'den başlayarak artar)'),
       D('delivery_date', 'Teslim Tarihi'), S('delivery_method', 'Teslim Şekli', DELIVERY, { def: 'İleri Vadeli Teslim' }),
-      RO('pay_method', 'Ödeme Yöntemi'),
+      S('pay_method', 'Ödeme Yöntemi', PAYMETHOD, { nullable: true }),
       S('status', 'Durum', ['Beklemede', 'Siparişe Dönüştürüldü', 'Hazırlanıyor', 'Sevk Edildi', 'Tamamlandı', 'İptal'], { def: 'Beklemede',
         help: 'Beklemede/İptal dışındaki her durumda tutar firmanın Yedek Parça hesabına borç olarak eklenir.' }), A('note', 'Not')],
     debit: { items: 'spare_order_items', ledger: 'parca' },
@@ -300,8 +301,9 @@ router.post('/r/:res/save', (req, res) => {
         if (!up) continue;
         v = '/static/uploads/' + up.filename;
       } else if (f.type === 'select') {
-        if (f.def && v === undefined) v = f.def;
-        if (v !== undefined && !f.options.includes(v)) v = f.def ?? f.options[0];
+        // Boş bırakılırsa varsayılan/seçenek gelir; listede olmayan mevcut değerler (eski kayıtlar)
+        // form tarafından seçenek olarak sunulduğu için korunur.
+        if (v === undefined || v === '') v = f.def ?? f.options[0] ?? '';
       }
       else v = String(v ?? '').trim();
       if (f.required && (v === '' || v === null || v === undefined)) throw new Error(`"${f.label}" zorunludur.`);

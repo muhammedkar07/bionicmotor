@@ -206,7 +206,7 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
       const pay = db.prepare('SELECT amount FROM payments WHERE id=?').get(o.payment_id);
       payAmount = pay ? pay.amount : total;
       payType = 'Kredi Kartı Fişi';
-    } else if (o.pay_method === 'Nakit' || o.pay_method === 'Havale / EFT') {
+    } else if (['Kredi Kartı', 'Nakit', 'Havale / EFT'].includes(o.pay_method)) {
       payAmount = total;
       payType = o.pay_method;
     }

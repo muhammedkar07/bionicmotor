@@ -28,7 +28,7 @@
     <% } else { %>
       <div class="fg" data-field="<%= f.name %>"><label for="f_<%= f.name %>"><%= f.label %><%= f.required ? ' *' : '' %></label>
         <% if (f.type === 'textarea') { %><textarea id="f_<%= f.name %>" name="<%= f.name %>" rows="<%= f.rows || 4 %>"><%= v %></textarea>
-        <% } else if (f.type === 'select') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><% f.options.forEach(o => { %><option <%= (v||f.def)===o?'selected':'' %>><%= o %></option><% }) %></select>
+        <% } else if (f.type === 'select') { %><% const legacy = row && v != null && v !== '' && !f.options.includes(v); %><select id="f_<%= f.name %>" name="<%= f.name %>"><% if (legacy) { %><option value="<%= v %>" selected><%= v %></option><% } %><% f.options.forEach(o => { %><option <%= (!legacy && (v||f.def)===o) ? 'selected' : '' %>><%= o %></option><% }) %></select>
         <% } else if (f.type === 'ref') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">Seçiniz</option><% (refs[f.name]||[]).forEach(o => { %><option value="<%= o.id %>" <%= v===o.id?'selected':'' %>><%= o.label %></option><% }) %></select>
         <% } else if (f.type === 'category') { %>
           <div class="catrow">
@@ -53,34 +53,50 @@
      const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
      const opts = (sel) => { const groups = {}; catalog.forEach(p => { (groups[p.category || 'Diğer'] = groups[p.category || 'Diğer'] || []).push(p); });
        return Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">` + ps.map(p => `<option value="${esc(p.name)}" data-code="${esc(p.code)}" data-price="${p.price}"${p.name===sel?' selected':''}>${esc((p.code ? p.code + ' - ' : '') + p.name)}</option>`).join('') + '</optgroup>').join(''); };
+     const hasLT = ch.cols.some(c => c.name === 'qty') && ch.cols.some(c => c.name === 'unit_price');
   %>
   <h2><%= ch.title %></h2>
-  <table class="tbl" id="kids"><thead><tr><% ch.cols.forEach(c => { %><th><%= c.label %></th><% }) %><th></th></tr></thead>
+  <table class="tbl" id="kids"><thead><tr><% ch.cols.forEach(c => { %><th><%= c.label %></th><% }) %><% if (hasLT) { %><th>Toplam</th><% } %><th></th></tr></thead>
     <tbody>
     <% kids.forEach(k => { %><tr><% ch.cols.forEach(c => { %><td>
       <% if (c.type === 'product') { %><select name="ch_<%= c.name %>" class="pp"><option value="">Ürün seçin</option><%- opts(k[c.name]) %>
           <% if (k[c.name] && !catalog.some(p => p.name === k[c.name])) { %><option value="<%= k[c.name] %>" selected><%= k[c.name] %></option><% } %></select>
       <% } else { %><input name="ch_<%= c.name %>" value="<%= k[c.name] %>" data-col="<%= c.name %>" <%= c.type==='number'?'type=number step=any':'' %>><% } %></td><% }) %>
+      <% if (hasLT) { %><td class="lt" data-lt></td><% } %>
       <td><button type="button" class="btn btn-sm btn-danger rm">×</button></td></tr><% }) %>
     </tbody></table>
   <button type="button" class="btn btn-sm" id="addrow">+ Satır Ekle</button>
   <template id="rowtpl"><tr><% ch.cols.forEach(c => { %><td>
     <% if (c.type === 'product') { %><select name="ch_<%= c.name %>" class="pp"><option value="">Ürün seçin</option><%- opts('') %></select>
     <% } else { %><input name="ch_<%= c.name %>" data-col="<%= c.name %>" <%= c.type==='number'?'type=number step=any':'' %> value="<%= c.def ?? '' %>"><% } %></td><% }) %>
+    <% if (hasLT) { %><td class="lt" data-lt></td><% } %>
     <td><button type="button" class="btn btn-sm btn-danger rm">×</button></td></tr></template>
   <% if (!catalog.length) { %><p class="muted">Seçilebilir ürün yok. Önce "Ürünler / Fiyat Listesi" sayfasından ürün ekleyin.</p><% } %>
   <script>
     const tb = document.querySelector('#kids tbody');
+    const HAS_LT = <%= hasLT ? 'true' : 'false' %>;
+    const fmtTL = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+    const updLT = tr => {
+      if (!HAS_LT || !tr) return;
+      const cell = tr.querySelector('[data-lt]');
+      if (!cell) return;
+      const q = parseFloat((tr.querySelector('[data-col=qty]') || {}).value) || 0;
+      const p = parseFloat((tr.querySelector('[data-col=unit_price]') || {}).value) || 0;
+      cell.textContent = fmtTL(q * p);
+    };
     const fillRow = sel => {
       const o = sel.selectedOptions[0], tr = sel.closest('tr');
       if (!o || !o.value) return;
       const price = tr.querySelector('[data-col=unit_price]'), code = tr.querySelector('[data-col=part_code]');
       if (price) price.value = o.dataset.price;
       if (code) code.value = o.dataset.code;
+      updLT(tr);
     };
     document.getElementById('addrow').onclick = () => tb.appendChild(document.getElementById('rowtpl').content.cloneNode(true));
     tb.addEventListener('click', e => { if (e.target.classList.contains('rm')) e.target.closest('tr').remove(); });
     tb.addEventListener('change', e => { if (e.target.classList.contains('pp')) fillRow(e.target); });
+    tb.addEventListener('input', e => updLT(e.target.closest('tr')));
+    if (HAS_LT) tb.querySelectorAll('tr').forEach(updLT);
   </script>
   <% if (res.table === 'orders' || res.table === 'spareorders') { %>
   <div class="totbar">

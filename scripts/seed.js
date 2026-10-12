@@ -112,6 +112,9 @@ function ensureSeed() {
     pr.run('parca', 'YP-002', 'Yağ Filtresi', 'Motor', 95, 1, 0, 0);
     pr.run('parca', 'YP-003', 'Ayna Takımı', 'Gövde', 410, 2, 15, 4);
 
+    // Ürün kategorilerini categories tablosuna aktar (ürün formundaki kategori listesi buradan beslenir)
+    db.exec("INSERT OR IGNORE INTO categories(name) SELECT DISTINCT TRIM(category) FROM products WHERE category IS NOT NULL AND TRIM(category)<>''");
+
     db.prepare('INSERT INTO warranty_records(firm_id,serial_no,model,customer,sale_date,warranty_end,status) VALUES(?,?,?,?,?,?,?)')
       .run(firm, 'NLCSST125R0001234', 'SST125', 'Örnek Müşteri', '2026-05-20', '2028-05-20', 'Aktif');
     db.prepare('INSERT INTO work_orders(firm_id,no,serial_no,model,km,type,description,status) VALUES(?,?,?,?,?,?,?,?)')
