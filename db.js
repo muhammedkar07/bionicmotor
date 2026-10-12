@@ -2,9 +2,13 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
 
-const dir = path.join(__dirname, 'data');
+// Veritabanı klasörü DATA_DIR ortam değişkeniyle yapılandırılabilir. Render/Railway gibi
+// platformlarda kalıcı disk (volume) bağlayıp DATA_DIR'ı o yola verirseniz veriler
+// her deploy'da silinmez.
+const dir = process.env.DATA_DIR || path.join(__dirname, 'data');
 fs.mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(path.join(dir, 'app.db'));
+const uploadsDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public', 'uploads');
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
 
 db.exec(`
@@ -157,7 +161,7 @@ db.prepare("DELETE FROM settings WHERE key='otv_rate'").run();
 // Varsayılan logo artık paket içinde kalıcı public/img klasöründedir
 // (public/uploads git'ten hariç tutulduğu için eski değer bozuk kalırdı).
 if (get('logo_image') && get('logo_image').startsWith('/static/uploads/') &&
-    !fs.existsSync(path.join(__dirname, 'public', 'uploads', path.basename(get('logo_image'))))) {
+    !fs.existsSync(path.join(uploadsDir, path.basename(get('logo_image'))))) {
   set('logo_image', '/static/img/bionic-logo.png');
 }
 

@@ -20,11 +20,13 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
-
 const fs = require('fs');
-const UPLOAD_DIR = path.join(__dirname, 'public', 'uploads');
+// Yüklenen dosyalar UPLOAD_DIR ortam değişkeniyle kalıcı bir diske taşınabilir.
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+app.use('/static/uploads', express.static(UPLOAD_DIR, { maxAge: '1h' }));
+app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
 const ALLOWED = { '.jpg': 1, '.jpeg': 1, '.png': 1, '.webp': 1, '.gif': 1, '.pdf': 1 };
 const upload = multer({
   storage: multer.diskStorage({

@@ -19,5 +19,6 @@ Node 24 + Express + EJS + yerleşik SQLite (`node:sqlite`). Harici veritabanı g
 
 ## Canlıya alma
 - Ortam değişkenleri: `PORT`, `ADMIN_PASSWORD` (ilk kurulum), `COOKIE_SECURE=1` (HTTPS arkasında), `TRUST_PROXY=1` (nginx/IIS arkasında).
-- Yedek: `data/app.db` ve `public/uploads/` klasörleri.
+- Kalıcı veri (önemli): Render/Railway gibi platformlarda dosya sistemi her deploy'da sıfırlanır. Kalıcı bir disk (volume) bağlayıp `DATA_DIR` ve `UPLOAD_DIR` değişkenlerini o yola verin (örn. `DATA_DIR=/var/data`, `UPLOAD_DIR=/var/data/uploads`). Aksi halde panelden girilen veriler deploy sonrası kaybolur.
+- Yedek: `DATA_DIR/app.db` (varsayılan `data/app.db`) ve `UPLOAD_DIR` (varsayılan `public/uploads/`) klasörleri.
 - Online ödeme: kart bilgileri saklanmaz; gerçek sanal POS entegrasyonu henüz yapılmadı (durum "Sanal POS Bekliyor").
