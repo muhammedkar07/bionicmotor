@@ -68,7 +68,7 @@ const RES = {
     list: ['serial_no', 'firm_id', 'model', 'customer', 'invoice_no', 'sale_date', 'warranty_end', 'status'],
     fields: [FIRM, T('serial_no', 'Şase No', { required: true }), T('model', 'Model'), T('customer', 'Müşteri'), T('invoice_no', 'Fatura No', { required: true }),
       D('sale_date', 'Satış Tarihi', { required: true, today: true }), RO('warranty_end', 'Garanti Bitiş'), T('status', 'Durum', { def: 'Aktif' })] },
-  workorders: { title: 'İş Emirleri', table: 'work_orders', group: 'Satış Sonrası', noCreate: true,
+  workorders: { title: 'İş Emirleri', table: 'work_orders', group: 'Satış Sonrası',
     list: ['created_at', 'no', 'firm_id', 'serial_no', 'type', 'status'],
     fields: [RO('no', 'İş Emri No'), RO('firm_id', 'Firma', { ref: 'firms' }), RO('serial_no', 'Şase No'), RO('model', 'Model'), RO('km', 'Km'),
       S('type', 'Tür (Bayi seçemez, yönetici belirler)', ['', 'Garanti', 'Ücretli', 'Sevkiyat Hasarı'], { def: '' }),
