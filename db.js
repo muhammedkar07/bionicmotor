@@ -134,10 +134,25 @@ db.exec(`CREATE TABLE IF NOT EXISTS firm_stock (
   qty REAL NOT NULL DEFAULT 0,
   PRIMARY KEY (firm_id, product_id));
 CREATE TABLE IF NOT EXISTS order_stock_snap (
-  order_id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY,
+  order_id INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
   qty REAL NOT NULL,
   firm_id INTEGER NOT NULL);`);
+
+// Eski şemada order_id birincil anahtardı; bir sipariş birden çok ürün içerebildiği
+// için satır eklenirken "UNIQUE constraint failed: order_stock_snap.order_id"
+// hatası oluşuyordu. Mevcut veriler korunarak yeni şemaya taşınır.
+const snapCols = db.prepare('PRAGMA table_info(order_stock_snap)').all();
+if (snapCols.length && !snapCols.some(c => c.name === 'id')) {
+  db.exec(`ALTER TABLE order_stock_snap RENAME TO order_stock_snap_old;
+    CREATE TABLE order_stock_snap (id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, qty REAL NOT NULL, firm_id INTEGER NOT NULL);
+    INSERT INTO order_stock_snap(order_id,product_id,qty,firm_id) SELECT order_id,product_id,qty,firm_id FROM order_stock_snap_old;
+    DROP TABLE order_stock_snap_old;`);
+}
+
+// ÖTV kaldırıldı: eski ayar kaydı varsa temizlenir.
+db.prepare("DELETE FROM settings WHERE key='otv_rate'").run();
 
 // Varsayılan logo artık paket içinde kalıcı public/img klasöründedir
 // (public/uploads git'ten hariç tutulduğu için eski değer bozuk kalırdı).
@@ -247,7 +262,7 @@ function syncPaymentCredit(paymentId) {
   const p = db.prepare('SELECT * FROM payments WHERE id=?').get(paymentId);
   if (!p) return;
   if (db.prepare('SELECT 1 FROM spare_orders WHERE payment_id=?').get(paymentId)) return;
-  const completed = p.status === 'Tahsil Edildi';
+  const completed = p.status === 'Onaylandı' || p.status === 'Tahsil Edildi';
   if (!completed) {
     if (p.movement_id) {
       db.prepare('DELETE FROM account_movements WHERE id=?').run(p.movement_id);
@@ -283,5 +298,10 @@ const tx = fn => {
   try { const r = fn(); db.exec('COMMIT'); return r; }
   catch (e) { db.exec('ROLLBACK'); throw e; }
 };
+
+// Onaylanmış/tahsil edilmiş fakat cari hesaba işlenmemiş eski ödemeleri yansıt (idempotent).
+for (const r of db.prepare("SELECT id FROM payments WHERE movement_id IS NULL AND status IN ('Onaylandı','Tahsil Edildi')").all()) {
+  try { syncPaymentCredit(r.id); } catch {}
+}
 
 module.exports = { db, get, set, allSettings, tx, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit };

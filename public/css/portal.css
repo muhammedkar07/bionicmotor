@@ -80,10 +80,18 @@ hr{border:0;border-top:1px solid #dee2e6;margin:30px 0 40px}
 .shop{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
 .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
 .pcard{border:1px solid #dee2e6;border-radius:8px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:6px}
+.pcard[hidden]{display:none}
 .pcard h4{margin:0;font-size:15px;line-height:1.3}
 .pcard .pcode{font-size:12px;color:#6c757d}
 .pcard .pprice{font-weight:700;color:#198754}
-.pcard .pmeta{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px}
+.pcard .pmeta{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px;flex-wrap:wrap}
+.pbuy{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.qtybox{display:inline-flex;align-items:center;border:1px solid #ced4da;border-radius:4px;overflow:hidden}
+.qtybox .qbtn{background:#f1f3f5;border:0;width:26px;height:28px;font-size:16px;line-height:1;cursor:pointer;color:#333;padding:0}
+.qtybox .qbtn:hover{background:#e2e6ea}
+.qtybox .qin{width:40px;height:28px;border:0;border-left:1px solid #ced4da;border-right:1px solid #ced4da;text-align:center;padding:0;margin:0;font-size:14px}
+.qtybox .qin::-webkit-outer-spin-button,.qtybox .qin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.qtybox .qin{-moz-appearance:textfield;appearance:textfield}
 .shop-cart{position:sticky;top:12px;border:1px solid #dee2e6;border-radius:8px;background:#fff;padding:14px}
 .shop-cart h3{margin:0 0 10px;font-size:16px}
 .cartline{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:8px 0;border-bottom:1px solid #eee}

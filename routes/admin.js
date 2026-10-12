@@ -66,7 +66,7 @@ const RES = {
   warranty: { title: 'Garanti Kayıtları', table: 'warranty_records', group: 'Satış Sonrası',
     list: ['serial_no', 'firm_id', 'model', 'customer', 'invoice_no', 'sale_date', 'warranty_end', 'status'],
     fields: [FIRM, T('serial_no', 'Şase No', { required: true }), T('model', 'Model'), T('customer', 'Müşteri'), T('invoice_no', 'Fatura No', { required: true }),
-      D('sale_date', 'Satış Tarihi', { required: true }), RO('warranty_end', 'Garanti Bitiş'), T('status', 'Durum', { def: 'Aktif' })] },
+      D('sale_date', 'Satış Tarihi', { required: true, today: true }), RO('warranty_end', 'Garanti Bitiş'), T('status', 'Durum', { def: 'Aktif' })] },
   workorders: { title: 'İş Emirleri', table: 'work_orders', group: 'Satış Sonrası', noCreate: true,
     list: ['created_at', 'no', 'firm_id', 'serial_no', 'type', 'status'],
     fields: [RO('no', 'İş Emri No'), RO('firm_id', 'Firma', { ref: 'firms' }), RO('serial_no', 'Şase No'), RO('model', 'Model'), RO('km', 'Km'),
@@ -117,7 +117,7 @@ const SETTINGS = [
   ['İletişim', [['phone', 'Telefon'], ['email', 'E-posta'], ['branch', 'Şube Adı'], ['address', 'Adres'], ['map_lat', 'Harita Enlem'], ['map_lng', 'Harita Boylam']]],
   ['Sosyal Medya / Bağlantılar', [['facebook', 'Facebook'], ['instagram', 'Instagram'], ['youtube', 'YouTube'], ['eticaret_url', 'E-Ticaret Adresi']]],
   ['Online Ödeme', [['eur_rate', 'EUR Kuru'], ['usd_rate', 'USD Kuru']]],
-  ['Vergi Oranları (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)'], ['otv_rate', 'ÖTV (%)']]],
+  ['Vergi Oranı (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)']]],
   ['Diğer', [['footer_note', 'Alt Bilgi Metni']]]
 ];
 
@@ -186,6 +186,7 @@ function cell(f, v, refs) {
   if (v === null || v === undefined) return '';
   if (f.type === 'checkbox') return v ? '✓' : '—';
   if (f.type === 'date') return fmtDate(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return fmtDate(v);
   if (f.name === 'created_at') return fmtDateTime(v);
   if (f.type === 'ref' || f.ref) { const m = (refs[f.name] || []).find(x => x.id === v); return m ? m.label : v; }
   if (f.type === 'number' || ['amount', 'price'].includes(f.name)) return fmtMoney(v, 0);
@@ -242,7 +243,7 @@ function loadForm(req, res, id) {
   const catalog = r.children && r.children.kind
     ? db.prepare("SELECT code,name,category,price FROM products WHERE kind=? AND active=1 ORDER BY category, name").all(r.children.kind) : [];
   const categories = db.prepare('SELECT name FROM categories ORDER BY name COLLATE NOCASE').all().map(x => x.name);
-  const tax = { kdv: numAny(get('kdv_rate')) || 20, otv: numAny(get('otv_rate')) || 0 };
+  const tax = { kdv: numAny(get('kdv_rate')) || 20 };
   return { row, refs, multi, kids, catalog, categories, tax, today: new Date().toISOString().slice(0, 10) };
 }
 
@@ -312,8 +313,9 @@ router.post('/r/:res/save', (req, res) => {
         data.warranty_end = addYears(data.sale_date, 2);
       }
       if (r.table === 'products' && data.kind === 'parca' && !data.model_id) throw new Error('Yedek parçanın ait olduğu araç modelini seçmelisiniz.');
-      // Çek/Senet hareketleri bakiyeyi etkilemez; "vadesi gelmemiş çekler" kartında görünür.
-      if (r.table === 'account_movements' && data.doc_type === 'Çek/Senet') data.kind = 'bilgi';
+      // Çek/Senet için varsayılan yön "bilgi"dir (bakiyeyi etkilemez). Yön kullanıcı tarafından
+      // seçilebilir; vadesi gelmiş çekler cari özetinde otomatik olarak alacak sayılır.
+      if (r.table === 'account_movements' && data.doc_type === 'Çek/Senet' && !data.kind) data.kind = 'bilgi';
       const cols = Object.keys(data);
       tx(() => {
         let rowid = id;

@@ -17,14 +17,21 @@
     <div>
       <div class="shop-grid" id="pgrid">
         <% parts.forEach(p => { %>
-        <div class="pcard" data-model="<%= p.model_id || '' %>" data-cat="<%= String(p.category || '').toLocaleLowerCase('tr') %>">
+        <div class="pcard" data-model="<%= p.model_id || '' %>" data-cat="<%= (String(p.code || '') + ' ' + String(p.name || '') + ' ' + String(p.category || '')).toLocaleLowerCase('tr') %>">
           <h4><%= p.name %></h4>
           <div class="pcode"><%= p.code ? p.code + ' · ' : '' %><%= p.category || '' %></div>
           <div class="pprice"><%= money(p.price) %> ₺</div>
           <div class="pmeta">
             <% if ((+p.stock || 0) > 0) { %>
               <span class="stk-var">Stokta Var</span>
-              <button type="button" class="btn btn-success btn-sm add" data-id="<%= p.id %>">Sepete Ekle</button>
+              <div class="pbuy">
+                <div class="qtybox">
+                  <button type="button" class="qbtn qminus" aria-label="Azalt">−</button>
+                  <input type="number" class="qin" min="1" value="1" inputmode="numeric" data-max="<%= +p.max_qty || 0 %>">
+                  <button type="button" class="qbtn qplus" aria-label="Artır">+</button>
+                </div>
+                <button type="button" class="btn btn-success btn-sm add" data-id="<%= p.id %>">Sepete Ekle</button>
+              </div>
             <% } else { %>
               <span class="stk-yok">Stokta Yok</span>
               <button type="button" class="btn btn-secondary btn-sm notify" data-id="<%= p.id %>">Gelince Haber Ver</button>
@@ -117,7 +124,28 @@
     render();
   }
   $('pgrid').addEventListener('click', e => {
-    const a = e.target.closest('.add'); if (a) { add(+a.dataset.id, 1); return; }
+    const qb = e.target.closest('.qbtn');
+    if (qb) {
+      const box = qb.closest('.qtybox'), inp = box && box.querySelector('.qin');
+      if (inp) {
+        const max = +inp.dataset.max || 0;
+        let v = Math.max(1, Math.floor(+inp.value) || 1);
+        v = qb.classList.contains('qplus') ? v + 1 : v - 1;
+        if (v < 1) v = 1;
+        if (max > 0 && v > max) v = max;
+        inp.value = v;
+      }
+      return;
+    }
+    const a = e.target.closest('.add');
+    if (a) {
+      const box = a.closest('.pbuy'), inp = box && box.querySelector('.qin');
+      const max = inp ? (+inp.dataset.max || 0) : 0;
+      let q = inp ? Math.max(1, Math.floor(+inp.value) || 1) : 1;
+      if (max > 0 && q > max) q = max;
+      add(+a.dataset.id, q);
+      return;
+    }
     const n = e.target.closest('.notify');
     if (n) {
       const body = new URLSearchParams({ product_id: n.dataset.id, _csrf: CSRF });
@@ -125,6 +153,13 @@
         n.textContent = j.ok ? 'Haber Verildi ✓' : 'Kaydedilemedi'; n.disabled = !!j.ok;
       }).catch(() => {});
     }
+  });
+  $('pgrid').addEventListener('change', e => {
+    if (!e.target.classList.contains('qin')) return;
+    const max = +e.target.dataset.max || 0;
+    let v = Math.floor(+e.target.value); if (!(v >= 1)) v = 1;
+    if (max > 0 && v > max) v = max;
+    e.target.value = v;
   });
   $('cartlines').addEventListener('input', e => {
     if (e.target.dataset.qid) {

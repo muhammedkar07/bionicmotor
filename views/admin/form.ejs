@@ -19,7 +19,7 @@
         <div class="ro" id="autoval_<%= f.name %>"><%= row ? v : 'Otomatik' %></div>
         <% if (f.hint && !row) { %><small class="muted"><%= f.hint %></small><% } %></div>
     <% } else if (f.type === 'readonly') { %>
-      <div class="fg"><label><%= f.label %></label>
+      <div class="fg" data-field="<%= f.name %>"><label><%= f.label %></label>
         <div class="ro"><% if (f.image && v) { %><a href="<%= v %>" target="_blank"><img src="<%= v %>" style="max-width:320px" alt=""></a>
           <% } else if (f.ref) { const m = (refs[f.name]||[]).find(x => x.id === v); %><%= m ? m.label : v %>
           <% } else { %><span class="pre"><%= v %></span><% } %></div></div>
@@ -82,12 +82,11 @@
     tb.addEventListener('click', e => { if (e.target.classList.contains('rm')) e.target.closest('tr').remove(); });
     tb.addEventListener('change', e => { if (e.target.classList.contains('pp')) fillRow(e.target); });
   </script>
-  <% if (res.table === 'orders') { %>
+  <% if (res.table === 'orders' || res.table === 'spareorders') { %>
   <div class="totbar">
     <table>
-      <tr><td>Ara Toplam</td><td class="r"><b id="tot-sub">0,00 ₺</b></td></tr>
+      <tr><td>Ara Toplam (KDV Hariç)</td><td class="r"><b id="tot-sub">0,00 ₺</b></td></tr>
       <tr><td>KDV (<%= tax.kdv %>%)</td><td class="r" id="tot-kdv">0,00 ₺</td></tr>
-      <tr><td>ÖTV (<%= tax.otv %>%)</td><td class="r" id="tot-otv">0,00 ₺</td></tr>
       <tr class="grand"><td>Genel Toplam</td><td class="r"><b id="tot-grand">0,00 ₺</b></td></tr>
     </table>
     <small class="muted">Toplamlar yalnızca önizleme içindir; kaydedilmez.</small>
@@ -96,19 +95,18 @@
   (() => {
     const tb = document.querySelector('#kids tbody');
     if (!tb) return;
-    const kdv = <%= Number(tax.kdv) || 0 %>, otv = <%= Number(tax.otv) || 0 %>;
+    const kdv = <%= Number(tax.kdv) || 0 %>;
     const fm = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
     const calc = () => {
-      let sub = 0;
+      let gross = 0;
       tb.querySelectorAll('tr').forEach(tr => {
         const q = parseFloat((tr.querySelector('[data-col="qty"]') || {}).value) || 0;
         const p = parseFloat((tr.querySelector('[data-col="unit_price"]') || {}).value) || 0;
-        sub += q * p;
+        gross += q * p;
       });
-      const k = sub * kdv / 100, o = sub * (otv > 0 ? otv : 0) / 100, g = sub + k + o;
-      document.getElementById('tot-sub').textContent = fm(sub);
+      const net = gross / (1 + kdv / 100), k = gross - net, g = gross;
+      document.getElementById('tot-sub').textContent = fm(net);
       document.getElementById('tot-kdv').textContent = fm(k);
-      document.getElementById('tot-otv').textContent = fm(o);
       document.getElementById('tot-grand').textContent = fm(g);
     };
     tb.addEventListener('input', calc);
@@ -173,9 +171,9 @@
   const toggle = () => {
     const on = sel.value === 'Çek/Senet';
     fields.forEach(n => { const el = document.querySelector('[data-field="' + n + '"]'); if (el) el.hidden = !on; });
-    if (kind) { if (on) kind.value = 'bilgi'; kind.disabled = on; }
   };
-  sel.addEventListener('change', toggle);
+  // Çek/Senet seçilince yön varsayılan olarak "bilgi" gelir; kullanıcı istediği zaman değiştirebilir.
+  sel.addEventListener('change', () => { if (sel.value === 'Çek/Senet' && kind) kind.value = 'bilgi'; toggle(); });
   toggle();
 })();
 </script>
@@ -188,6 +186,24 @@
   const toggle = () => { box.hidden = kind.value !== 'parca'; };
   kind.addEventListener('change', toggle);
   toggle();
+})();
+</script>
+<% } %>
+<% if (res.key === 'warranty') { %>
+<script>
+(() => {
+  const sd = document.getElementById('f_sale_date');
+  const box = document.querySelector('[data-field="warranty_end"] .ro');
+  if (!sd || !box) return;
+  const calc = () => {
+    const m = String(sd.value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) { box.textContent = '—'; return; }
+    const iso = new Date(Date.UTC(+m[1] + 2, +m[2] - 1, +m[3])).toISOString().slice(0, 10);
+    box.textContent = iso.slice(8, 10) + '.' + iso.slice(5, 7) + '.' + iso.slice(0, 4);
+  };
+  sd.addEventListener('input', calc);
+  sd.addEventListener('change', calc);
+  calc();
 })();
 </script>
 <% } %>
