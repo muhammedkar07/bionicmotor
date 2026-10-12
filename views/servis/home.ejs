@@ -7,4 +7,13 @@
     <text x="40" y="440" font-size="250" letter-spacing="-6">SERVİS</text></g>
 </svg>
 </div>
+<% if (unread && unread.length) { %>
+<div class="womodal" id="annModal">
+  <div class="wobox">
+    <h3>🔔 Yeni Duyurular</h3>
+    <% unread.forEach(a => { %><div class="ann"><b class="newtag">YENİ</b> <small class="muted"><%= dt(a.created_at) %></small><p class="pre"><%= a.text %></p></div><% }) %>
+    <div class="fbtn"><button class="btn btn-success" onclick="document.getElementById('annModal').hidden=true">Kapat</button></div>
+  </div>
+</div>
+<% } %>
 <%- include('../partials/servis_foot') %>

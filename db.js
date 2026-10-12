@@ -119,6 +119,25 @@ addCol('account_movements', 'cheque_type', 'TEXT');
 addCol('account_movements', 'cheque_due', 'TEXT');
 addCol('account_movements', 'payer_name', 'TEXT');
 db.exec("UPDATE spare_orders SET request_date=date(created_at) WHERE request_date IS NULL");
+addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
+addCol('products', 'model_id', 'INTEGER');
+addCol('products', 'max_qty', 'REAL');
+db.exec(`CREATE TABLE IF NOT EXISTS stock_notify (
+  product_id INTEGER NOT NULL,
+  firm_id INTEGER NOT NULL,
+  user_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (product_id, firm_id));`);
+db.exec(`CREATE TABLE IF NOT EXISTS firm_stock (
+  firm_id INTEGER NOT NULL REFERENCES firms(id) ON DELETE CASCADE,
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  qty REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (firm_id, product_id));
+CREATE TABLE IF NOT EXISTS order_stock_snap (
+  order_id INTEGER PRIMARY KEY,
+  product_id INTEGER NOT NULL,
+  qty REAL NOT NULL,
+  firm_id INTEGER NOT NULL);`);
 
 // Varsayılan logo artık paket içinde kalıcı public/img klasöründedir
 // (public/uploads git'ten hariç tutulduğu için eski değer bozuk kalırdı).
@@ -140,10 +159,9 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
   const o = db.prepare(`SELECT * FROM ${table} WHERE rowid=?`).get(id);
   if (!o) return null;
   const hasPay = table === 'spare_orders';
-  const converted = !['Beklemede', 'İptal', 'İptal Edildi'].includes(o.status);
+  // Beklemede/İptal dışındaki durumlar "onaylanmış" sayılır.
   const cancelled = ['İptal', 'İptal Edildi'].includes(o.status);
-  // Yedek parça siparişleri sipariş anında cari hesaba işlenir; normal siparişler onaylanınca
-  const active = hasPay ? !cancelled : converted;
+  const active = !['Beklemede', 'İptal', 'İptal Edildi'].includes(o.status);
   if (!active) {
     if (o.movement_id) db.prepare('DELETE FROM account_movements WHERE id=?').run(o.movement_id);
     if (hasPay && o.pay_movement_id) db.prepare('DELETE FROM account_movements WHERE id=?').run(o.pay_movement_id);
@@ -161,20 +179,96 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
     const mid = ins('SIP-' + no, ledger === 'parca' ? 'Yedek Parça Siparişi' : 'Sipariş', 'borc');
     db.prepare(`UPDATE ${table} SET movement_id=? WHERE rowid=?`).run(mid, id);
   }
-  // Sipariş sırasında kartla ödenen tutar alacak olarak işlenir. Tahsilat tutarı
-  // sipariş tesliminde azaltılsa/çıkılsa bile sabit kalır; böylece eksik gönderilen
-  // malzeme karşılığı fark bayinin alacağı olarak caride görünür.
-  if (hasPay && o.payment_id) {
-    const pay = db.prepare('SELECT amount FROM payments WHERE id=?').get(o.payment_id);
-    const payAmount = pay ? pay.amount : total;
-    if (o.pay_movement_id) {
-      db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(payAmount, o.pay_movement_id);
-    } else if (payAmount > 0) {
-      const pid = ins('ODM-' + no, 'Kredi Kartı Fişi', 'alacak', payAmount);
-      db.prepare(`UPDATE ${table} SET pay_movement_id=? WHERE rowid=?`).run(pid, id);
+  // Onaylanan siparişin ödemesi alacak olarak işlenir. Kart ödemesi (payment_id)
+  // tutarı sabit kalır; nakit/havale ise sipariş onaylandığında alacak yazılır.
+  if (hasPay) {
+    let payAmount = null, payType = null;
+    if (o.payment_id) {
+      const pay = db.prepare('SELECT amount FROM payments WHERE id=?').get(o.payment_id);
+      payAmount = pay ? pay.amount : total;
+      payType = 'Kredi Kartı Fişi';
+    } else if (o.pay_method === 'Nakit' || o.pay_method === 'Havale / EFT') {
+      payAmount = total;
+      payType = o.pay_method;
+    }
+    if (payAmount > 0) {
+      if (o.pay_movement_id) {
+        db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(payAmount, o.pay_movement_id);
+      } else {
+        const pid = ins('ODM-' + no, payType, 'alacak', payAmount);
+        db.prepare(`UPDATE ${table} SET pay_movement_id=? WHERE rowid=?`).run(pid, id);
+      }
+    } else if (o.pay_movement_id) {
+      db.prepare('DELETE FROM account_movements WHERE id=?').run(o.pay_movement_id);
+      db.prepare(`UPDATE ${table} SET pay_movement_id=NULL WHERE rowid=?`).run(id);
     }
   }
   return total;
+}
+// Sipariş 'Siparişe Dönüştürüldü' olunca genel merkez stoğundan düşer, bayinin stoğuna eklenir.
+// Önceki etki tersine çevrilir, sonra güncel satırlara göre yeniden uygulanır (satır/adet değişiklikleri tutarlı).
+function syncOrderStock(orderId) {
+  const o = db.prepare('SELECT * FROM orders WHERE rowid=?').get(orderId);
+  if (!o) return;
+  const converted = o.status === 'Siparişe Dönüştürüldü';
+  const stmt = db.prepare('SELECT * FROM order_stock_snap WHERE order_id=?');
+  for (const s of stmt.all(orderId)) {
+    db.prepare('UPDATE products SET stock=MAX(0, COALESCE(stock,0)+?) WHERE id=?').run(s.qty, s.product_id);
+    db.prepare('UPDATE firm_stock SET qty=MAX(0, qty-?) WHERE firm_id=? AND product_id=?').run(s.qty, s.firm_id, s.product_id);
+  }
+  db.prepare('DELETE FROM order_stock_snap WHERE order_id=?').run(orderId);
+  if (!converted) return;
+  const agg = {};
+  for (const i of db.prepare('SELECT product_name, qty FROM order_items WHERE order_id=?').all(orderId)) {
+    const q = +i.qty;
+    if (q > 0 && i.product_name) agg[i.product_name] = (agg[i.product_name] || 0) + q;
+  }
+  const apply = db.prepare('INSERT INTO order_stock_snap(order_id, product_id, qty, firm_id) VALUES(?,?,?,?)');
+  for (const [name, qty] of Object.entries(agg)) {
+    const p = db.prepare('SELECT id FROM products WHERE name=? AND active=1').get(name);
+    if (!p) continue;
+    db.prepare('UPDATE products SET stock=MAX(0, COALESCE(stock,0)-?) WHERE id=?').run(qty, p.id);
+    db.prepare('INSERT INTO firm_stock(firm_id,product_id,qty) VALUES(?,?,?) ON CONFLICT(firm_id,product_id) DO UPDATE SET qty=qty+excluded.qty')
+      .run(o.firm_id, p.id, qty);
+    apply.run(orderId, p.id, qty, o.firm_id);
+  }
+}
+function revertOrderStock(orderId) {
+  for (const s of db.prepare('SELECT * FROM order_stock_snap WHERE order_id=?').all(orderId)) {
+    db.prepare('UPDATE products SET stock=MAX(0, COALESCE(stock,0)+?) WHERE id=?').run(s.qty, s.product_id);
+    db.prepare('UPDATE firm_stock SET qty=MAX(0, qty-?) WHERE firm_id=? AND product_id=?').run(s.qty, s.firm_id, s.product_id);
+  }
+  db.prepare('DELETE FROM order_stock_snap WHERE order_id=?').run(orderId);
+}
+addCol('payments', 'movement_id', 'INTEGER');
+// Online ödeme "Tahsil Edildi" olunca firmanın ana carisine alacak olarak işlenir.
+// Yedek parça siparişine bağlı ödemeler sipariş cari kaydı (syncOrderDebit) tarafından zaten işlenir.
+function syncPaymentCredit(paymentId) {
+  const p = db.prepare('SELECT * FROM payments WHERE id=?').get(paymentId);
+  if (!p) return;
+  if (db.prepare('SELECT 1 FROM spare_orders WHERE payment_id=?').get(paymentId)) return;
+  const completed = p.status === 'Tahsil Edildi';
+  if (!completed) {
+    if (p.movement_id) {
+      db.prepare('DELETE FROM account_movements WHERE id=?').run(p.movement_id);
+      db.prepare('UPDATE payments SET movement_id=NULL WHERE id=?').run(paymentId);
+    }
+    return;
+  }
+  const amt = Math.round(p.total * 100) / 100;
+  if (!(amt > 0)) return;
+  if (p.movement_id) {
+    db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(amt, p.movement_id);
+  } else {
+    const docType = p.kind === 'odeme' ? 'Kredi Kartı Fişi' : 'Nakit';
+    const mid = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,date('now'),?,?,?,?,0)")
+      .run(p.firm_id, 'ana', 'POS-' + p.id, docType, 'alacak', amt).lastInsertRowid;
+    db.prepare('UPDATE payments SET movement_id=? WHERE id=?').run(mid, paymentId);
+  }
+}
+function revertPaymentCredit(paymentId) {
+  const p = db.prepare('SELECT movement_id FROM payments WHERE id=?').get(paymentId);
+  if (p && p.movement_id) db.prepare('DELETE FROM account_movements WHERE id=?').run(p.movement_id);
 }
 const nextUserCode = firmId => {
   const prefix = String(firmId).padStart(3, '0');
@@ -190,4 +284,4 @@ const tx = fn => {
   catch (e) { db.exec('ROLLBACK'); throw e; }
 };
 
-module.exports = { db, get, set, allSettings, tx, nextNo, nextFirmCode, nextUserCode, syncOrderDebit };
+module.exports = { db, get, set, allSettings, tx, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit };

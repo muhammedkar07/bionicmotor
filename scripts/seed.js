@@ -104,13 +104,13 @@ function ensureSeed() {
     mv.run(firm, 'parca', '2026-04-02', 'YP2026000001', 'Yedek Parça Faturası', 'borc', 48500, 1);
     mv.run(firm, 'parca', '2026-04-20', 'C202604200001SO1', K, 'alacak', 20000, 0);
 
-    const pr = db.prepare('INSERT INTO products(kind,code,name,category,price) VALUES(?,?,?,?,?)');
-    pr.run('arac', 'SST125', 'SST125', 'Scooter', 111500);
-    pr.run('arac', 'CRZ150', 'Cruiser 150', 'Motosiklet', 96000);
-    pr.run('arac', 'URB50', 'Urban 50', 'Scooter', 52000);
-    pr.run('parca', 'YP-001', 'Ön Fren Balatası', 'Fren', 320);
-    pr.run('parca', 'YP-002', 'Yağ Filtresi', 'Motor', 95);
-    pr.run('parca', 'YP-003', 'Ayna Takımı', 'Gövde', 410);
+    const pr = db.prepare('INSERT INTO products(kind,code,name,category,price,model_id,stock,max_qty) VALUES(?,?,?,?,?,?,?,?)');
+    pr.run('arac', 'SST125', 'SST125', 'Scooter', 111500, 1, 20, 5);
+    pr.run('arac', 'CRZ150', 'Cruiser 150', 'Motosiklet', 96000, 2, 10, 3);
+    pr.run('arac', 'URB50', 'Urban 50', 'Scooter', 52000, 3, 0, 0);
+    pr.run('parca', 'YP-001', 'Ön Fren Balatası', 'Fren', 320, 1, 50, 10);
+    pr.run('parca', 'YP-002', 'Yağ Filtresi', 'Motor', 95, 1, 0, 0);
+    pr.run('parca', 'YP-003', 'Ayna Takımı', 'Gövde', 410, 2, 15, 4);
 
     db.prepare('INSERT INTO warranty_records(firm_id,serial_no,model,customer,sale_date,warranty_end,status) VALUES(?,?,?,?,?,?,?)')
       .run(firm, 'NLCSST125R0001234', 'SST125', 'Örnek Müşteri', '2026-05-20', '2028-05-20', 'Aktif');

@@ -1,0 +1,29 @@
+<%- include('../partials/admin_head') %>
+<h1>Stok Takibi</h1>
+<p class="muted">Genel Merkez stok adedi, siparişleri "Siparişe Dönüştürüldü" durumuna geçirdiğinizde otomatik azalır ve ilgili bayinin stok hanesine eklenir. Buradan stokları elle de güncelleyebilirsiniz.</p>
+<form method="post" action="/admin/stok" class="fcard wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="tw">
+    <table class="tbl">
+      <thead><tr>
+        <th>Ürün</th>
+        <th>Genel Merkez Stok</th>
+        <% firms.forEach(f => { %><th><%= f.code %> <%= f.name %></th><% }) %>
+      </tr></thead>
+      <tbody>
+      <% products.forEach(p => { %>
+        <tr>
+          <td><b><%= p.name %></b><br><small class="muted"><%= p.code %> · <%= p.category || '-' %></small></td>
+          <td><input type="number" step="any" min="0" name="g_<%= p.id %>" value="<%= p.stock %>"></td>
+          <% firms.forEach(f => { const v = stock[f.id + ':' + p.id]; %>
+            <td><input type="number" step="any" min="0" name="f_<%= f.id %>_<%= p.id %>" value="<%= v === undefined ? '' : v %>"></td>
+          <% }) %>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!products.length) { %><p class="muted">Takip edilecek ürün yok. Önce "Ürünler / Fiyat Listesi" sayfasından araç ekleyin.</p><% } %>
+  <div class="fbtn"><button class="btn btn-primary">Stokları Kaydet</button> <a class="btn" href="/admin">Vazgeç</a></div>
+</form>
+<%- include('../partials/admin_foot') %>

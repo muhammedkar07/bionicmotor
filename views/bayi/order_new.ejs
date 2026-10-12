@@ -1,0 +1,119 @@
+<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Yeni Sipariş Talebi</h1>
+  <p class="muted">Talebiniz oluşturulduğunda tutar ve stok hareketi olmaz; yönetici talebinizi "Siparişe Dönüştürüldü" durumuna geçirdiğinde tutar hesabınıza borç olarak işlenir ve genel merkez stoğundan düşülür.</p>
+  <div class="inline-form" style="max-width:none">
+    <label style="flex:1">Ürün Ara
+      <input id="catSearch" placeholder="Ürün adı veya kategori..." maxlength="80"></label>
+  </div>
+  <p class="muted" id="filterNote" hidden></p>
+
+  <form method="post" action="/bayi/siparis-olustur" class="shop" id="sform" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div>
+      <div class="shop-grid" id="pgrid">
+        <% products.forEach(p => { %>
+        <div class="pcard" data-cat="<%= (String(p.name || '') + ' ' + String(p.category || '')).toLocaleLowerCase('tr') %>">
+          <h4><%= p.name %></h4>
+          <div class="pcode"><%= p.code ? p.code + ' · ' : '' %><%= p.category || '' %></div>
+          <div class="pprice"><%= money(p.price) %> ₺</div>
+          <div class="pmeta">
+            <% if ((+p.stock || 0) > 0) { %>
+              <span class="stk-var">Stokta Var</span>
+              <button type="button" class="btn btn-success btn-sm add" data-id="<%= p.id %>">Sepete Ekle</button>
+            <% } else { %>
+              <span class="stk-yok">Stokta Yok</span>
+              <button type="button" class="btn btn-secondary btn-sm notify" data-id="<%= p.id %>">Gelince Haber Ver</button>
+            <% } %>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+      <% if (!products.length) { %><p class="muted">Sipariş verilebilecek ürün bulunmuyor.</p><% } %>
+    </div>
+
+    <aside class="shop-cart">
+      <h3>Sepet</h3>
+      <div id="cartlines"></div>
+      <div class="cart-total"><span>Genel Toplam</span><span id="ctotal">0,00 ₺</span></div>
+      <div id="hiddenlines"></div>
+      <label>Not:<textarea name="note" rows="2" maxlength="1000"><%= old && old.note ? old.note : '' %></textarea></label>
+      <div style="margin-top:10px"><button class="btn btn-success btn-block" id="sbtn">Sipariş Talebi Gönder</button></div>
+    </aside>
+  </form>
+</div>
+<script>
+  const PARTS = <%- JSON.stringify(products.map(p => ({ id: p.id, name: p.name, code: p.code, price: +p.price || 0, max: +p.max_qty || 0 }))) %>;
+  const OLD = <%- JSON.stringify(old || {}) %>;
+  const CSRF = document.querySelector('input[name=_csrf]').value;
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const part = id => PARTS.find(p => p.id === id);
+  let cart = [], total = 0;
+
+  function render() {
+    const box = $('cartlines');
+    total = 0;
+    box.innerHTML = cart.map(l => {
+      const p = part(l.id); const lt = p.price * l.qty; total += lt;
+      return `<div class="cartline">` +
+        `<div class="cn">${esc((p.code ? p.code + ' - ' : '') + p.name)}<br><small class="muted">${fmt(p.price)} ₺</small></div>` +
+        `<div class="lt">${fmt(lt)} ₺</div>` +
+        `<div><input type="number" min="1" value="${l.qty}" data-qid="${l.id}"></div>` +
+        `<div class="r"><button type="button" class="rm" data-rid="${l.id}">Kaldır</button></div></div>`;
+    }).join('');
+    if (!cart.length) box.innerHTML = '<p class="shop-empty">Sepetiniz boş. Soldan ürün ekleyin.</p>';
+    $('hiddenlines').innerHTML = cart.map(l => `<input type="hidden" name="product_id" value="${l.id}"><input type="hidden" name="qty" value="${l.qty}">`).join('');
+    $('ctotal').textContent = fmt(total) + ' ₺';
+  }
+  function add(id, qty) {
+    const p = part(id); if (!p) return;
+    let l = cart.find(x => x.id === id);
+    if (!l) { l = { id, qty: 0 }; cart.push(l); }
+    l.qty += (qty || 1);
+    if (p.max > 0 && l.qty > p.max) l.qty = p.max;
+    if (l.qty < 1) l.qty = 1;
+    render();
+  }
+  $('pgrid').addEventListener('click', e => {
+    const a = e.target.closest('.add'); if (a) { add(+a.dataset.id, 1); return; }
+    const n = e.target.closest('.notify');
+    if (n) {
+      const body = new URLSearchParams({ product_id: n.dataset.id, _csrf: CSRF });
+      fetch('/bayi/stok-bildirim', { method: 'POST', body }).then(r => r.json()).then(j => {
+        n.textContent = j.ok ? 'Haber Verildi ✓' : 'Kaydedilemedi'; n.disabled = !!j.ok;
+      }).catch(() => {});
+    }
+  });
+  $('cartlines').addEventListener('input', e => {
+    if (e.target.dataset.qid) {
+      const id = +e.target.dataset.qid, p = part(id);
+      let q = Math.floor(+e.target.value) || 1; if (q < 1) q = 1;
+      if (p.max > 0 && q > p.max) q = p.max;
+      const l = cart.find(x => x.id === id); if (l) l.qty = q;
+      render();
+    }
+  });
+  $('cartlines').addEventListener('click', e => {
+    const r = e.target.closest('.rm');
+    if (r) { cart = cart.filter(l => l.id !== +r.dataset.rid); render(); }
+  });
+  function applyFilter() {
+    const q = $('catSearch').value.toLocaleLowerCase('tr').trim();
+    let shown = 0;
+    $('pgrid').querySelectorAll('.pcard').forEach(c => {
+      const ok = !q || (c.dataset.cat || '').includes(q);
+      c.hidden = !ok; if (ok) shown++;
+    });
+    $('filterNote').hidden = false;
+    $('filterNote').textContent = shown + ' ürün listelendi.';
+  }
+  $('catSearch').addEventListener('input', applyFilter);
+  $('sform').addEventListener('submit', e => {
+    if (!cart.length) { e.preventDefault(); alert('Sepete en az bir ürün ve adet ekleyin.'); }
+  });
+  (OLD.lines || []).filter(l => +l[0] > 0).forEach(l => add(+l[0], Math.max(1, Math.floor(+l[1]) || 1)));
+  render();
+</script>
+<%- include('../partials/bayi_foot') %>

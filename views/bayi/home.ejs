@@ -12,4 +12,13 @@
   <text x="70" y="90" font-size="48" fill="#5a6ccf" font-family="Arial" font-weight="700">$</text>
 </svg>
 </div>
+<% if (unread && unread.length) { %>
+<div class="womodal" id="annModal">
+  <div class="wobox">
+    <h3>🔔 Yeni Duyurular</h3>
+    <% unread.forEach(a => { %><div class="ann"><b class="newtag">YENİ</b> <small class="muted"><%= dt(a.created_at) %></small><p class="pre"><%= a.text %></p></div><% }) %>
+    <div class="fbtn"><button class="btn btn-success" onclick="document.getElementById('annModal').hidden=true">Kapat</button></div>
+  </div>
+</div>
+<% } %>
 <%- include('../partials/bayi_foot') %>

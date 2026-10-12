@@ -55,3 +55,11 @@ body.login{align-items:center;justify-content:center}
 .msel{padding-right:30px;cursor:pointer}.msel input[type=text]{cursor:text}
 .caret{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#555;cursor:pointer;font-size:16px;user-select:none}
 .mlist{margin-top:2px}
+.fcard.wide{max-width:none}
+.stok-inline{white-space:nowrap}
+.totbar{margin:14px 0 0 auto;display:table;border:1px solid #e1e4e8;border-radius:6px;background:#f7f8fa;padding:10px 16px;min-width:280px}
+.totbar table{border-collapse:collapse;width:100%}
+.totbar td{padding:5px 8px;border-bottom:1px solid #eef0f3;white-space:nowrap}
+.totbar .r{text-align:right}
+.totbar .grand td{border-bottom:0;border-top:2px solid #e0252f;font-size:15px}
+.totbar small{display:block;margin-top:6px}

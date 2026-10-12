@@ -1,0 +1,12 @@
+<%- include('../partials/bayi_head') %>
+<div class="pc">
+  <h1 class="h5">Stoklarım</h1>
+  <p class="muted">Sipariş talebiniz "Siparişe Dönüştürüldü" durumuna geçtiğinde ürünler bu listeye eklenir.</p>
+  <% if (rows.length) { %>
+  <table class="ptbl striped">
+    <thead class="dark"><tr><th>Kod</th><th>Ürün</th><th>Kategori</th><th class="r">Mevcut Stok</th></tr></thead>
+    <tbody><% rows.forEach(p => { %><tr><td><%= p.code %></td><td><%= p.name %></td><td><%= p.category || '-' %></td><td class="r"><b><%= p.qty %></b></td></tr><% }) %></tbody>
+  </table>
+  <% } else { %><p class="muted">Henüz stok kaydınız bulunmuyor. "Siparişe Dönüştürülmüş" siparişleriniz olduğunda ürünler burada listelenir.</p><% } %>
+</div>
+<%- include('../partials/bayi_foot') %>

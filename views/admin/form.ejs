@@ -82,6 +82,41 @@
     tb.addEventListener('click', e => { if (e.target.classList.contains('rm')) e.target.closest('tr').remove(); });
     tb.addEventListener('change', e => { if (e.target.classList.contains('pp')) fillRow(e.target); });
   </script>
+  <% if (res.table === 'orders') { %>
+  <div class="totbar">
+    <table>
+      <tr><td>Ara Toplam</td><td class="r"><b id="tot-sub">0,00 ₺</b></td></tr>
+      <tr><td>KDV (<%= tax.kdv %>%)</td><td class="r" id="tot-kdv">0,00 ₺</td></tr>
+      <tr><td>ÖTV (<%= tax.otv %>%)</td><td class="r" id="tot-otv">0,00 ₺</td></tr>
+      <tr class="grand"><td>Genel Toplam</td><td class="r"><b id="tot-grand">0,00 ₺</b></td></tr>
+    </table>
+    <small class="muted">Toplamlar yalnızca önizleme içindir; kaydedilmez.</small>
+  </div>
+  <script>
+  (() => {
+    const tb = document.querySelector('#kids tbody');
+    if (!tb) return;
+    const kdv = <%= Number(tax.kdv) || 0 %>, otv = <%= Number(tax.otv) || 0 %>;
+    const fm = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+    const calc = () => {
+      let sub = 0;
+      tb.querySelectorAll('tr').forEach(tr => {
+        const q = parseFloat((tr.querySelector('[data-col="qty"]') || {}).value) || 0;
+        const p = parseFloat((tr.querySelector('[data-col="unit_price"]') || {}).value) || 0;
+        sub += q * p;
+      });
+      const k = sub * kdv / 100, o = sub * (otv > 0 ? otv : 0) / 100, g = sub + k + o;
+      document.getElementById('tot-sub').textContent = fm(sub);
+      document.getElementById('tot-kdv').textContent = fm(k);
+      document.getElementById('tot-otv').textContent = fm(o);
+      document.getElementById('tot-grand').textContent = fm(g);
+    };
+    tb.addEventListener('input', calc);
+    tb.addEventListener('change', calc);
+    calc();
+  })();
+  </script>
+  <% } %>
   <% } %>
   <div class="fbtn"><button class="btn btn-primary">Kaydet</button> <a class="btn" href="/admin/r/<%= res.key %>">Vazgeç</a></div>
 </form>
@@ -134,11 +169,24 @@
   const sel = document.getElementById('f_doc_type');
   if (!sel) return;
   const fields = ['bank', 'cheque_no', 'cheque_type', 'cheque_due'];
+  const kind = document.getElementById('f_kind');
   const toggle = () => {
     const on = sel.value === 'Çek/Senet';
     fields.forEach(n => { const el = document.querySelector('[data-field="' + n + '"]'); if (el) el.hidden = !on; });
+    if (kind) { if (on) kind.value = 'bilgi'; kind.disabled = on; }
   };
   sel.addEventListener('change', toggle);
+  toggle();
+})();
+</script>
+<% } %>
+<% if (res.key === 'products') { %>
+<script>
+(() => {
+  const kind = document.getElementById('f_kind'), box = document.querySelector('[data-field="model_id"]');
+  if (!kind || !box) return;
+  const toggle = () => { box.hidden = kind.value !== 'parca'; };
+  kind.addEventListener('change', toggle);
   toggle();
 })();
 </script>

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit } = require('../db');
+const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit } = require('../db');
 const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears } = require('../lib/core');
 
 const DUMMY = bcrypt.hashSync('x', 10);
@@ -56,9 +56,13 @@ const RES = {
     list: ['created_at', 'text', 'author', 'active'], order: 'created_at DESC, id DESC',
     fields: [A('text', 'Duyuru Metni', { required: true, rows: 8 }), T('author', 'Yayınlayan', { def: 'Satış Sonrası Hizmetler Müdürlüğü' }), C('active')] },
   products: { title: 'Ürünler / Fiyat Listesi', table: 'products', group: 'Bayi Yönetimi',
-    list: ['kind', 'code', 'name', 'category', 'price', 'active'], order: 'id DESC',
+    list: ['kind', 'name', 'category', 'model_id', 'price', 'stock', 'max_qty', 'active'], order: 'id DESC',
     fields: [S('kind', 'Tür', ['arac', 'parca'], { def: 'arac', help: 'arac: toptan fiyat listesi · parca: yedek parça sipariş listesi' }),
-      T('code', 'Kod'), T('name', 'Ürün Adı', { required: true }), { name: 'category', label: 'Kategori', type: 'category' }, N('price', 'Toptan Fiyat (₺)'), C('active')] },
+      T('name', 'Ürün Adı', { required: true }),
+      { name: 'category', label: 'Kategori', type: 'category', required: true },
+      R('model_id', 'Ait Olduğu Araç Modeli', 'models', 'name', { help: 'Tür "yedek parça" ise zorunludur.' }),
+      N('price', 'Toptan Fiyat (₺)'), N('stock', 'Genel Merkez Stok Adedi', { help: 'Siparişe dönüştürüldükçe otomatik azalır.' }),
+      N('max_qty', 'Maksimum Alım Adedi', { help: 'Bayiler bu adedin üzerinde sipariş veremez. Boş/0 bırakılırsa sınırsız.' }), C('active')] },
   warranty: { title: 'Garanti Kayıtları', table: 'warranty_records', group: 'Satış Sonrası',
     list: ['serial_no', 'firm_id', 'model', 'customer', 'invoice_no', 'sale_date', 'warranty_end', 'status'],
     fields: [FIRM, T('serial_no', 'Şase No', { required: true }), T('model', 'Model'), T('customer', 'Müşteri'), T('invoice_no', 'Fatura No', { required: true }),
@@ -113,6 +117,7 @@ const SETTINGS = [
   ['İletişim', [['phone', 'Telefon'], ['email', 'E-posta'], ['branch', 'Şube Adı'], ['address', 'Adres'], ['map_lat', 'Harita Enlem'], ['map_lng', 'Harita Boylam']]],
   ['Sosyal Medya / Bağlantılar', [['facebook', 'Facebook'], ['instagram', 'Instagram'], ['youtube', 'YouTube'], ['eticaret_url', 'E-Ticaret Adresi']]],
   ['Online Ödeme', [['eur_rate', 'EUR Kuru'], ['usd_rate', 'USD Kuru']]],
+  ['Vergi Oranları (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)'], ['otv_rate', 'ÖTV (%)']]],
   ['Diğer', [['footer_note', 'Alt Bilgi Metni']]]
 ];
 
@@ -237,7 +242,8 @@ function loadForm(req, res, id) {
   const catalog = r.children && r.children.kind
     ? db.prepare("SELECT code,name,category,price FROM products WHERE kind=? AND active=1 ORDER BY category, name").all(r.children.kind) : [];
   const categories = db.prepare('SELECT name FROM categories ORDER BY name COLLATE NOCASE').all().map(x => x.name);
-  return { row, refs, multi, kids, catalog, categories, today: new Date().toISOString().slice(0, 10) };
+  const tax = { kdv: numAny(get('kdv_rate')) || 20, otv: numAny(get('otv_rate')) || 0 };
+  return { row, refs, multi, kids, catalog, categories, tax, today: new Date().toISOString().slice(0, 10) };
 }
 
 router.get('/r/:res/new', (req, res, next) => {
@@ -305,6 +311,9 @@ router.post('/r/:res/save', (req, res) => {
       if (r.table === 'warranty_records' && data.sale_date) {
         data.warranty_end = addYears(data.sale_date, 2);
       }
+      if (r.table === 'products' && data.kind === 'parca' && !data.model_id) throw new Error('Yedek parçanın ait olduğu araç modelini seçmelisiniz.');
+      // Çek/Senet hareketleri bakiyeyi etkilemez; "vadesi gelmemiş çekler" kartında görünür.
+      if (r.table === 'account_movements' && data.doc_type === 'Çek/Senet') data.kind = 'bilgi';
       const cols = Object.keys(data);
       tx(() => {
         let rowid = id;
@@ -332,6 +341,8 @@ router.post('/r/:res/save', (req, res) => {
         const t = syncOrderDebit(r.table, r.debit.items, rowid, r.debit.ledger);
         if (t !== null) debitTotal = t;
       }
+      if (r.table === 'orders') syncOrderStock(rowid);
+      if (r.table === 'payments') syncPaymentCredit(rowid);
       if (r.table === 'work_orders' && id) {
         const st = db.prepare('SELECT status FROM work_orders WHERE rowid=?').get(rowid);
         if (rowid && data.status !== undefined) {
@@ -389,12 +400,40 @@ router.post('/kategori-ekle', (req, res) => {
   res.json({ name: row.name });
 });
 
+// ---- Stok Takibi ----
+router.get('/stok', (req, res) => {
+  const products = db.prepare("SELECT id,code,name,category,price,stock FROM products WHERE kind='arac' AND active=1 ORDER BY category,name").all();
+  const firms = db.prepare('SELECT id,code,name FROM firms WHERE active=1 ORDER BY code,name').all();
+  const stock = {};
+  db.prepare('SELECT firm_id,product_id,qty FROM firm_stock').all().forEach(r => { stock[r.firm_id + ':' + r.product_id] = r.qty; });
+  res.render('admin/stok', { title: 'Stok Takibi', products, firms, stock });
+});
+router.post('/stok', (req, res) => {
+  const products = db.prepare("SELECT id FROM products WHERE kind='arac' AND active=1").all().map(p => p.id);
+  const firms = db.prepare('SELECT id FROM firms WHERE active=1').all().map(f => f.id);
+  const b = req.body;
+  tx(() => {
+    const upd = db.prepare('UPDATE products SET stock=? WHERE id=?');
+    for (const pid of products) upd.run(Math.max(0, numAny(b['g_' + pid])), pid);
+    const ups = db.prepare('INSERT INTO firm_stock(firm_id,product_id,qty) VALUES(?,?,?) ON CONFLICT(firm_id,product_id) DO UPDATE SET qty=excluded.qty');
+    const del = db.prepare('DELETE FROM firm_stock WHERE firm_id=? AND product_id=?');
+    for (const fid of firms) for (const pid of products) {
+      const v = numAny(b['f_' + fid + '_' + pid]);
+      if (v > 0) ups.run(fid, pid, v); else del.run(fid, pid);
+    }
+  });
+  flash(req, 'success', 'Stoklar güncellendi.');
+  res.redirect('/admin/stok');
+});
+
 router.post('/r/:res/:id/delete', (req, res) => {
   const id = +req.params.id;
   if (req.r.debit) {
     const o = db.prepare(`SELECT * FROM ${req.r.table} WHERE rowid=?`).get(id);
     for (const m of [o && o.movement_id, o && o.pay_movement_id]) if (m) db.prepare('DELETE FROM account_movements WHERE id=?').run(m);
   }
+  if (req.r.table === 'orders') revertOrderStock(id);
+  if (req.r.table === 'payments') revertPaymentCredit(id);
   db.prepare(`DELETE FROM ${req.r.table} WHERE rowid=?`).run(id);
   flash(req, 'success', 'Silindi.');
   res.redirect('/admin/r/' + req.params.res);

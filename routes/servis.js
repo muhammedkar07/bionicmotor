@@ -7,6 +7,16 @@ const { accountSummary } = require('../lib/account');
 const DUMMY = bcrypt.hashSync('x', 10);
 const page = (res, view, title, extra = {}) => res.render('servis/' + view, { title, ...extra });
 
+function checkMaxQty(lines) {
+  const agg = {};
+  for (const l of lines) agg[l.p.id] = (agg[l.p.id] || 0) + l.qty;
+  for (const l of lines) {
+    const max = +l.p.max_qty || 0;
+    if (max > 0 && agg[l.p.id] > max) return `"${l.p.name}" için en fazla ${max} adet sipariş verebilirsiniz.`;
+  }
+  return null;
+}
+
 router.get('/giris', (req, res) => {
   if (req.session.servis) return res.redirect('/servis');
   res.render('servis/login', { title: 'Servis Girişi' });
@@ -48,7 +58,13 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get('/', (req, res) => page(res, 'home', 'Servis Portalı'));
+router.get('/', (req, res) => {
+  const u = res.locals.su;
+  const unread = u ? db.prepare('SELECT * FROM announcements WHERE active=1 AND (? IS NULL OR created_at > ?) ORDER BY created_at DESC, id DESC')
+    .all(u.ann_seen_at, u.ann_seen_at) : [];
+  if (u) db.prepare("UPDATE dealer_users SET ann_seen_at=datetime('now') WHERE id=?").run(u.id);
+  page(res, 'home', 'Servis Portalı', { unread });
+});
 router.post('/cikis', (req, res) => { regenerate(req, res, 'servis'); res.redirect('/servis/giris'); });
 
 router.get('/hesap-ozeti', (req, res) => {
@@ -107,18 +123,20 @@ router.get('/is-emirlerim', (req,res)=>{
 router.get('/yedek-parca/yeni', (req,res)=>{
   const parts=db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
   const inst=db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
-  page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,old:null});
+  const models=db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();
+  page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,models,old:null});
 });
 router.post('/yedek-parca/yeni', (req,res)=>{
   const b=req.body;
   const ids=[].concat(b.part_id||[]), qtys=[].concat(b.qty||[]);
   const old={lines:ids.map((id,i)=>[+id||'',String(qtys[i]??'').trim()]),note:String(b.note||'').slice(0,1000),pay_method:b.pay_method||'kart',holder:String(b.holder||'').slice(0,80),number:String(b.number||'').trim(),month:b.month||'',year:b.year||'',cvc:String(b.cvc||'').slice(0,4),payer_name:String(b.payer_name||'').slice(0,120),installment_id:b.installment_id||''};
-  const renderNew=()=>{const parts=db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();const inst=db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,old});};
+  const renderNew=()=>{const parts=db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();const inst=db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();const models=db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,models,old});};
   const back=m=>{res.locals.flash={type:'danger',msg:m};renderNew();};
   const firm=req.session.servis.firmId, uid=req.session.servis.userId; if(!firm) return back('Firma bilgisi bulunamadı.');
   const lines=[];
   ids.forEach((id,i)=>{const qty=Math.floor(+qtys[i]); const p=id&&db.prepare("SELECT * FROM products WHERE id=? AND kind='parca' AND active=1").get(+id); if(p&&qty>0&&qty<=10000) lines.push({p,qty});});
   if(!lines.length) return back('Sepete en az bir parça ve adet eklemelisiniz.');
+  const overQty=checkMaxQty(lines); if(overQty) return back(overQty);
   const total=lines.reduce((s,l)=>s+l.qty*l.p.price,0); const method={kart:'Kredi Kartı',nakit:'Nakit',havale:'Havale / EFT'}[b.pay_method];
   if(!method) return back('Ödeme yöntemini seçin.');
   const payer=String(b.payer_name||'').trim().slice(0,120); if(b.pay_method==='havale'&& !payer) return back('Havale / EFT için gönderen hesap ad soyad bilgisini giriniz.');
@@ -130,16 +148,25 @@ router.post('/yedek-parca/yeni', (req,res)=>{
     if(!(month>=1&&month<=12)||year<now.getFullYear()||(year===now.getFullYear()&&month<now.getMonth()+1)) return back('Kartın son kullanma tarihi geçersiz.');
     if(!/^\d{3,4}$/.test(cvc)) return back('CVC geçersiz.'); card={inst,holder,last4:number.slice(-4)};
   }
-  let no; tx(()=>{ no=String(nextNo('spare_orders','no')); let payId=null;
+  let no; tx(()=>{ no=String(nextNo('spare_orders','no'));
+    // Kredi kartı ödemesi başarılı sayılır ve sipariş anında onaylanır; nakit/havale yönetici onayı bekler.
+    const status=card?'Siparişe Dönüştürüldü':'Beklemede';
+    let payId=null;
     if(card){ const commission=Math.round(total*card.inst.rate)/100;
-      payId=db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(uid,firm,'odeme',total,'TL','Yedek Parça Siparişi #'+no,card.inst.label,commission,total+commission,card.holder,card.last4,'Sanal POS Bekliyor').lastInsertRowid;
+      payId=db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(uid,firm,'odeme',total,'TL','Yedek Parça Siparişi #'+no,card.inst.label,commission,total+commission,card.holder,card.last4,'Tahsil Edildi').lastInsertRowid;
     }
-    const oid=db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,note,request_date,pay_method,payment_id,payer_name) VALUES(?,?,?,?,date('now'),?,?,?)").run(firm,uid,no,String(b.note||'').slice(0,1000),method,payId,payer||null).lastInsertRowid;
+    const oid=db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payment_id,payer_name) VALUES(?,?,?,?,?,date('now'),?,?,?)").run(firm,uid,no,status,String(b.note||'').slice(0,1000),method,payId,payer||null).lastInsertRowid;
     const ins=db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)'); lines.forEach(l=>ins.run(oid,l.p.code,l.p.name,l.qty,l.p.price));
     syncOrderDebit('spare_orders','spare_order_items',oid,'parca');
   });
-  flash(req,'success',card?`Ödemeniz alındı ve ${no} numaralı siparişiniz iletildi. (Sanal POS entegrasyonu henüz aktif değil; tahsilat yapılmamıştır.)`:`${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi.`);
+  flash(req,'success',card?`Ödemeniz alındı ve ${no} numaralı siparişiniz onaylandı.`:`${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`);
   res.redirect('/servis/yedek-parca-siparisleri');
+});
+router.post('/stok-bildirim',(req,res)=>{
+  const pid=+req.body.product_id; const p=pid&&db.prepare("SELECT id FROM products WHERE id=? AND active=1").get(pid);
+  const firm=req.session.servis.firmId;
+  if(p&&firm) db.prepare('INSERT OR IGNORE INTO stock_notify(product_id,firm_id,user_id) VALUES(?,?,?)').run(pid,firm,req.session.servis.userId);
+  res.json({ok:!!(p&&firm)});
 });
 router.get('/yedek-parca-siparisleri', (req,res)=>{
   const firm=req.session.servis.firmId; const orders=firm?db.prepare('SELECT * FROM spare_orders WHERE firm_id=? ORDER BY id DESC').all(firm):[];

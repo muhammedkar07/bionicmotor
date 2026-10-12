@@ -49,6 +49,7 @@ app.use((req, res, next) => {
   if (req.session.flash) { delete req.session.flash; req.saveSession(); }
   res.locals.money = core.fmtMoney;
   res.locals.date = core.fmtDate;
+res.locals.dateSlash = core.fmtDateSlash;
   res.locals.dt = core.fmtDateTime;
   res.locals.path = req.path;
   res.locals.files = req.files || [];

@@ -6,9 +6,9 @@
     <label>Şase No:<input name="serial_no" value="<%= old ? old.serial_no : '' %>" required maxlength="40"></label>
     <label>Model:<input name="model" value="<%= old ? old.model : '' %>" maxlength="80"></label>
     <label>Km:<input name="km" value="<%= old ? old.km : '' %>" maxlength="20"></label>
+    <label>Güncel Kilometre Göstergesi (zorunlu görsel):<input type="file" name="image" accept="image/*,.pdf" required></label>
     <label>Açıklama:<textarea name="description" rows="4" required maxlength="3000"><%= old ? old.description : '' %></textarea></label>
-    <label>Görsel (zorunlu):<input type="file" name="image" accept="image/*,.pdf" required></label>
-    <p class="muted">Arıza, hasar veya yapılan işlemi net gösteren görsel ekleyin. Alakasız görselli iş emirleri onaylanmayabilir.</p>
+    <p class="muted">Km alanına yazdığınız değeri gösteren güncel gösterge paneli fotoğrafını ekleyin. Görsel eklemek zorunludur; alakasız görselli iş emirleri onaylanmayabilir.</p>
     <p class="muted">İş emrinin türü (Garanti / Ücretli / Sevkiyat Hasarı) yönetici tarafından belirlenir.</p>
     <div><button class="btn btn-success">İş Emri Oluştur</button></div>
   </form>
