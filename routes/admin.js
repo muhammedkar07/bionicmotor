@@ -2,6 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit } = require('../db');
 const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears } = require('../lib/core');
+const { overallSummary } = require('../lib/account');
 
 const DUMMY = bcrypt.hashSync('x', 10);
 const T = (name, label, extra = {}) => ({ name, label, type: 'text', ...extra });
@@ -228,7 +229,14 @@ router.get('/r/:res', (req, res) => {
   const rows = db.prepare(sql).all(params);
   const firmFilter = !!firmWhere;
   const firms = firmFilter ? db.prepare('SELECT id,name FROM firms ORDER BY name').all() : [];
-  res.render('admin/list', { title: r.title, cols, rows, refs, cell, q, firm: firm || '', firms, firmFilter });
+  let acct, acctLabel;
+  if (r.table === 'account_movements') {
+    acct = overallSummary(firm || null);
+    acctLabel = firm
+      ? 'Seçili bayi: ' + (db.prepare('SELECT name FROM firms WHERE id=?').get(firm) || {}).name
+      : 'Tüm bayiler (' + acct.firms + ')';
+  }
+  res.render('admin/list', { title: r.title, cols, rows, refs, cell, q, firm: firm || '', firms, firmFilter, acct, acctLabel });
 });
 
 function loadForm(req, res, id) {
