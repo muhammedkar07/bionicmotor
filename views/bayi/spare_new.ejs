@@ -47,9 +47,11 @@
       <h3>Sepet</h3>
       <div id="cartlines"></div>
       <div class="cart-total"><span>Genel Toplam</span><span id="ctotal">0,00 ₺</span></div>
+      <p class="muted" id="creditnote" hidden></p>
       <div id="hiddenlines"></div>
 
       <h3>Ödeme Yöntemi</h3>
+      <div class="box" style="margin-top:8px"><strong>Yedek Parça Hesap Bakiyesi</strong><div id="balance"></div><div class="muted">0 ₺'nin altındaki (alacak) tutar sipariş genel toplamından düşülür.</div></div>
       <div class="paym">
         <label><input type="radio" name="pay_method" value="kart" checked> Kredi Kartı</label>
         <label><input type="radio" name="pay_method" value="nakit"> Nakit</label>
@@ -83,6 +85,7 @@
   const INST = <%- JSON.stringify(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
   const PARTS = <%- JSON.stringify(parts.map(p => ({ id: p.id, name: p.name, code: p.code, price: +p.price || 0, max: +p.max_qty || 0 }))) %>;
   const OLD = <%- JSON.stringify(old || {}) %>;
+  const CREDIT = <%- JSON.stringify(Number(credit) || 0) %>;
   const CSRF = document.querySelector('input[name=_csrf]').value;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -111,7 +114,18 @@
     }).join('');
     if (!cart.length) box.innerHTML = '<p class="shop-empty">Sepetiniz boş. Soldan ürün ekleyin.</p>';
     $('hiddenlines').innerHTML = cart.map(l => `<input type="hidden" name="part_id" value="${l.id}"><input type="hidden" name="qty" value="${l.qty}">`).join('');
-    $('ctotal').textContent = fmt(total) + ' ₺';
+    creditApplied = Math.min(CREDIT, total);
+    payable = total - creditApplied;
+    $('ctotal').textContent = fmt(payable) + ' ₺';
+    const note = $('creditnote');
+    if (creditApplied > 0) {
+      note.hidden = false;
+      note.textContent = 'Bakiyenizdeki ' + fmt(creditApplied) + ' ₺ alacak genel toplamdan düşüldü.' +
+        (payable <= 0 ? ' Siparişiniz tamamen bakiyenizden karşılanıyor.' : '');
+    } else {
+      note.hidden = true; note.textContent = '';
+    }
+    $('balance').textContent = CREDIT > 0 ? ('Kullanılabilir alacak: ' + fmt(CREDIT) + ' ₺') : 'Alacak bakiyeniz yok.';
     renderInst();
   }
   function add(id, qty) {
