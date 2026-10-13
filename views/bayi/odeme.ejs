@@ -1,0 +1,10 @@
+<%- include('../partials/bayi_head') %>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/payembed.css">
+<div class="pc">
+  <h1 class="h5">Online Ödeme (<%= bf.name %>)</h1>
+  <div class="payembed">
+    <%- include('../partials/pay_body', { base: base }) %>
+  </div>
+</div>
+<%- include('../partials/bayi_foot') %>

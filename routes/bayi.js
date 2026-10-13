@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo } = require('../db');
 const { flash, throttle, regenerate, luhn, addYears } = require('../lib/core');
 const { accountSummary } = require('../lib/account');
+const pay = require('../lib/pay');
 
 const DUMMY = bcrypt.hashSync('x', 10);
 
@@ -163,6 +164,24 @@ router.get('/hesap-ozeti', (req, res) => {
 router.get('/yedek-parca-ekstre', (req, res) => {
   page(res, 'account', 'Yedek Parça Hesap Ekstresi',
     { a: accountSummary(res.locals.bf.id, 'parca'), heading: 'Yedek Parça Hesap Ekstresi', showCards: false });
+});
+
+router.get('/odeme', (req, res) => {
+  const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
+  page(res, 'odeme', 'Online Ödeme', { inst, base: '/bayi/odeme' });
+});
+router.post('/odeme/ode', (req, res) => {
+  const b = req.body;
+  const ctx = { userId: res.locals.bu.id, firmId: res.locals.bf.id };
+  const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
+  const r = method === 'havale' ? pay.havale(ctx, b) : pay.card(ctx, b);
+  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+  res.redirect('/bayi/odeme');
+});
+router.post('/odeme/talimat', (req, res) => {
+  const r = pay.talimat({ userId: res.locals.bu.id, firmId: res.locals.bf.id }, req.body);
+  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+  res.redirect('/bayi/odeme');
 });
 
 router.get('/duyurular', (req, res) => {

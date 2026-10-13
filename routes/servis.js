@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo } = require('../db');
 const { flash, throttle, regenerate, luhn, addYears, fmtMoney } = require('../lib/core');
 const { accountSummary } = require('../lib/account');
+const pay = require('../lib/pay');
 
 const DUMMY = bcrypt.hashSync('x', 10);
 const page = (res, view, title, extra = {}) => res.render('servis/' + view, { title, ...extra });
@@ -76,6 +77,27 @@ router.get('/yedek-parca-ekstre', (req, res) => {
   const firm = req.session.servis.firmId;
   if (!firm) return res.redirect('/servis');
   res.render('servis/account', { title: 'Yedek Parça Hesap Ekstresi', heading: 'Yedek Parça Hesap Ekstresi', a: accountSummary(firm, 'parca'), showCards: false });
+});
+
+router.get('/odeme', (req, res) => {
+  if (!req.session.servis.firmId) { flash(req, 'danger', 'Firma bilgisi bulunamadı.'); return res.redirect('/servis'); }
+  const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
+  page(res, 'odeme', 'Online Ödeme', { inst, base: '/servis/odeme' });
+});
+router.post('/odeme/ode', (req, res) => {
+  if (!req.session.servis.firmId) { flash(req, 'danger', 'Firma bilgisi bulunamadı.'); return res.redirect('/servis'); }
+  const b = req.body;
+  const ctx = { userId: res.locals.su.id, firmId: req.session.servis.firmId };
+  const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
+  const r = method === 'havale' ? pay.havale(ctx, b) : pay.card(ctx, b);
+  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+  res.redirect('/servis/odeme');
+});
+router.post('/odeme/talimat', (req, res) => {
+  if (!req.session.servis.firmId) { flash(req, 'danger', 'Firma bilgisi bulunamadı.'); return res.redirect('/servis'); }
+  const r = pay.talimat({ userId: res.locals.su.id, firmId: req.session.servis.firmId }, req.body);
+  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+  res.redirect('/servis/odeme');
 });
 
 router.get('/garanti', (req, res) => {

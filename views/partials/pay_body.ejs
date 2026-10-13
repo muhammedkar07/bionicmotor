@@ -1,0 +1,105 @@
+<% const formBase = typeof base === 'undefined' ? '/odeme' : base; %>
+<form method="post" action="<%= formBase %>/ode" id="payform" autocomplete="off">
+<input type="hidden" name="_csrf" value="<%= csrf %>">
+<div class="pw" style="padding-top:18px">
+  <div class="paymethods">
+    <label><input type="radio" name="method" value="kart" checked> Kredi Kartı ile Öde</label>
+    <label><input type="radio" name="method" value="havale"> Havale / EFT</label>
+  </div>
+</div>
+<div class="pw grid3" id="cardgrid">
+  <section>
+    <h2><span class="cico"></span>Ödeme Ekranı</h2>
+    <label>Ödeme Tutarı
+      <div class="amount"><span>💵</span><input id="amount" name="amount" inputmode="decimal" required>
+        <select name="currency" id="cur"><option>TL</option><option>USD</option><option>EUR</option></select></div></label>
+    <label>Ödeme Açıklaması<textarea name="description" rows="6" placeholder="Açıklama giriniz" maxlength="500"></textarea></label>
+  </section>
+  <section>
+    <h2><span class="cico"></span>Kart Bilgileri</h2>
+    <label>Kart Üzerindeki Ad Soyad<input id="holder" name="holder" placeholder="Kart Üzerindeki Ad Soyad" maxlength="80" required></label>
+    <label>Kart Numarası<input id="number" name="number" placeholder="Kart Numarası" inputmode="numeric" maxlength="23" required></label>
+    <div class="exp">
+      <label>Son Kullanma Tarihi
+        <div class="two"><select name="month" id="month" required><option value="">Ay</option><% for (let m=1;m<=12;m++){ %><option value="<%= m %>"><%= String(m).padStart(2,'0') %></option><% } %></select>
+        <select name="year" id="year" required><option value="">Yıl</option><% for (let y=new Date().getFullYear(); y<new Date().getFullYear()+12; y++){ %><option><%= y %></option><% } %></select></div></label>
+      <label>CVC<div class="cvc"><input name="cvc" id="cvc" inputmode="numeric" maxlength="4" required><span class="q" title="Kartın arka yüzündeki 3-4 haneli güvenlik kodu">?</span></div></label>
+    </div>
+  </section>
+  <section>
+    <h2><span class="cico"></span>Kart Önizlemesi</h2>
+    <div class="cardprev" id="prev">
+      <div class="chip"></div>
+      <div class="num" id="pnum">•••• •••• •••• ••••</div>
+      <div class="hold" id="phold">•••• ••••</div><div class="pexp" id="pexp">•• / ••</div>
+    </div>
+    <a href="#taksit" class="btn-dark">Taksit Tablosu›</a>
+  </section>
+</div>
+<div class="pw" id="havalebox" hidden>
+  <section>
+    <h2><span class="cico"></span>Havale / EFT Bilgileri</h2>
+    <p class="havale-uyari">Havale / EFT işlemlerinde açıklama kısmına <b>bayi kodunuzu ve adınızı soyadınızı</b> yazmayı unutmayınız.</p>
+    <label>Ödeme Tutarı
+      <div class="amount"><span>💵</span><input id="amount2" name="amount" inputmode="decimal" required disabled>
+        <select name="currency" id="cur2" disabled><option>TL</option><option>USD</option><option>EUR</option></select></div></label>
+    <label>Ödeme Açıklaması<textarea name="description" id="desc2" rows="4" placeholder="Açıklama giriniz" maxlength="500" disabled></textarea></label>
+    <label>Gönderen Hesap Ad Soyad:<input name="payer_name" id="payer_name" maxlength="120" placeholder="Havale/EFT'yi gönderen hesabın ad soyadı" disabled></label>
+  </section>
+</div>
+<div class="pw grid3 low" id="cardlow">
+  <section class="span2" id="taksit">
+    <h2><span class="cico"></span>Taksit Tablosu</h2>
+    <table class="itbl">
+      <thead><tr><th>SEÇ</th><th>TAKSİT</th><th>KOMİSYON ORANI</th><th>TAKSİT TUTARI</th><th>TOPLAM TUTAR</th></tr></thead>
+      <tbody id="itbody"></tbody>
+    </table>
+  </section>
+  <section>
+    <h2><span class="cico"></span>Ödeme Özeti</h2>
+    <button class="btn-green" type="submit">ÖDEME YAP <span>›</span></button>
+    <button class="btn-orange" type="submit" formaction="<%= formBase %>/talimat" formnovalidate>ÖDEME TALİMATI OLUŞTUR <span>›</span></button>
+    <div class="rates"><b>Döviz Kurları</b>
+      <div><span>EUR</span><span>: <%= String(s.eur_rate).replace('.', ',') %></span></div>
+      <div><span>USD</span><span>: <%= String(s.usd_rate).replace('.', ',') %></span></div></div>
+  </section>
+</div>
+<div class="pw" id="havalebtn" hidden style="padding-top:16px">
+  <button class="btn-green" type="submit">HAVALE / EFT BİLDİRİMİ GÖNDER <span>›</span></button>
+</div>
+</form>
+<script>
+  const INST = <%- JSON.stringify(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
+  const $ = id => document.getElementById(id);
+  const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const parse = v => parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0;
+  function renderInst() {
+    const a = parse($('amount').value), cur = $('cur').value;
+    const checked = (document.querySelector('input[name=installment_id]:checked') || {}).value || INST[0]?.id;
+    $('itbody').innerHTML = INST.map(i => {
+      const total = a + a * i.rate / 100;
+      return `<tr><td><input type="radio" name="installment_id" value="${i.id}" ${i.id == checked ? 'checked' : ''}></td>
+        <td>${i.label}</td><td>%${fmt(i.rate)}</td><td>${fmt(total / i.count)} ${cur}</td><td>${fmt(total)} ${cur}</td></tr>`;
+    }).join('');
+  }
+  ['amount', 'cur'].forEach(i => $(i).addEventListener('input', renderInst));
+  $('number').addEventListener('input', e => {
+    const d = e.target.value.replace(/\D/g, '').slice(0, 19);
+    e.target.value = d.replace(/(.{4})/g, '$1 ').trim();
+    const p = (d + '•'.repeat(16)).slice(0, 16);
+    $('pnum').textContent = p.replace(/(.{4})/g, '$1 ').trim();
+  });
+  $('holder').addEventListener('input', e => $('phold').textContent = e.target.value.toUpperCase() || '•••• ••••');
+  const upExp = () => $('pexp').textContent = ($('month').value.padStart(2, '0') || '••') + ' / ' + ($('year').value.slice(2) || '••');
+  $('month').onchange = $('year').onchange = upExp;
+  function applyMethod() {
+    const havale = document.querySelector('input[name=method]:checked').value === 'havale';
+    $('cardgrid').hidden = havale; $('cardlow').hidden = havale; $('havalebox').hidden = !havale; $('havalebtn').hidden = !havale;
+    ['holder', 'number', 'month', 'year', 'cvc'].forEach(id => { const el = $(id); if (el) el.disabled = havale; });
+    $('amount2').disabled = !havale; $('cur2').disabled = !havale; $('desc2').disabled = !havale; $('payer_name').disabled = !havale;
+    $('amount2').required = havale; $('payer_name').required = havale;
+    $('amount').required = !havale;
+  }
+  document.querySelectorAll('input[name=method]').forEach(r => r.onchange = applyMethod);
+  renderInst(); applyMethod();
+</script>

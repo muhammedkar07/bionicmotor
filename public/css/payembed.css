@@ -1,0 +1,45 @@
+/* Online ödeme formunun panel (bayi/servis) içine gömülmüş hali - pay.css'in .payembed ile kapsanmış sürümü */
+.payembed{font-family:'Raleway',Arial,sans-serif;font-size:13px;color:#333}
+.payembed *{box-sizing:border-box}
+.payembed a{color:inherit;text-decoration:none}
+.payembed .pw{max-width:1100px;margin:0 auto;padding:0 15px}
+.payembed .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;padding-top:28px}
+.payembed .grid3 .span2{grid-column:span 2}
+.payembed .low{padding-top:30px;border-top:0}
+.payembed h2{color:#2fa84f;font-weight:400;font-size:26px;margin:0 0 20px;display:flex;align-items:center;gap:10px;padding-bottom:6px;position:relative}
+.payembed h2:after{content:'';position:absolute;left:46px;bottom:0;width:48px;height:2px;background:#ccc}
+.payembed .cico{width:40px;height:30px;background:#2fa84f;border-radius:3px;display:inline-block;position:relative}
+.payembed .cico:before{content:'';position:absolute;left:0;right:0;top:7px;height:5px;background:#fff}
+.payembed label{display:block;margin-bottom:14px}
+.payembed input,.payembed select,.payembed textarea{display:block;width:100%;margin-top:4px;padding:8px 10px;border:1px solid #ccc;background:#fff;font:inherit;border-radius:2px}
+.payembed .amount{display:flex;border:1px solid #ccc;background:#fff;margin-top:4px;align-items:center}
+.payembed .amount span{padding:0 10px;color:#2fa84f}
+.payembed .amount input{border:0;margin:0}
+.payembed .amount select{border:0;width:80px;margin:0;color:#2fa84f}
+.payembed .exp{display:grid;grid-template-columns:2fr 1fr;gap:20px}
+.payembed .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.payembed .cvc{position:relative}
+.payembed .q{position:absolute;right:-10px;top:14px;background:#2fa84f;color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;font-weight:700;font-size:12px}
+.payembed .cardprev{background:#ddd;border-radius:10px;height:190px;padding:22px 26px;position:relative;color:#999;font-size:14px}
+.payembed .chip{width:46px;height:30px;background:#eee;border-radius:5px;margin-bottom:26px}
+.payembed .num{letter-spacing:3px;font-size:16px;margin-bottom:20px}
+.payembed .hold{display:inline-block}
+.payembed .pexp{position:absolute;right:26px;bottom:24px}
+.payembed .btn-dark{display:block;width:max-content;margin:34px 0 0 auto;background:#222;color:#fff;padding:9px 12px}
+.payembed .itbl{width:100%;border-collapse:collapse;background:#fff;border:1px solid #ddd}
+.payembed .itbl th{color:#e9692c;text-align:left;padding:14px;font-size:12px;border:1px solid #ddd}
+.payembed .itbl td{padding:12px 14px;border:1px solid #ddd}
+.payembed .itbl input{display:inline;width:auto;margin:0}
+.payembed .btn-green,.payembed .btn-orange{display:flex;justify-content:space-between;width:100%;border:0;color:#fff;padding:13px 16px;font:inherit;font-size:15px;cursor:pointer;margin-bottom:18px;border-radius:2px}
+.payembed .btn-green{background:#3fb34f;margin-bottom:18px}
+.payembed .btn-green:hover{background:#2fa84f}
+.payembed .btn-orange{background:#f3a622}
+.payembed .btn-orange:hover{background:#e0961a}
+.payembed .rates{background:#fff;border:1px solid #ccc;padding:14px 18px}
+.payembed .rates div{display:flex;gap:30px;border-top:1px solid #eee;padding:6px 0;margin-top:6px}
+.payembed .rates div span:first-child{width:50px}
+.payembed .paymethods{display:flex;gap:30px;align-items:center}
+.payembed .paymethods label{display:inline-flex;gap:8px;align-items:center;font-weight:600}
+.payembed .paymethods input{width:auto;display:inline;margin:0}
+.payembed .havale-uyari{background:#fff7e6;border:1px solid #f0c36d;color:#8a5a00;padding:10px 12px;border-radius:6px}
+@media(max-width:900px){.payembed .grid3{grid-template-columns:1fr}.payembed .grid3 .span2{grid-column:auto}}
