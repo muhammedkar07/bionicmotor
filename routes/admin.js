@@ -19,6 +19,7 @@ const FIRM = R('firm_id', 'Firma', 'firms', 'name', { required: true });
 const DELIVERY = ['İleri Vadeli Teslim', 'Peşin Teslim', 'Fabrikadan Teslim', 'Kargo ile Gönderim', 'Nakliye ile Sevk'];
 const PAYMETHOD = ['Kredi Kartı', 'Nakit', 'Havale / EFT'];
 const PRODUCT = (name, label, kind) => ({ name, label, type: 'product', kind });
+const MDL = (name, label, extra = {}) => ({ name, label, type: 'model', ...extra });
 
 const RES = {
   firms: { title: 'Firmalar (Bayiler)', table: 'firms', group: 'Bayi Yönetimi', order: 'id DESC',
@@ -67,7 +68,7 @@ const RES = {
       N('max_qty', 'Maksimum Alım Adedi', { help: 'Bayiler bu adedin üzerinde sipariş veremez. Boş/0 bırakılırsa sınırsız.' }), C('active')] },
   warranty: { title: 'Garanti Kayıtları', table: 'warranty_records', group: 'Satış Sonrası',
     list: ['serial_no', 'firm_id', 'model', 'customer', 'invoice_no', 'sale_date', 'warranty_end', 'status'],
-    fields: [FIRM, T('serial_no', 'Şase No', { required: true }), T('model', 'Model'), T('customer', 'Müşteri'), T('invoice_no', 'Fatura No', { required: true }),
+    fields: [FIRM, T('serial_no', 'Şase No', { required: true }), MDL('model', 'Model', { required: true }), T('customer', 'Müşteri'), T('invoice_no', 'Fatura No', { required: true }),
       D('sale_date', 'Satış Tarihi', { required: true, today: true }), RO('warranty_end', 'Garanti Bitiş'), T('status', 'Durum', { def: 'Aktif' })] },
   workorders: { title: 'İş Emirleri', table: 'work_orders', group: 'Satış Sonrası',
     list: ['created_at', 'no', 'firm_id', 'serial_no', 'type', 'status'],
@@ -151,6 +152,7 @@ router.use((req, res, next) => {
   res.locals.res = null;
   res.locals.path = req.path;
   res.locals.badges = {
+    orders: db.prepare("SELECT COUNT(*) c FROM orders WHERE status='Beklemede'").get().c,
     messages: db.prepare('SELECT COUNT(*) c FROM messages WHERE is_read=0').get().c,
     applications: db.prepare("SELECT COUNT(*) c FROM applications WHERE status='Yeni'").get().c,
     workorders: db.prepare("SELECT COUNT(*) c FROM work_orders WHERE status='Beklemede'").get().c,
@@ -253,8 +255,9 @@ function loadForm(req, res, id) {
   const catalog = r.children && r.children.kind
     ? db.prepare("SELECT code,name,category,price FROM products WHERE kind=? AND active=1 ORDER BY category, name").all(r.children.kind) : [];
   const categories = db.prepare('SELECT name FROM categories ORDER BY name COLLATE NOCASE').all().map(x => x.name);
+  const models = db.prepare('SELECT name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all().map(x => x.name);
   const tax = { kdv: numAny(get('kdv_rate')) || 20 };
-  return { row, refs, multi, kids, catalog, categories, tax, today: new Date().toISOString().slice(0, 10) };
+  return { row, refs, multi, kids, catalog, categories, models, tax, today: new Date().toISOString().slice(0, 10) };
 }
 
 router.get('/r/:res/new', (req, res, next) => {

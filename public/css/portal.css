@@ -47,8 +47,11 @@ hr{border:0;border-top:1px solid #dee2e6;margin:30px 0 40px}
 .alert-success{background:#d1e7dd;border-color:#badbcc;color:#0f5132}
 .alert-danger{background:#f8d7da;border-color:#f1aeb5;color:#842029}
 .stack label{display:block;margin-bottom:18px;font-weight:400}
-.stack input,.stack select,.stack textarea,.inline-form input{display:block;width:100%;padding:8px 12px;margin-top:6px;border:1px solid #ced4da;border-radius:4px;font:inherit;background:#fff}
-.inline-form{display:flex;gap:8px;margin-bottom:16px;max-width:420px}.inline-form input{margin:0}
+.stack input,.stack select,.stack textarea,.inline-form input,.inline-form select,.spare-filter input,.spare-filter select{display:block;width:100%;padding:8px 12px;margin-top:6px;border:1px solid #ced4da;border-radius:4px;font:inherit;background:#fff}
+.inline-form{display:flex;gap:8px;margin-bottom:16px;max-width:420px}.inline-form input,.inline-form select{margin:0}
+.spare-filter{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;border:1px solid #dee2e6;border-radius:8px;background:#f8f9fa}
+.spare-filter label{flex:1;min-width:200px;margin:0;font-weight:400}
+.spare-filter select{cursor:pointer}
 .stack input.tint{background:#e8f0fe;height:44px}
 .row-btn{display:flex;gap:16px}
 .login-box{max-width:430px;margin:60px auto}

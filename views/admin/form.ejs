@@ -30,6 +30,7 @@
         <% if (f.type === 'textarea') { %><textarea id="f_<%= f.name %>" name="<%= f.name %>" rows="<%= f.rows || 4 %>"><%= v %></textarea>
         <% } else if (f.type === 'select') { %><% const legacy = row && v != null && v !== '' && !f.options.includes(v); %><select id="f_<%= f.name %>" name="<%= f.name %>"><% if (legacy) { %><option value="<%= v %>" selected><%= v %></option><% } %><% f.options.forEach(o => { %><option <%= (!legacy && (v||f.def)===o) ? 'selected' : '' %>><%= o %></option><% }) %></select>
         <% } else if (f.type === 'ref') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">Seçiniz</option><% (refs[f.name]||[]).forEach(o => { %><option value="<%= o.id %>" <%= v===o.id?'selected':'' %>><%= o.label %></option><% }) %></select>
+        <% } else if (f.type === 'model') { %><% const legacy = v && !models.includes(v); %><select id="f_<%= f.name %>" name="<%= f.name %>" <%= f.required ? 'required' : '' %>><option value="">Seçiniz</option><% if (legacy) { %><option value="<%= v %>" selected><%= v %></option><% } %><% models.forEach(m => { %><option <%= (!legacy && v===m) ? 'selected' : '' %>><%= m %></option><% }) %></select>
         <% } else if (f.type === 'category') { %>
           <div class="catrow">
             <select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">Seçiniz</option>
@@ -104,6 +105,7 @@
   <div class="totbar">
     <table>
       <tr><td>Ara Toplam (KDV Hariç)</td><td class="r"><b id="tot-sub">0,00 ₺</b></td></tr>
+      <tr><td>Toplam İndirim</td><td class="r" id="tot-disc">0,00 ₺</td></tr>
       <tr><td>KDV (<%= tax.kdv %>%)</td><td class="r" id="tot-kdv">0,00 ₺</td></tr>
       <tr class="grand"><td>Genel Toplam</td><td class="r"><b id="tot-grand">0,00 ₺</b></td></tr>
     </table>
@@ -116,15 +118,17 @@
     const kdv = <%= Number(tax.kdv) || 0 %>;
     const fm = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
     const calc = () => {
-      let gross = 0;
+      let gross = 0, disc = 0;
       tb.querySelectorAll('tr').forEach(tr => {
         const q = parseFloat((tr.querySelector('[data-col="qty"]') || {}).value) || 0;
         const p = parseFloat((tr.querySelector('[data-col="unit_price"]') || {}).value) || 0;
-        const d = parseFloat((tr.querySelector('[data-col=discount_pct]') || {}).value) || 0;
-        gross += q * p * (1 - Math.min(Math.max(d, 0), 100) / 100);
+        const d = Math.min(Math.max(parseFloat((tr.querySelector('[data-col=discount_pct]') || {}).value) || 0, 0), 100);
+        disc += q * p * d / 100;
+        gross += q * p * (1 - d / 100);
       });
       const net = gross / (1 + kdv / 100), k = gross - net, g = gross;
       document.getElementById('tot-sub').textContent = fm(net);
+      document.getElementById('tot-disc').textContent = fm(disc);
       document.getElementById('tot-kdv').textContent = fm(k);
       document.getElementById('tot-grand').textContent = fm(g);
     };

@@ -1,14 +1,14 @@
 <%- include('../partials/bayi_head') %>
 <div class="pc">
   <h1 class="h5">Yedek Parça Sipariş Oluştur</h1>
-  <div class="inline-form" style="max-width:none">
-    <label style="flex:1">Motor Modeli
+  <div class="spare-filter">
+    <label>Motor Modeli
       <select id="modelSel"><option value="">Tüm Modeller</option>
         <% models.forEach(m => { %><option value="<%= m.id %>"><%= m.name %></option><% }) %>
       </select></label>
-    <button type="button" class="btn btn-secondary btn-sm" id="listele" style="align-self:center;margin-top:22px">Listele</button>
-    <label style="flex:1">Kategori Ara
+    <label>Kategori Ara
       <input id="catSearch" placeholder="örn. Fren, Motor, Gövde..." maxlength="80"></label>
+    <button type="button" class="btn btn-secondary" id="listele">Listele</button>
   </div>
   <p class="muted" id="filterNote" hidden></p>
 
