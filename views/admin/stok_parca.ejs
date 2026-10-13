@@ -1,0 +1,29 @@
+<%- include('../partials/admin_head') %>
+<h1>Yedek Parça Stok Takibi</h1>
+<p class="muted">Yedek parça siparişlerinde stok düşümü yapılmıyor; buradan genel merkez ve bayi bazlı stokları güncelleyebilirsiniz.</p>
+<form method="post" action="/admin/stok-parca" class="fcard wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="tw">
+    <table class="tbl">
+      <thead><tr>
+        <th>Parça</th>
+        <th>Genel Merkez Stok</th>
+        <% firms.forEach(f => { %><th><%= f.code %> <%= f.name %></th><% }) %>
+      </tr></thead>
+      <tbody>
+      <% products.forEach(p => { %>
+        <tr>
+          <td><b><%= p.name %></b><br><small class="muted"><%= p.code %> · <%= p.category || '-' %><% if (p.model_id) { %> · Model ID:<%= p.model_id %><% } %></small></td>
+          <td><input type="number" step="any" min="0" name="g_<%= p.id %>" value="<%= p.stock %>"></td>
+          <% firms.forEach(f => { const v = stock[f.id + ':' + p.id]; %>
+            <td><input type="number" step="any" min="0" name="f_<%= f.id %>_<%= p.id %>" value="<%= v === undefined ? '' : v %>"></td>
+          <% }) %>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% if (!products.length) { %><p class="muted">Takip edilecek yedek parça yok. Önce "Ürünler / Fiyat Listesi" sayfasından parça ekleyin.</p><% } %>
+  <div class="fbtn"><button class="btn btn-primary">Stokları Kaydet</button> <a class="btn" href="/admin">Vazgeç</a></div>
+</form>
+<%- include('../partials/admin_foot') %>

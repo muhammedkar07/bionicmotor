@@ -422,7 +422,7 @@ router.get('/stok', (req, res) => {
   const firms = db.prepare('SELECT id,code,name FROM firms WHERE active=1 ORDER BY code,name').all();
   const stock = {};
   db.prepare('SELECT firm_id,product_id,qty FROM firm_stock').all().forEach(r => { stock[r.firm_id + ':' + r.product_id] = r.qty; });
-  res.render('admin/stok', { title: 'Stok Takibi', products, firms, stock });
+  res.render('admin/stok', { title: 'Araç Stok Takibi', products, firms, stock });
 });
 router.post('/stok', (req, res) => {
   const products = db.prepare("SELECT id FROM products WHERE kind='arac' AND active=1").all().map(p => p.id);
@@ -438,8 +438,32 @@ router.post('/stok', (req, res) => {
       if (v > 0) ups.run(fid, pid, v); else del.run(fid, pid);
     }
   });
-  flash(req, 'success', 'Stoklar güncellendi.');
+  flash(req, 'success', 'Araç stokları güncellendi.');
   res.redirect('/admin/stok');
+});
+router.get('/stok-parca', (req, res) => {
+  const products = db.prepare("SELECT id,code,name,category,model_id,price,stock FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
+  const firms = db.prepare('SELECT id,code,name FROM firms WHERE active=1 ORDER BY code,name').all();
+  const stock = {};
+  db.prepare('SELECT firm_id,product_id,qty FROM firm_stock').all().forEach(r => { stock[r.firm_id + ':' + r.product_id] = r.qty; });
+  res.render('admin/stok_parca', { title: 'Yedek Parça Stok Takibi', products, firms, stock });
+});
+router.post('/stok-parca', (req, res) => {
+  const products = db.prepare("SELECT id FROM products WHERE kind='parca' AND active=1").all().map(p => p.id);
+  const firms = db.prepare('SELECT id FROM firms WHERE active=1').all().map(f => f.id);
+  const b = req.body;
+  tx(() => {
+    const upd = db.prepare('UPDATE products SET stock=? WHERE id=?');
+    for (const pid of products) upd.run(Math.max(0, numAny(b['g_' + pid])), pid);
+    const ups = db.prepare('INSERT INTO firm_stock(firm_id,product_id,qty) VALUES(?,?,?) ON CONFLICT(firm_id,product_id) DO UPDATE SET qty=excluded.qty');
+    const del = db.prepare('DELETE FROM firm_stock WHERE firm_id=? AND product_id=?');
+    for (const fid of firms) for (const pid of products) {
+      const v = numAny(b['f_' + fid + '_' + pid]);
+      if (v > 0) ups.run(fid, pid, v); else del.run(fid, pid);
+    }
+  });
+  flash(req, 'success', 'Yedek parça stokları güncellendi.');
+  res.redirect('/admin/stok-parca');
 });
 
 router.post('/r/:res/:id/delete', (req, res) => {
