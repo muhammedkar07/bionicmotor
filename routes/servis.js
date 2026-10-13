@@ -134,8 +134,8 @@ router.post('/garanti/yeni', (req, res) => {
     wrid = db.prepare('INSERT INTO warranty_records(firm_id,serial_no,model,customer,sale_date,warranty_end,status,invoice_no,setup_fee) VALUES(?,?,?,?,?,?,?,?,?)')
       .run(firm,serial,m.name,clip(b.customer,120),saleDate,warrantyEnd,'Aktif',invoice,fee).lastInsertRowid;
     if(fee>0){
-      const md = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,'parca',date('now'),?,?,?,?,0)")
-        .run(firm,'parca','GR-'+wrid,'Garanti Başlangıç Bedeli','alacak',fee).lastInsertRowid;
+      const md = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,'parca',date('now'),?,?,?,?,0)")
+        .run(firm,'GR-'+wrid,'Garanti Başlangıç Bedeli','alacak',fee).lastInsertRowid;
       db.prepare('UPDATE warranty_records SET setup_movement_id=? WHERE rowid=?').run(md,wrid);
     }
   });

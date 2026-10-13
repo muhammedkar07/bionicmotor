@@ -12,6 +12,8 @@ app.disable('x-powered-by');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
+// Statik varlıkların tarayıcı önbelleğini her sunucu başlangıcında tazeler.
+const ASSET_V = Date.now().toString(36);
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -53,6 +55,7 @@ app.use((req, res, next) => {
   res.locals.date = core.fmtDate;
 res.locals.dateSlash = core.fmtDateSlash;
   res.locals.dt = core.fmtDateTime;
+  res.locals.v = ASSET_V;
   res.locals.path = req.path;
   res.locals.files = req.files || [];
   next();
