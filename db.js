@@ -210,12 +210,13 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
   // tutarı sabit kalır; nakit/havale ise sipariş onaylandığında alacak yazılır.
   if (hasPay) {
     let payAmount = null, payType = null;
+    const applied = Math.max(0, +o.balance_applied || 0);
     if (o.payment_id) {
       const pay = db.prepare('SELECT amount FROM payments WHERE id=?').get(o.payment_id);
-      payAmount = pay ? pay.amount : total;
+      payAmount = pay ? pay.amount : Math.max(0, total - applied);
       payType = 'Kredi Kartı Fişi';
     } else if (['Kredi Kartı', 'Nakit', 'Havale / EFT'].includes(o.pay_method)) {
-      payAmount = total;
+      payAmount = Math.max(0, total - applied);
       payType = o.pay_method;
     }
     if (payAmount > 0) {
