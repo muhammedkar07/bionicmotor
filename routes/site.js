@@ -1,10 +1,31 @@
 const router = require('express').Router();
 const { db } = require('../db');
-const { flash, throttle } = require('../lib/core');
+const { flash, throttle, publicOrigin } = require('../lib/core');
 const { clean } = require('../lib/sanitize');
 
 const clip = (v, n) => String(v || '').trim().slice(0, n);
 const render = (res, view, title, active, extra = {}) => res.render(view, { title, active, ...extra });
+
+// Arama motorları: robots.txt + sitemap.xml
+router.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(
+    'User-agent: *\nAllow: /\n' +
+    'Disallow: /admin\nDisallow: /bayi\nDisallow: /servis\nDisallow: /odeme\n' +
+    'Sitemap: ' + publicOrigin(req) + '/sitemap.xml\n'
+  );
+});
+
+router.get('/sitemap.xml', (req, res) => {
+  const origin = publicOrigin(req);
+  const staticPaths = ['/', '/modeller', '/satis-ve-servis', '/destek', '/iletisim', '/bayilik-basvurusu', '/perakende-fiyat-listesi'];
+  const pages = db.prepare('SELECT slug FROM pages').all().map(p => '/sayfa/' + p.slug);
+  const urls = staticPaths.concat(pages);
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    urls.map(u => '  <url><loc>' + origin + u + '</loc></url>').join('\n') +
+    '\n</urlset>';
+  res.type('application/xml').send(xml);
+});
 
 router.get('/', (req, res) => {
   const slides = db.prepare('SELECT * FROM slides WHERE active=1 ORDER BY sort,id').all();

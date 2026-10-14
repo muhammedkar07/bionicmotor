@@ -4,6 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %> | <%= s.brand_1 %><%= s.brand_2 %></title>
+  <%
+    const siteName = (((s.brand_1 || '') + (s.brand_2 || '')).trim()) || 'Bionic Motor';
+    const metaDesc = (s.meta_description && String(s.meta_description).trim()) ||
+      (siteName + ' — ' + (s.company || '') + ' yetkili satış ve servis noktaları, güncel modeller ve kampanyalar.').trim();
+    const canonical = origin + path;
+    const ogImage = origin + (s.logo_image || '/static/img/bionic-logo.png');
+  %>
+  <meta name="description" content="<%= metaDesc %>">
+  <link rel="canonical" href="<%= canonical %>">
+  <meta property="og:site_name" content="<%= siteName %>">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="<%= title %> | <%= siteName %>">
+  <meta property="og:description" content="<%= metaDesc %>">
+  <meta property="og:url" content="<%= canonical %>">
+  <meta property="og:image" content="<%= ogImage %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= title %> | <%= siteName %>">
+  <meta name="twitter:description" content="<%= metaDesc %>">
+  <meta name="twitter:image" content="<%= ogImage %>">
+  <script type="application/ld+json">
+  <%- JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: siteName, url: origin, logo: ogImage, telephone: s.phone || undefined, email: s.email || undefined, address: { '@type': 'PostalAddress', streetAddress: s.address || undefined, addressLocality: s.branch || undefined } }).replace(/</g, '\\u003c') %>
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="/static/js/theme.js?v=<%= v %>"></script>
@@ -52,3 +74,5 @@
     </div>
   </div>
 </header>
+<a class="skip" href="#main">İçeriğe geç</a>
+<main id="main">

@@ -96,6 +96,7 @@ app.use((req, res, next) => {
   res.locals.dt = core.fmtDateTime;
   res.locals.v = ASSET_V;
   res.locals.path = req.path;
+  res.locals.origin = process.env.PUBLIC_URL || (req.protocol + '://' + req.get('host'));
   res.locals.files = req.files || [];
   // Güvenli JSON seri  üretici (script bağlamı için < vektörünü \u003c olarak kaçar)
   res.locals.j = (obj) => {

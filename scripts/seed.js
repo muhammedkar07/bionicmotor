@@ -31,6 +31,7 @@ function ensureSeed() {
       address: 'Merkez Mahallesi 52039 Sokak No:17/A Akdeniz / MERSİN',
       map_lat: '36.8000', map_lng: '34.6333',
       facebook: '#', instagram: '#', youtube: '#', eticaret_url: '#',
+      meta_description: 'Bionic Motor — Mersin merkezli motosiklet ve scooter markası. Güncel modeller, yetkili bayi ve servis noktaları, online ödeme ve kampanyalar.',
       eur_rate: '55.1724', usd_rate: '49.2714',
       footer_note: '© Tüm hakları saklıdır.'
     };

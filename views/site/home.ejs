@@ -25,9 +25,9 @@
   <div class="stage">
     <span class="tagtop"><%= m0 ? 'Öne Çıkan' : 'Yeni Sezon' %></span>
     <% if (hero && hero.image) { %>
-      <img class="stage-img" src="<%= hero.image %>" alt="<%= hero.title %>">
+      <img class="stage-img" src="<%= hero.image %>" alt="<%= hero.title %>" decoding="async">
     <% } else if (m0 && m0.image) { %>
-      <img class="stage-img" src="<%= m0.image %>" alt="<%= m0.name %>">
+      <img class="stage-img" src="<%= m0.image %>" alt="<%= m0.name %>" decoding="async">
     <% } else { %>
       <%- scooter %>
     <% } %>
@@ -57,7 +57,7 @@
   <div class="cards">
     <% extraSlides.forEach(sl => { %>
     <a class="model-card" href="<%= sl.link || '/modeller' %>">
-      <div class="model-img"><% if (sl.image) { %><img src="<%= sl.image %>" alt="<%= sl.title %>"><% } else { %><span style="font-size:20px"><%= sl.title %></span><% } %></div>
+      <div class="model-img"><% if (sl.image) { %><img src="<%= sl.image %>" alt="<%= sl.title %>" loading="lazy" decoding="async"><% } else { %><span style="font-size:20px"><%= sl.title %></span><% } %></div>
       <div class="model-body">
         <h3><%= sl.title %></h3>
         <p><%= sl.subtitle || '' %></p>
@@ -79,7 +79,7 @@
   <div class="cards">
     <% models.slice(0, 6).forEach(m => { %>
     <a class="model-card" href="/modeller">
-      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>"><% } else { %><%- scooter %><% } %></div>
+      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async"><% } else { %><%- scooter %><% } %></div>
       <div class="model-body">
         <h3><%= m.name %></h3>
         <p><%= m.category || '' %><%= m.cc ? ' · ' + m.cc : '' %></p>

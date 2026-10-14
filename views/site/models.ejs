@@ -4,7 +4,7 @@
   <div class="cards">
     <% models.forEach(m => { %>
     <div class="model-card">
-      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>"><% } else { %><span><%= m.name %></span><% } %></div>
+      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async"><% } else { %><span><%= m.name %></span><% } %></div>
       <h3><%= m.name %></h3>
       <p><%= m.description %></p>
       <ul class="specs">

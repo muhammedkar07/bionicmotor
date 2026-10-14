@@ -135,6 +135,7 @@ const SETTINGS = [
   ['Online Ödeme', [['eur_rate', 'EUR Kuru'], ['usd_rate', 'USD Kuru']]],
   ['Vergi Oranı (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)']]],
   ['Diğer', [['footer_note', 'Alt Bilgi Metni']]],
+  ['SEO', [['meta_description', 'Site Açıklaması (meta description, ~150 karakter)']]],
   ['Banka Bilgileri', [['bank_info_image', 'Banka Hesap Bilgileri Görseli', 'image']]]
 ];
 
