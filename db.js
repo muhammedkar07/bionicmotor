@@ -258,14 +258,16 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
 }
 // Sipariş 'Siparişe Dönüştürüldü' olunca genel merkez stoğundan düşer, bayinin stoğuna eklenir.
 // Önceki etki tersine çevrilir, sonra güncel satırlara göre yeniden uygulanır (satır/adet değişiklikleri tutarlı).
+// Stok yeterli değilse HATA verilir; çağıran transaction geri alınır (sessizce negatife düşürülmez).
 function syncOrderStock(orderId) {
   const o = db.prepare('SELECT * FROM orders WHERE rowid=?').get(orderId);
   if (!o) return;
   const converted = o.status === STATUS.CONVERTED;
-  const stmt = db.prepare('SELECT * FROM order_stock_snap WHERE order_id=?');
-  for (const s of stmt.all(orderId)) {
-    db.prepare('UPDATE products SET stock=MAX(0, COALESCE(stock,0)+?) WHERE id=?').run(s.qty, s.product_id);
-    db.prepare('UPDATE firm_stock SET qty=MAX(0, qty-?) WHERE firm_id=? AND product_id=?').run(s.qty, s.firm_id, s.product_id);
+  // Önceki etkiyi tersine çevir. Stok değerleri olduğu gibi geri alınır; MAX(0, ...) ile
+  // olası tutarsızlıklar gizlenmez.
+  for (const s of db.prepare('SELECT * FROM order_stock_snap WHERE order_id=?').all(orderId)) {
+    db.prepare('UPDATE products SET stock=COALESCE(stock,0)+? WHERE id=?').run(s.qty, s.product_id);
+    db.prepare('UPDATE firm_stock SET qty=qty-? WHERE firm_id=? AND product_id=?').run(s.qty, s.firm_id, s.product_id);
   }
   db.prepare('DELETE FROM order_stock_snap WHERE order_id=?').run(orderId);
   if (!converted) return;
@@ -274,11 +276,19 @@ function syncOrderStock(orderId) {
     const q = +i.qty;
     if (q > 0 && i.product_name) agg[i.product_name] = (agg[i.product_name] || 0) + q;
   }
+  // Önce stok yeterliliğini doğrula; yetmeyen ürün varsa işlemi reddet.
+  for (const [name, qty] of Object.entries(agg)) {
+    const p = db.prepare('SELECT id,stock FROM products WHERE name=? AND active=1').get(name);
+    if (!p) continue;
+    if ((+p.stock || 0) < qty) {
+      throw new Error(`Stok yetersiz: "${name}" için ${qty} adet gerekiyor, mevcut ${+p.stock || 0}. Sipariş onaylanmadı.`);
+    }
+  }
   const apply = db.prepare('INSERT INTO order_stock_snap(order_id, product_id, qty, firm_id) VALUES(?,?,?,?)');
   for (const [name, qty] of Object.entries(agg)) {
     const p = db.prepare('SELECT id FROM products WHERE name=? AND active=1').get(name);
     if (!p) continue;
-    db.prepare('UPDATE products SET stock=MAX(0, COALESCE(stock,0)-?) WHERE id=?').run(qty, p.id);
+    db.prepare('UPDATE products SET stock=COALESCE(stock,0)-? WHERE id=?').run(qty, p.id);
     db.prepare('INSERT INTO firm_stock(firm_id,product_id,qty) VALUES(?,?,?) ON CONFLICT(firm_id,product_id) DO UPDATE SET qty=qty+excluded.qty')
       .run(o.firm_id, p.id, qty);
     apply.run(orderId, p.id, qty, o.firm_id);
@@ -286,8 +296,8 @@ function syncOrderStock(orderId) {
 }
 function revertOrderStock(orderId) {
   for (const s of db.prepare('SELECT * FROM order_stock_snap WHERE order_id=?').all(orderId)) {
-    db.prepare('UPDATE products SET stock=MAX(0, COALESCE(stock,0)+?) WHERE id=?').run(s.qty, s.product_id);
-    db.prepare('UPDATE firm_stock SET qty=MAX(0, qty-?) WHERE firm_id=? AND product_id=?').run(s.qty, s.firm_id, s.product_id);
+    db.prepare('UPDATE products SET stock=COALESCE(stock,0)+? WHERE id=?').run(s.qty, s.product_id);
+    db.prepare('UPDATE firm_stock SET qty=qty-? WHERE firm_id=? AND product_id=?').run(s.qty, s.firm_id, s.product_id);
   }
   db.prepare('DELETE FROM order_stock_snap WHERE order_id=?').run(orderId);
 }
