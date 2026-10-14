@@ -2,7 +2,16 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit } = require('../db');
 const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError, csrfCheck } = require('../lib/core');
+const { parseAmount, kurusToTL, AMOUNT_HINT } = require('../lib/money');
 const { anyFiles } = require('../lib/upload');
+
+// Para birimi tutan alanlar (kuruş çevrimi ve katı doğrulama uygulanır).
+const MONEY_FIELDS = new Set(['amount', 'price', 'devir', 'devir_parca', 'unit_price', 'commission', 'total', 'warranty_setup_fee', 'setup_fee', 'balance_applied', 'balance_used']);
+function moneyVal(v, label) {
+  const k = parseAmount(v);
+  if (k === null) throw new Error(`"${label || 'Tutar'}" geçerli bir tutar olmalıdır. ${AMOUNT_HINT}`);
+  return kurusToTL(k);
+}
 const { overallSummary } = require('../lib/account');
 
 const DUMMY = bcrypt.hashSync('x', 10);
@@ -339,7 +348,10 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
         v = String(v ?? '').trim();
         if (v) db.prepare('INSERT OR IGNORE INTO categories(name) VALUES(?)').run(v);
       } else if (f.type === 'checkbox') v = v ? 1 : 0;
-      else if (f.type === 'number') v = numAny(v);
+      else if (f.type === 'number') {
+        const raw = String(v ?? '').trim();
+        v = MONEY_FIELDS.has(f.name) ? (raw === '' ? 0 : moneyVal(raw, f.label)) : numAny(v);
+      }
       else if (f.type === 'ref') v = +v || null;
       else       if (f.type === 'password') {
         v = String(v || '');
@@ -388,7 +400,11 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
         const first = [].concat(b['ch_' + ch.cols[0].name] || []);
         const ins = db.prepare(`INSERT INTO ${ch.table}(${ch.fk},${ch.cols.map(c => c.name).join(',')}) VALUES(?,${ch.cols.map(() => '?').join(',')})`);
         first.forEach((_, i) => {
-          const vals = ch.cols.map(c => { const v = [].concat(b['ch_' + c.name] || [])[i]; return c.type === 'number' ? numAny(v) : String(v ?? '').trim(); });
+          const vals = ch.cols.map(c => {
+            const raw = [].concat(b['ch_' + c.name] || [])[i];
+            if (MONEY_FIELDS.has(c.name)) { const s = String(raw ?? '').trim(); return s === '' ? 0 : moneyVal(s, c.label); }
+            return c.type === 'number' ? numAny(raw) : String(raw ?? '').trim();
+          });
           if (vals[0] !== '') ins.run(rowid, ...vals);
         });
       }
