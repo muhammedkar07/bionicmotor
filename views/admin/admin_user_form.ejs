@@ -1,0 +1,39 @@
+<%- include('../partials/admin_head') %>
+<h1><%= row ? 'Admin Düzenle' : 'Yeni Admin' %></h1>
+<form method="post" action="<%= row ? '/admin/admin-users/' + row.id + '/update' : '/admin/admin-users' %>" class="fcard wide">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="fg"><label>Kullanıcı Adı</label><input name="username" value="<%= row ? row.username : '' %>" required></div>
+  <div class="fg"><label>Ad Soyad</label><input name="name" value="<%= row && row.name ? row.name : '' %>"></div>
+  <div class="fg"><label>Parola <%= row ? '(boş bırakılırsa değişmez)' : '' %></label><input type="password" name="password" minlength="6" <%= row ? '' : 'required' %> autocomplete="new-password"></div>
+  <label class="ck"><input type="checkbox" name="is_super" value="1" id="superToggle" <%= row && row.is_super ? 'checked' : '' %>> Süper Yönetici (tüm sayfalara erişir)</label>
+
+  <div id="permBox" <%= row && row.is_super ? 'style="display:none"' : '' %>>
+    <h2>Erişebileceği Sayfalar</h2>
+    <% Object.entries(groups).forEach(([g, items]) => { %>
+      <h2><%= g %></h2>
+      <div class="checks">
+        <% items.forEach(it => { %>
+          <label class="ck"><input type="checkbox" name="res_perms" value="<%= it.key %>" <%= sel.res.includes(it.key) ? 'checked' : '' %>> <%= it.title %></label>
+        <% }) %>
+      </div>
+    <% }) %>
+    <h2>Sistem</h2>
+    <div class="checks">
+      <% SYSTEM_PAGES.forEach(p => { %>
+        <label class="ck"><input type="checkbox" name="sys_perms" value="<%= p.key %>" <%= sel.sys.includes(p.key) ? 'checked' : '' %>> <%= p.label %></label>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="fbtn">
+    <button class="btn btn-primary">Kaydet</button>
+    <a class="btn" href="/admin/admin-users">İptal</a>
+  </div>
+</form>
+<script>
+  (function () {
+    var st = document.getElementById('superToggle'), pb = document.getElementById('permBox');
+    if (st && pb) st.addEventListener('change', function () { pb.style.display = st.checked ? 'none' : ''; });
+  })();
+</script>
+<%- include('../partials/admin_foot') %>

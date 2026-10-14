@@ -19,9 +19,11 @@
       <% }) %>
     <% }) %>
     <div class="grp">Sistem</div>
-    <a href="/admin/stok" class="<%= path==='/stok'?'on':'' %>">Araç Stok Takibi</a>
-    <a href="/admin/stok-parca" class="<%= path==='/stok-parca'?'on':'' %>">Yedek Parça Stok Takibi</a>
-    <a href="/admin/ayarlar" class="<%= path==='/ayarlar'?'on':'' %>">Site Ayarları</a>
+    <% const sysP = (admin.perms && admin.perms.sys) || []; const can = k => admin.is_super || sysP.includes(k); %>
+    <% if (can('stok')) { %><a href="/admin/stok" class="<%= path==='/stok'?'on':'' %>">Araç Stok Takibi</a><% } %>
+    <% if (can('stok-parca')) { %><a href="/admin/stok-parca" class="<%= path==='/stok-parca'?'on':'' %>">Yedek Parça Stok Takibi</a><% } %>
+    <% if (can('ayarlar')) { %><a href="/admin/ayarlar" class="<%= path==='/ayarlar'?'on':'' %>">Site Ayarları</a><% } %>
+    <% if (admin.is_super) { %><a href="/admin/admin-users" class="<%= path==='/admin-users'?'on':'' %>">Admin Kullanıcıları</a><% } %>
     <a href="/admin/sifre" class="<%= path==='/sifre'?'on':'' %>">Parola Değiştir</a>
     <a href="/" target="_blank">Siteyi Görüntüle ↗</a>
     <a href="/bayi" target="_blank">Bayi Paneli ↗</a>

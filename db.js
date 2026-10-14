@@ -134,6 +134,11 @@ db.exec("UPDATE spare_orders SET request_date=date(created_at) WHERE request_dat
 addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
 addCol('products', 'model_id', 'INTEGER');
 addCol('products', 'max_qty', 'REAL');
+// Admin yetkilendirme: süper yönetici bayrağı ve sayfa izinleri (JSON: {res:[],sys:[]})
+addCol('admins', 'is_super', 'INTEGER NOT NULL DEFAULT 0');
+addCol('admins', 'permissions', 'TEXT');
+// Hiç süper yönetici yoksa en eski yönetici süper yapılır (panele kilitlenmeyi önler)
+db.prepare("UPDATE admins SET is_super=1 WHERE id=(SELECT MIN(id) FROM admins) AND NOT EXISTS (SELECT 1 FROM admins WHERE is_super=1)").run();
 db.exec(`CREATE TABLE IF NOT EXISTS stock_notify (
   product_id INTEGER NOT NULL,
   firm_id INTEGER NOT NULL,

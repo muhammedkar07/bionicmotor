@@ -5,7 +5,7 @@ function ensureSeed() {
   if (db.prepare('SELECT COUNT(*) c FROM admins').get().c > 0) return;
   tx(() => {
     const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
-    db.prepare('INSERT INTO admins(username,name,password_hash) VALUES(?,?,?)')
+    db.prepare('INSERT INTO admins(username,name,password_hash,is_super) VALUES(?,?,?,1)')
       .run('admin', 'Yönetici', bcrypt.hashSync(adminPass, 10));
 
     const S = {

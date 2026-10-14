@@ -1,0 +1,27 @@
+<%- include('../partials/admin_head') %>
+<div class="bar">
+  <h1>Admin Kullanıcıları</h1>
+  <a class="btn btn-primary" href="/admin/admin-users/new">+ Yeni Admin</a>
+</div>
+<p class="muted" style="margin:-6px 0 14px">Yönetim panelini kullanacak adminleri ekleyin ve her birinin hangi sayfalara erişebileceğini belirleyin.</p>
+<div class="tw"><table class="tbl">
+  <thead><tr><th>Kullanıcı Adı</th><th>Ad Soyad</th><th>Yetki</th><th style="width:180px"></th></tr></thead>
+  <tbody>
+  <% rows.forEach(a => { %>
+    <tr>
+      <td><%= a.username %><% if (a.id === admin.id) { %> <span class="muted">(siz)</span><% } %></td>
+      <td><%= a.name || '—' %></td>
+      <td><% if (a.is_super) { %><span class="bdg">Süper Yönetici</span><% } else { %><%= a.perms.res.length + a.perms.sys.length %> sayfa yetkili<% } %></td>
+      <td class="act">
+        <a class="btn btn-sm" href="/admin/admin-users/<%= a.id %>">Düzenle</a>
+        <% if (a.id !== admin.id) { %>
+        <form method="post" action="/admin/admin-users/<%= a.id %>/delete" class="inline" onsubmit="return confirm('Bu admin silinsin mi?')">
+          <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form>
+        <% } %>
+      </td>
+    </tr>
+  <% }) %>
+  <% if (!rows.length) { %><tr><td colspan="4" class="muted">Kayıt yok.</td></tr><% } %>
+  </tbody>
+</table></div>
+<%- include('../partials/admin_foot') %>

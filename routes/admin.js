@@ -144,11 +144,24 @@ router.post('/giris', (req, res) => {
   res.redirect('/admin');
 });
 
+function parsePerms(p) {
+  if (!p) return { res: [], sys: [] };
+  try {
+    const o = JSON.parse(p);
+    const res = Array.isArray(o.res) ? o.res : [];
+    const sys = Array.isArray(o.sys) ? o.sys : [];
+    return { res, sys };
+  } catch (e) { return { res: [], sys: [] }; }
+}
+
 router.use((req, res, next) => {
-  const a = req.session.admin && db.prepare('SELECT id,username,name FROM admins WHERE id=?').get(req.session.admin.id);
+  const a = req.session.admin && db.prepare('SELECT id,username,name,is_super,permissions FROM admins WHERE id=?').get(req.session.admin.id);
   if (!a) return res.redirect('/admin/giris');
+  a.perms = parsePerms(a.permissions);
   res.locals.admin = a;
-  res.locals.menu = Object.entries(RES).reduce((m, [k, r]) => ((m[r.group] = m[r.group] || []).push({ key: k, title: r.title }), m), {});
+  res.locals.menu = Object.entries(RES)
+    .filter(([k]) => a.is_super || a.perms.res.includes(k))
+    .reduce((m, [k, r]) => ((m[r.group] = m[r.group] || []).push({ key: k, title: r.title }), m), {});
   res.locals.res = null;
   res.locals.path = req.path;
   res.locals.badges = {
@@ -159,6 +172,30 @@ router.use((req, res, next) => {
     spareorders: db.prepare("SELECT COUNT(*) c FROM spare_orders WHERE status='Beklemede'").get().c,
     payments: db.prepare("SELECT COUNT(*) c FROM payments WHERE status IN ('Sanal POS Bekliyor','Talimat Oluşturuldu')").get().c
   };
+  next();
+});
+
+// Yetki denetimi: süper yönetici tüm sayfalara erişir; diğerleri yalnızca izinli sayfalara.
+// Parola değiştirme sayfası herkese açıktır.
+function sysKey(p) {
+  if (p === '/stok') return 'stok';
+  if (p === '/stok-parca') return 'stok-parca';
+  if (p === '/ayarlar') return 'ayarlar';
+  return null;
+}
+router.use((req, res, next) => {
+  const a = res.locals.admin;
+  if (a.is_super) return next();
+  const p = req.path;
+  let denied = false;
+  if (p.startsWith('/r/')) {
+    const key = p.split('/')[2];
+    denied = !a.perms.res.includes(key);
+  } else {
+    const key = sysKey(p);
+    denied = key ? !a.perms.sys.includes(key) : false;
+  }
+  if (denied) return res.status(403).send('Bu sayfaya erişim yetkiniz yok.');
   next();
 });
 
@@ -505,6 +542,114 @@ router.post('/sifre', (req, res) => {
     flash(req, 'success', 'Parola güncellendi.');
   }
   res.redirect('/admin/sifre');
+});
+
+// ---- Admin Kullanıcıları ----
+// Parola değiştirme herkese açık olduğu için yetkilendirme listesine dahil edilmez.
+const SYSTEM_PAGES = [
+  { key: 'stok', label: 'Araç Stok Takibi' },
+  { key: 'stok-parca', label: 'Yedek Parça Stok Takibi' },
+  { key: 'ayarlar', label: 'Site Ayarları' }
+];
+
+// Kaynakları grup başlıklarına göre düzenler (yetkilendirme formunda kullanılır).
+const resGroups = () => Object.entries(RES)
+  .reduce((m, [k, r]) => ((m[r.group] = m[r.group] || []).push({ key: k, title: r.title }), m), {});
+
+router.use('/admin-users', (req, res, next) => {
+  if (!res.locals.admin.is_super) return res.status(403).send('Yetkiniz yok.');
+  next();
+});
+
+router.get('/admin-users', (req, res) => {
+  const rows = db.prepare('SELECT id,username,name,is_super,permissions FROM admins ORDER BY id DESC').all()
+    .map(a => ({ ...a, perms: parsePerms(a.permissions) }));
+  res.render('admin/admin_users', { title: 'Admin Kullanıcıları', rows });
+});
+
+router.get('/admin-users/new', (req, res) => {
+  res.render('admin/admin_user_form', {
+    title: 'Admin Kullanıcıları - Yeni', row: null, groups: resGroups(), SYSTEM_PAGES,
+    sel: { res: [], sys: [] }
+  });
+});
+
+router.get('/admin-users/:id', (req, res) => {
+  const a = db.prepare('SELECT id,username,name,is_super,permissions FROM admins WHERE id=?').get(+req.params.id);
+  if (!a) return res.redirect('/admin/admin-users');
+  res.render('admin/admin_user_form', {
+    title: 'Admin Kullanıcıları - Düzenle', row: a, groups: resGroups(), SYSTEM_PAGES,
+    sel: parsePerms(a.permissions)
+  });
+});
+
+router.post('/admin-users', (req, res) => {
+  const { username, name, password, is_super: iss } = req.body;
+  if (!username || !password) {
+    flash(req, 'danger', 'Kullanıcı adı ve parola zorunludur.');
+    return res.redirect('/admin/admin-users');
+  }
+  const isSuper = iss ? 1 : 0;
+  const perms = { res: [], sys: [] };
+  if (!isSuper) {
+    const resSel = Array.isArray(req.body.res_perms) ? req.body.res_perms : (req.body.res_perms ? [req.body.res_perms] : []);
+    const sysSel = Array.isArray(req.body.sys_perms) ? req.body.sys_perms : (req.body.sys_perms ? [req.body.sys_perms] : []);
+    perms.res = resSel.filter(k => RES[k]);
+    perms.sys = sysSel.filter(k => SYSTEM_PAGES.find(p => p.key === k));
+  }
+  const hash = bcrypt.hashSync(String(password), 10);
+  try {
+    db.prepare('INSERT INTO admins (username,name,password_hash,is_super,permissions) VALUES (?,?,?,?,?)').run(
+      String(username).trim(),
+      String(name || '').trim() || null,
+      hash,
+      isSuper,
+      JSON.stringify(perms)
+    );
+    flash(req, 'success', 'Admin kullanıcısı eklendi.');
+  } catch (e) {
+    flash(req, 'danger', 'Kullanıcı adı zaten kullanılıyor olabilir.');
+  }
+  res.redirect('/admin/admin-users');
+});
+
+router.post('/admin-users/:id/update', (req, res) => {
+  if (!res.locals.admin.is_super) return res.status(403).send('Yetkiniz yok.');
+  const id = parseInt(req.params.id);
+  const a = db.prepare('SELECT * FROM admins WHERE id=?').get(id);
+  if (!a) return res.redirect('/admin/admin-users');
+  const { username, name, password, is_super: iss } = req.body;
+  const isSuper = iss ? 1 : 0;
+  const perms = { res: [], sys: [] };
+  if (!isSuper) {
+    const resSel = Array.isArray(req.body.res_perms) ? req.body.res_perms : (req.body.res_perms ? [req.body.res_perms] : []);
+    const sysSel = Array.isArray(req.body.sys_perms) ? req.body.sys_perms : (req.body.sys_perms ? [req.body.sys_perms] : []);
+    perms.res = resSel.filter(k => RES[k]);
+    perms.sys = sysSel.filter(k => SYSTEM_PAGES.find(p => p.key === k));
+  }
+  const hash = password ? bcrypt.hashSync(String(password), 10) : a.password_hash;
+  db.prepare('UPDATE admins SET username=?,name=?,password_hash=?,is_super=?,permissions=? WHERE id=?').run(
+    String(username || a.username).trim(),
+    String(name || '').trim() || null,
+    hash,
+    isSuper,
+    JSON.stringify(perms),
+    id
+  );
+  flash(req, 'success', 'Güncellendi.');
+  res.redirect('/admin/admin-users');
+});
+
+router.post('/admin-users/:id/delete', (req, res) => {
+  if (!res.locals.admin.is_super) return res.status(403).send('Yetkiniz yok.');
+  const id = parseInt(req.params.id);
+  if (id === res.locals.admin.id) {
+    flash(req, 'danger', 'Kendi hesabınızı silemezsiniz.');
+    return res.redirect('/admin/admin-users');
+  }
+  db.prepare('DELETE FROM admins WHERE id=?').run(id);
+  flash(req, 'success', 'Silindi.');
+  res.redirect('/admin/admin-users');
 });
 
 module.exports = router;
