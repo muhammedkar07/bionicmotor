@@ -8,13 +8,17 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "seed": "node scripts/seed.js",
+    "backup": "node scripts/backup.js",
     "test": "node --test"
   },
-  "engines": { "node": ">=22.5" },
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "ejs": "^3.1.10",
     "express": "^4.21.2",
-    "multer": "^1.4.5-lts.1"
+    "multer": "^1.4.5-lts.1",
+    "sanitize-html": "^2.18.0"
   }
 }

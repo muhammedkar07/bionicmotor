@@ -1,8 +1,18 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const { allSettings } = require('./db');
 const core = require('./lib/core');
 const { UPLOAD_DIR } = require('./lib/upload');
+
+// Hatalar hem konsola hem de logs/error.log dosyasına yazılır.
+const LOG_DIR = path.join(__dirname, 'logs');
+function logError(...args) {
+  const line = new Date().toISOString() + ' ' +
+    args.map(a => (a && a.stack) ? a.stack : String(a)).join(' ') + '\n';
+  try { fs.mkdirSync(LOG_DIR, { recursive: true }); fs.appendFileSync(path.join(LOG_DIR, 'error.log'), line); } catch { /* yok say */ }
+  console.error(...args);
+}
 
 require('./scripts/seed').ensureSeed();
 
@@ -82,10 +92,12 @@ app.use('/', require('./routes/site'));
 
 app.use((req, res) => res.status(404).render('site/404', { title: 'Sayfa bulunamadı', active: '' }));
 app.use((err, req, res, next) => {
-  console.error(err);
+  logError(err);
   if (err && err.name === 'MulterError') return res.status(400).send('Dosya yükleme hatası: ' + err.message);
   res.status(500).send('Beklenmeyen bir hata oluştu.');
 });
+process.on('uncaughtException', logError);
+process.on('unhandledRejection', logError);
 
 module.exports = app;
 if (require.main === module) {

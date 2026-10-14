@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { db } = require('../db');
 const { flash, throttle } = require('../lib/core');
+const { clean } = require('../lib/sanitize');
 
 const clip = (v, n) => String(v || '').trim().slice(0, n);
 const render = (res, view, title, active, extra = {}) => res.render(view, { title, active, ...extra });
@@ -73,7 +74,7 @@ router.post('/bayilik-basvurusu', (req, res) => {
 router.get('/sayfa/:slug', (req, res, next) => {
   const p = db.prepare('SELECT * FROM pages WHERE slug=?').get(req.params.slug);
   if (!p) return next();
-  render(res, 'site/page', p.title, p.slug, { page: p });
+  render(res, 'site/page', p.title, p.slug, { page: { ...p, body: clean(p.body) } });
 });
 router.get('/kurumsal', (req, res) => res.redirect('/sayfa/kurumsal'));
 router.get('/dijital-katalog', (req, res) => res.redirect('/sayfa/dijital-katalog'));

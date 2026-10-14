@@ -204,6 +204,12 @@ router.use((req, res, next) => {
   if (p.startsWith('/r/')) {
     const key = p.split('/')[2];
     denied = !a.perms.res.includes(key);
+  } else if (p === '/kullanici-kodu') {
+    // Kullanıcı formu yardımcı ucu: bayi kullanıcıları yetkisi gerekir.
+    denied = !a.perms.res.includes('users');
+  } else if (p === '/kategori-ekle') {
+    // Ürün formu yardımcı ucu: ürünler yetkisi gerekir.
+    denied = !a.perms.res.includes('products');
   } else {
     const key = sysKey(p);
     denied = key ? !a.perms.sys.includes(key) : false;

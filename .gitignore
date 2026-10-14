@@ -8,4 +8,6 @@ data/*.db-wal
 data/*.db-shm
 public/uploads/*
 !public/uploads/.gitkeep
+backups/
+logs/
 .env
