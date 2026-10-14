@@ -106,5 +106,7 @@ process.on('unhandledRejection', logError);
 module.exports = app;
 if (require.main === module) {
   const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}`));
+  const server = app.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}`));
+  // Açılışta ve periyodik: otomatik onarım + sistem testi (sorunları logs/error.log'a yazar).
+  require('./lib/diagnostics').startAutoJobs(() => server.address().port, { log: console.log, error: logError });
 }

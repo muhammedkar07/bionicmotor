@@ -1,9 +1,13 @@
 <%- include('../partials/admin_head') %>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
   <h1 style="margin:0">Sistem Testi</h1>
-  <button id="runTest" class="btn">↻ Yeniden Çalıştır</button>
+  <div style="display:flex;gap:8px">
+    <button id="repairBtn" class="btn">🛠 Otomatik Onar</button>
+    <button id="runTest" class="btn">↻ Yeniden Çalıştır</button>
+  </div>
 </div>
-<p class="muted">Bu sayfa açıldığında tüm sayfalar, şablonlar, veritabanı, ayarlar ve temel iş mantığı otomatik test edilir. <b style="color:#b42318">Kırmızı</b> satırları düzeltip “Yeniden Çalıştır” deyin.</p>
+<p class="muted">Bu sayfa açıldığında tüm sayfalar, şablonlar, veritabanı, ayarlar ve temel iş mantığı otomatik test edilir. <b style="color:#b42318">Kırmızı</b> satırları düzeltip “Yeniden Çalıştır” deyin. Güvenli sorunlar için “Otomatik Onar” kullanılabilir.</p>
+<div id="repairBox"></div>
 <div id="testTop" class="alert" style="background:#eef1f6;border-color:#d8dce3;color:#333">Testler çalışıyor…</div>
 <div id="testResults"></div>
 <style>

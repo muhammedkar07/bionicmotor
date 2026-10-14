@@ -39,4 +39,30 @@
 
   run();
   document.addEventListener('click', function (e) { if (e.target && e.target.id === 'runTest') run(); });
+
+  // Otomatik onarım: güvenli düzeltmeleri çalıştırıp testleri yeniler.
+  var repairBox = document.getElementById('repairBox');
+  var CSRF = (document.querySelector('input[name="_csrf"]') || {}).value || '';
+  function repair() {
+    if (repairBox) repairBox.innerHTML = '<div class="alert" style="background:#eef1f6;border-color:#d8dce3;color:#333">Onarım çalışıyor…</div>';
+    fetch('/admin/test/onar', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ _csrf: CSRF })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      var reps = (d && d.repairs) || [];
+      if (repairBox) {
+        repairBox.innerHTML = '<div class="alert ' + ((d.fixedCount > 0) ? 'alert-success' : 'alert') + '">' +
+          'Otomatik onarım tamamlandı: <b>' + ((d.fixedCount) || 0) + '</b> düzeltme uygulandı.</div>' +
+          '<table class="tres"><tbody>' + reps.map(function (x) {
+            return '<tr><td style="width:26px" class="' + (x.fixed ? 'ok' : '') + '">' + (x.fixed ? '✓' : '·') + '</td><td>' +
+              esc(x.name) + '</td><td class="muted">' + esc(x.detail || '') + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      }
+      run();
+    }).catch(function (e) {
+      if (repairBox) repairBox.innerHTML = '<div class="alert alert-danger">Onarım başarısız: ' + esc(e.message) + '</div>';
+    });
+  }
+  document.addEventListener('click', function (e) { if (e.target && e.target.id === 'repairBtn') repair(); });
 })();

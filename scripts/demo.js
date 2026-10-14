@@ -30,3 +30,5 @@ app.listen(PORT, () => {
   console.log(b + 'Müşteriye link için (ayrı terminal): npm run tunnel');
   console.log('');
 });
+// Otomatik onarım + periyodik sistem testi (demo modunda da çalışır).
+require('../lib/diagnostics').startAutoJobs(() => PORT, { log: console.log, error: console.error });
