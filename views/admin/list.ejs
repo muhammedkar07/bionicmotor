@@ -134,4 +134,14 @@
   <% }) %>
   <% if (!rows.length) { %><tr><td colspan="<%= cols.length+1 %>" class="muted">Kayıt yok.</td></tr><% } %>
   </tbody></table></div>
+<% if (typeof total !== 'undefined' && pages > 1) { %>
+<div class="bar" style="justify-content:center;gap:12px;margin-top:14px">
+  <% const pg = p => '/admin/r/' + res.key + '?' + new URLSearchParams({ q: q || '', firm: firm || '', page: String(p) }).toString(); %>
+  <a class="btn btn-sm" href="<%= page > 1 ? pg(page - 1) : '#' %>" <%= page <= 1 ? 'aria-disabled="true" style="opacity:.45;pointer-events:none"' : '' %>>‹ Önceki</a>
+  <span class="muted">Sayfa <b><%= page %></b> / <%= pages %> · toplam <b><%= total %></b> kayıt</span>
+  <a class="btn btn-sm" href="<%= page < pages ? pg(page + 1) : '#' %>" <%= page >= pages ? 'aria-disabled="true" style="opacity:.45;pointer-events:none"' : '' %>>Sonraki ›</a>
+</div>
+<% } else if (typeof total !== 'undefined' && total > 0) { %>
+<p class="muted" style="margin-top:10px">Toplam <b><%= total %></b> kayıt.</p>
+<% } %>
 <%- include('../partials/admin_foot') %>

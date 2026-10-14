@@ -1,7 +1,9 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { allSettings } = require('./db');
+const crypto = require('crypto');
+const compression = require('compression');
+const { allSettings, db } = require('./db');
 const core = require('./lib/core');
 const { UPLOAD_DIR } = require('./lib/upload');
 
@@ -20,9 +22,31 @@ const app = express();
 app.disable('x-powered-by');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+// Üretimde görünümler önbelleğe alınır (EJS her istekte derlemesin).
+app.set('view cache', process.env.NODE_ENV === 'production');
 if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
-// Statik varlıkların tarayıcı önbelleğini her sunucu başlangıcında tazeler.
-const ASSET_V = Date.now().toString(36);
+// Varlık sürümü: css/js içeriği değişmediği sürece sabit kalır (tarayıcı önbelleği korunur).
+function assetVersion() {
+  const h = crypto.createHash('md5');
+  const walk = dir => {
+    let out = [];
+    let entries = [];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) out = out.concat(walk(p)); else out.push(p);
+    }
+    return out;
+  };
+  for (const f of walk(path.join(__dirname, 'public', 'css')).concat(walk(path.join(__dirname, 'public', 'js')))) {
+    try { const s = fs.statSync(f); h.update(f).update(String(s.size)).update(String(Math.round(s.mtimeMs))); } catch { /* yok say */ }
+  }
+  return h.digest('hex').slice(0, 8);
+}
+const ASSET_V = assetVersion();
+
+// Yanıt sıkıştırma (gzip/brotli) — metin varlıklarında büyük kazanç.
+app.use(compression());
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -40,8 +64,9 @@ app.use((req, res, next) => {
 });
 
 // Yükleme dizini lib/upload tarafından oluşturulur; burada yalnızca statik olarak sunulur.
-app.use('/static/uploads', express.static(UPLOAD_DIR, { maxAge: '1h' }));
-app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
+// Yüklenen dosya adları rastgele olduğundan uzun süreli (immutable) önbellek güvenlidir.
+app.use('/static/uploads', express.static(UPLOAD_DIR, { maxAge: '30d', immutable: true }));
+app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
 
 app.use(core.sessionMiddleware);
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
@@ -103,10 +128,31 @@ app.use((err, req, res, next) => {
 process.on('uncaughtException', logError);
 process.on('unhandledRejection', logError);
 
-module.exports = app;
-if (require.main === module) {
-  const port = process.env.PORT || 3000;
+// Sunucuyu başlatır; zarif kapanış (SIGTERM/SIGINT) ve otomatik bakım işlerini kurar.
+function start(port) {
+  port = port || process.env.PORT || 3000;
   const server = app.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}`));
+
+  let closing = false;
+  const shutdown = sig => {
+    if (closing) return;
+    closing = true;
+    console.log((sig ? '[' + sig + '] ' : '') + 'Sunucu kapatılıyor...');
+    server.close(() => {
+      try { db.close(); } catch { /* yok say */ }
+      process.exit(0);
+    });
+    const t = setTimeout(() => process.exit(0), 10000);
+    if (t.unref) t.unref();
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+
   // Açılışta ve periyodik: otomatik onarım + sistem testi (sorunları logs/error.log'a yazar).
   require('./lib/diagnostics').startAutoJobs(() => server.address().port, { log: console.log, error: logError });
+  return server;
 }
+
+module.exports = app;
+module.exports.start = start;
+if (require.main === module) start(process.env.PORT || 3000);

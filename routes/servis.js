@@ -236,7 +236,10 @@ router.post('/stok-bildirim',(req,res)=>{
 });
 router.get('/yedek-parca-siparisleri', (req,res)=>{
   const firm=req.session.servis.firmId; const orders=firm?db.prepare('SELECT * FROM spare_orders WHERE firm_id=? AND deleted_at IS NULL ORDER BY id DESC').all(firm):[];
-  orders.forEach(o=>{ o.items=db.prepare('SELECT * FROM spare_order_items WHERE order_id=?').all(o.id); o.total=o.items.reduce((s,i)=>s+i.qty*i.unit_price,0); });
+  const ids=orders.map(o=>o.id);
+  const items=ids.length?db.prepare(`SELECT * FROM spare_order_items WHERE order_id IN (${ids.map(()=>'?').join(',')})`).all(...ids):[];
+  const byOrder={}; for(const it of items){ (byOrder[it.order_id]=byOrder[it.order_id]||[]).push(it); }
+  orders.forEach(o=>{ o.items=byOrder[o.id]||[]; o.total=o.items.reduce((s,i)=>s+i.qty*i.unit_price,0); });
   page(res,'spare_orders','Yedek Parça Siparişlerim',{orders});
 });
 

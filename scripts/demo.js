@@ -17,18 +17,14 @@ process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'DemoAdmin12345!x';
 const PORT = process.env.PORT || 3000;
 
 const app = require('../server');
-app.listen(PORT, () => {
-  const b = '  ';
-  console.log('');
-  console.log(b + '=== DEMO MODU ===');
-  console.log(b + 'Yerel:        http://localhost:' + PORT);
-  console.log(b + 'Yönetim:      /admin   ->  admin / ' + process.env.ADMIN_PASSWORD);
-  console.log(b + 'Bayi paneli:  /bayi    ->  kullanıcı kodu 25895 / demo1234Ab!');
-  console.log(b + 'Online ödeme: /odeme   ->  demo@bayi.local / demo1234Ab!');
-  console.log(b + 'Kart ödemeleri Paratika SİMÜLASYON modunda çalışır.');
-  console.log(b + 'Veri klasörü: ' + demoDir);
-  console.log(b + 'Müşteriye link için (ayrı terminal): npm run tunnel');
-  console.log('');
-});
-// Otomatik onarım + periyodik sistem testi (demo modunda da çalışır).
-require('../lib/diagnostics').startAutoJobs(() => PORT, { log: console.log, error: console.error });
+app.start(PORT); // zarif kapanış + otomatik onarım/test işleri dahil
+const b = '  ';
+console.log('');
+console.log(b + '=== DEMO MODU ===');
+console.log(b + 'Yönetim:      /admin   ->  admin / ' + process.env.ADMIN_PASSWORD);
+console.log(b + 'Bayi paneli:  /bayi    ->  kullanıcı kodu 25895 / demo1234Ab!');
+console.log(b + 'Online ödeme: /odeme   ->  demo@bayi.local / demo1234Ab!');
+console.log(b + 'Kart ödemeleri Paratika SİMÜLASYON modunda çalışır.');
+console.log(b + 'Veri klasörü: ' + demoDir);
+console.log(b + 'Müşteriye link için (ayrı terminal): npm run tunnel');
+console.log('');

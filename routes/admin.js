@@ -318,11 +318,15 @@ router.get('/r/:res', (req, res) => {
   if (firmWhere && firm) where.push(firmWhere);
   if (SOFT_DELETE.has(r.table)) where.push('deleted_at IS NULL');
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const sql = `SELECT rowid AS _id, * FROM ${r.table} ${whereSql} ORDER BY ${r.order || 'rowid DESC'} LIMIT 500`;
   // Parametreler yalnızca SQL içinde kullanıldıklarında eklenir (kullanılmayan named parametre hata verir)
   const params = {};
   if (q && textCols.length) params.q = `%${q}%`;
   if (firmWhere && firm) params.firm = firm;
+  const total = db.prepare(`SELECT COUNT(*) n FROM ${r.table} ${whereSql}`).get(params).n;
+  const PAGE = 100;
+  const pages = Math.max(1, Math.ceil(total / PAGE));
+  const page = Math.min(pages, Math.max(1, parseInt(req.query.page, 10) || 1));
+  const sql = `SELECT rowid AS _id, * FROM ${r.table} ${whereSql} ORDER BY ${r.order || 'rowid DESC'} LIMIT ${PAGE} OFFSET ${(page - 1) * PAGE}`;
   const rows = db.prepare(sql).all(params);
   const firmFilter = !!firmWhere;
   const firms = firmFilter ? db.prepare('SELECT id,name FROM firms ORDER BY name').all() : [];
@@ -333,7 +337,7 @@ router.get('/r/:res', (req, res) => {
       ? 'Seçili bayi: ' + (db.prepare('SELECT name FROM firms WHERE id=?').get(firm) || {}).name
       : 'Tüm bayiler (' + acct.firms + ')';
   }
-  res.render('admin/list', { title: r.title, cols, rows, refs, cell, q, firm: firm || '', firms, firmFilter, acct, acctLabel });
+  res.render('admin/list', { title: r.title, cols, rows, refs, cell, q, firm: firm || '', firms, firmFilter, acct, acctLabel, page, pages, total });
 });
 
 function loadForm(req, res, id) {

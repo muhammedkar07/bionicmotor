@@ -24,7 +24,27 @@ const dir = process.env.DATA_DIR || path.join(__dirname, 'data');
 fs.mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(path.join(dir, 'app.db'));
 const uploadsDir = process.env.UPLOAD_DIR || path.join(__dirname, 'public', 'uploads');
-db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA synchronous = NORMAL;');
+db.exec('PRAGMA busy_timeout = 5000;');
+
+// Hazır ifade önbelleği: node:sqlite `prepare` her çağrıda SQL derler. Aynı SQL için
+// tekrar derlemeyi önler. Sınırlı tutulur; aşılırsa önbellek boşaltılır.
+(function enableStatementCache() {
+  const orig = db.prepare.bind(db);
+  const cache = new Map();
+  const MAX = 500;
+  try {
+    db.prepare = function (sql) {
+      let s = cache.get(sql);
+      if (!s) {
+        if (cache.size >= MAX) cache.clear();
+        s = orig(sql);
+        cache.set(sql, s);
+      }
+      return s;
+    };
+  } catch { /* yazılamıyorsa (read-only) dokunma */ }
+})();
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
@@ -172,6 +192,22 @@ db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
 // Giriş denemesi sayacı (bellek yerine veritabanında): yeniden başlatmada sıfırlanmaz.
 db.exec(`CREATE TABLE IF NOT EXISTS login_attempts (key TEXT NOT NULL, at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_key ON login_attempts(key);`);
+// Sık sorgulanan kolonlar için indeksler (liste/rapor performansı).
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_orders_firm ON orders(firm_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_spare_orders_firm ON spare_orders(firm_id);
+CREATE INDEX IF NOT EXISTS idx_spare_items_order ON spare_order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_movements_firm_ledger ON account_movements(firm_id, ledger);
+CREATE INDEX IF NOT EXISTS idx_movements_ledger ON account_movements(ledger);
+CREATE INDEX IF NOT EXISTS idx_payments_firm ON payments(firm_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires);
+CREATE INDEX IF NOT EXISTS idx_user_firms_firm ON user_firms(firm_id);
+CREATE INDEX IF NOT EXISTS idx_products_kind ON products(kind, active);
+CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
+CREATE INDEX IF NOT EXISTS idx_warranty_firm ON warranty_records(firm_id);
+CREATE INDEX IF NOT EXISTS idx_workorders_firm ON work_orders(firm_id);
+CREATE INDEX IF NOT EXISTS idx_models_active ON models(active, sort);`);
 // Admin yetkilendirme: süper yönetici bayrağı ve sayfa izinleri (JSON: {res:[],sys:[]})
 addCol('admins', 'is_super', 'INTEGER NOT NULL DEFAULT 0');
 addCol('admins', 'permissions', 'TEXT');
