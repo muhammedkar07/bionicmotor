@@ -2,22 +2,13 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
 const { flash, throttle, regenerate, addYears, fmtMoney, csrfCheck } = require('../lib/core');
+const { checkMaxQty, validateCard } = require('../lib/spareOrder');
 const { singleImage } = require('../lib/upload');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
 
 const DUMMY = bcrypt.hashSync('x', 10);
 const page = (res, view, title, extra = {}) => res.render('servis/' + view, { title, ...extra });
-
-function checkMaxQty(lines) {
-  const agg = {};
-  for (const l of lines) agg[l.p.id] = (agg[l.p.id] || 0) + l.qty;
-  for (const l of lines) {
-    const max = +l.p.max_qty || 0;
-    if (max > 0 && agg[l.p.id] > max) return `"${l.p.name}" için en fazla ${max} adet sipariş verebilirsiniz.`;
-  }
-  return null;
-}
 
 router.get('/giris', (req, res) => {
   if (req.session.servis) return res.redirect('/servis');
@@ -193,13 +184,7 @@ router.post('/yedek-parca/yeni', (req,res)=>{
   if(!method) return back('Ödeme yöntemini seçin.');
   const payer=String(b.payer_name||'').trim().slice(0,120); if(payable>0 && b.pay_method==='havale' && !payer) return back('Havale / EFT için gönderen hesap ad soyad bilgisini giriniz.');
   let card=null;
-  if(payable>0 && b.pay_method==='kart'){
-    const inst=db.prepare('SELECT * FROM installments WHERE id=? AND active=1').get(+b.installment_id);
-    const holder=String(b.holder||'').trim().slice(0,80), number=String(b.number||'').replace(/\s/g,''), month=+b.month, year=+b.year, cvc=String(b.cvc||'');
-    const now=new Date(); if(!inst) return back('Taksit seçeneği seçin.');     if(!holder) return back('Kart bilgileri geçersiz.');
-    if(!(month>=1&&month<=12)||year<now.getFullYear()||(year===now.getFullYear()&&month<now.getMonth()+1)) return back('Kartın son kullanma tarihi geçersiz.');
-    if(!/^\d{3,4}$/.test(cvc)) return back('CVC geçersiz.'); card={inst,holder,last4:number.slice(-4)};
-  }
+  if(payable>0 && b.pay_method==='kart'){ const r=validateCard(b); if(r.error) return back(r.error); card=r; }
   const fullyCovered = payable <= 0;
   let no;
   tx(() => {
