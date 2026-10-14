@@ -1,32 +1,114 @@
 <%- include('../partials/site_head') %>
-<section class="slider" id="slider">
-  <% slides.forEach((sl, i) => { %>
-  <div class="slide <%= i===0?'on':'' %>" style="background:<%= sl.image ? `url('${sl.image}') center/cover` : (sl.bg || '#111') %>">
-    <% if (!sl.image) { %>
-    <div class="wrap slide-in">
-      <p class="slide-sub"><%= sl.subtitle %></p>
-      <h1><%= sl.title %></h1>
-      <% if (sl.old_price) { %><div class="price-old"><s><%= sl.old_price %></s></div><% } %>
-      <% if (sl.new_price) { %><div class="price-new"><%= sl.new_price %></div><% } %>
-      <% if (sl.link) { %><a class="btn-red" href="<%= sl.link %>">İncele</a><% } %>
+<%
+  const hero = (slides && slides[0]) || null;
+  const m0 = (models && models[0]) || null;
+  const extraSlides = (slides || []).slice(1);
+  const scooter = '<svg viewBox="0 0 520 300" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><circle cx="120" cy="232" r="52"/><circle cx="404" cy="232" r="52"/><path d="M120 232 L210 156 L306 156 L372 122"/><path d="M210 156 L262 232"/><path d="M306 156 L338 232"/><path d="M186 156 q42 -40 104 -24"/><path d="M372 122 L412 66 M412 66 L448 90"/><circle cx="448" cy="90" r="11"/></g></svg>';
+%>
+
+<section class="hero"><div class="wrap hero-in">
+  <div>
+    <span class="eyebrow"><i></i> 2026 Sezon · Stoklarla Sınırlı</span>
+    <h1><%= hero ? hero.title : 'Sürüşün yeni ritmi.' %></h1>
+    <p class="lead"><%= hero && hero.subtitle ? hero.subtitle : 'Bionic Motor ile şehir içi konfor ve teknoloji bir arada. Sıvı soğutma, akıllı gösterge ve 9-12 taksit imkânı.' %></p>
+    <div class="cta">
+      <a class="btn btn-red" href="/modeller">Modelleri Keşfet ›</a>
+      <a class="btn btn-line" href="/bayilik-basvurusu">Bayilik Başvurusu</a>
     </div>
-    <% } else if (sl.link) { %><a href="<%= sl.link %>" class="slide-link" aria-label="<%= sl.title %>"></a><% } %>
+    <% if (hero && (hero.old_price || hero.new_price)) { %>
+    <div class="price">
+      <% if (hero.old_price) { %><s><%= hero.old_price %></s><% } %>
+      <% if (hero.new_price) { %><b><%= hero.new_price %></b><% } %>
+    </div>
+    <% } %>
   </div>
-  <% }) %>
-  <% if (slides.length > 1) { %>
-  <button class="sl-prev" aria-label="Önceki">‹</button><button class="sl-next" aria-label="Sonraki">›</button>
-  <div class="dots"><% slides.forEach((_, i) => { %><span class="<%= i===0?'on':'' %>"></span><% }) %></div>
-  <% } %>
-</section>
-<section class="wrap section">
-  <h2 class="title-red">MODELLERİMİZ</h2>
+  <div class="stage">
+    <span class="tagtop"><%= m0 ? 'Öne Çıkan' : 'Yeni Sezon' %></span>
+    <% if (hero && hero.image) { %>
+      <img class="stage-img" src="<%= hero.image %>" alt="<%= hero.title %>">
+    <% } else if (m0 && m0.image) { %>
+      <img class="stage-img" src="<%= m0.image %>" alt="<%= m0.name %>">
+    <% } else { %>
+      <%- scooter %>
+    <% } %>
+    <div class="spec">
+      <% if (m0) { %>
+        <span><%= m0.name %></span>
+        <% if (m0.cc) { %><span><%= m0.cc %></span><% } %>
+        <% if (m0.power) { %><span><%= m0.power %></span><% } %>
+        <% if (m0.gearbox) { %><span><%= m0.gearbox %></span><% } %>
+      <% } else { %>
+        <span>125 cc</span><span>11,3 HP</span><span>Otomatik</span><span>LED Far</span>
+      <% } %>
+    </div>
+  </div>
+</div></section>
+
+<div class="wrap"><div class="strip">
+  <div><b>18</b><span>Satış Noktası</span></div>
+  <div><b>7/24</b><span>Yol Yardım</span></div>
+  <div><b>12</b><span>Taksit İmkânı</span></div>
+  <div><b>2 Yıl</b><span>Garanti</span></div>
+</div></div>
+
+<% if (extraSlides.length) { %>
+<section class="section"><div class="wrap">
+  <div class="h2"><h2>Kampanya<span>lar</span></h2><a href="/modeller">Tümünü gör ›</a></div>
   <div class="cards">
-    <% models.forEach(m => { %>
-    <a class="model-card" href="/modeller">
-      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>"><% } else { %><span><%= m.name %></span><% } %></div>
-      <h3><%= m.name %></h3><p><%= m.category %> · <%= m.cc %></p>
+    <% extraSlides.forEach(sl => { %>
+    <a class="model-card" href="<%= sl.link || '/modeller' %>">
+      <div class="model-img"><% if (sl.image) { %><img src="<%= sl.image %>" alt="<%= sl.title %>"><% } else { %><span style="font-size:20px"><%= sl.title %></span><% } %></div>
+      <div class="model-body">
+        <h3><%= sl.title %></h3>
+        <p><%= sl.subtitle || '' %></p>
+        <% if (sl.old_price || sl.new_price) { %>
+        <div class="price" style="margin-top:12px">
+          <% if (sl.old_price) { %><s><%= sl.old_price %></s><% } %>
+          <% if (sl.new_price) { %><b style="font-size:22px"><%= sl.new_price %></b><% } %>
+        </div>
+        <% } %>
+      </div>
     </a>
     <% }) %>
   </div>
-</section>
+</div></section>
+<% } %>
+
+<section class="section" style="<%= extraSlides.length ? 'padding-top:0' : '' %>"><div class="wrap">
+  <div class="h2"><h2>Modeller<span>imiz</span></h2><a href="/modeller">Tümünü gör ›</a></div>
+  <div class="cards">
+    <% models.slice(0, 6).forEach(m => { %>
+    <a class="model-card" href="/modeller">
+      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>"><% } else { %><%- scooter %><% } %></div>
+      <div class="model-body">
+        <h3><%= m.name %></h3>
+        <p><%= m.category || '' %><%= m.cc ? ' · ' + m.cc : '' %></p>
+        <% if (m.price) { %><div class="price" style="margin-top:12px"><b style="font-size:22px"><%= money(m.price) %> ₺</b></div><% } %>
+      </div>
+    </a>
+    <% }) %>
+  </div>
+</div></section>
+
+<section class="section" style="padding-top:0"><div class="wrap split">
+  <div class="panel">
+    <h2 class="g" style="font-size:30px;margin:0 0 10px">Neden Bionic?</h2>
+    <div class="flist">
+      <div class="fl"><div class="ic">⚡</div><div><h4>Hızlı Tedarik</h4><p>Merkez stoktan aynı gün sevkiyat ve kargo takibi.</p></div></div>
+      <div class="fl"><div class="ic">🛠️</div><div><h4>Yetkili Servis Ağı</h4><p>18 noktada orijinal parça ve uzman servis.</p></div></div>
+      <div class="fl"><div class="ic">💳</div><div><h4>Online Ödeme</h4><p>Güvenli kart ödemesi, anında cari işleme.</p></div></div>
+    </div>
+  </div>
+  <div>
+    <h1 style="font-size:clamp(32px,4.2vw,56px);margin:0 0 14px">Dijital<br><span class="rd">bayi ağı.</span></h1>
+    <p class="lead">Bayi ve servis panelinizden sipariş, stok, cari ve garanti işlemlerinizi tek ekrandan yönetin.</p>
+    <div class="cta"><a class="btn btn-red" href="/bayi">Bayi Girişi ›</a><a class="btn btn-line" href="/odeme">Online Ödeme</a></div>
+  </div>
+</div></section>
+
+<div class="wrap"><div class="band">
+  <div><h3>Bionic dünyasına<br>katılın.</h3><p>Bölgenizde yetkili satış ve servis noktası olun.</p></div>
+  <a class="btn btn-line" href="/bayilik-basvurusu">Bayilik Başvurusu ›</a>
+</div></div>
+
 <%- include('../partials/site_foot') %>

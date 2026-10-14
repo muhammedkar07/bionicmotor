@@ -22,6 +22,15 @@
   });
   var nt = document.getElementById('navToggle');
   if (nt) nt.addEventListener('click', function () { document.body.classList.toggle('nav-open'); });
+
+  // Gece / gündüz modu
+  var tt = document.getElementById('themeToggle');
+  if (tt) tt.addEventListener('click', function () {
+    var el = document.documentElement;
+    var next = el.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    el.setAttribute('data-theme', next);
+    try { localStorage.setItem('bionic-theme', next); } catch (e) {}
+  });
 })();
 
 // Sayfadaki tüm bağlantılar yeni sekmede açılır
