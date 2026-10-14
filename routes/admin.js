@@ -61,7 +61,7 @@ const RES = {
       S('cheque_type', 'Çek Türü', ['Senet', 'Çek'], { def: 'Çek' }),
       D('cheque_due', 'Vadesi', { nullable: true }),
       { name: 'receipt', label: 'Dekont (isteğe bağlı)', type: 'file' },
-      S('kind', 'Yön', ['borc', 'alacak', 'bilgi'], { def: 'alacak', help: 'alacak: ödeme/tahsilat (bakiyeyi düşürür) · borç: satış/borçlandırma (bakiyeyi artırır) · bilgi: bakiyeyi etkilemez (vadesi gelmemiş çek)' }),
+      S('kind', 'Yön', ['borc', 'alacak', 'bilgi'], { def: 'alacak', help: 'alacak: ödeme/tahsilat (bakiyeyi düşürür) · borç: satış/borçlandırma (bakiyeyi artırır) · bilgi: bakiyeyi etkilemez. Vadesi gelen çek/senet otomatik tahsil sayılmaz; tahsil edildiğinde "alacak" yapın.' }),
       T('payer_name', 'Gönderen Adı Soyadı', { nullable: true }),
       T('doc_no', 'Belge No', { nullable: true }),
       N('amount', 'Tutar (₺)', { required: true })] },
@@ -378,8 +378,9 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
         data.warranty_end = addYears(data.sale_date, 2);
       }
       if (r.table === 'products' && data.kind === 'parca' && !data.model_id) throw new Error('Yedek parçanın ait olduğu araç modelini seçmelisiniz.');
-      // Çek/Senet için varsayılan yön "bilgi"dir (bakiyeyi etkilemez). Yön kullanıcı tarafından
-      // seçilebilir; vadesi gelmiş çekler cari özetinde otomatik olarak alacak sayılır.
+      // Çek/Senet için varsayılan yön "bilgi"dir (bakiyeyi etkilemez). Karşılıksız çek
+      // riskine karşı vadesi gelen çek otomatik tahsil sayılmaz; tahsil edildiğinde yön
+      // yönetici tarafından "alacak" olarak değiştirilir.
       if (r.table === 'account_movements' && data.doc_type === 'Çek/Senet' && !data.kind) data.kind = 'bilgi';
       const cols = Object.keys(data);
       tx(() => {
