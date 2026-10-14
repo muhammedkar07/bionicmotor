@@ -75,3 +75,26 @@ Notlar:
 - Alternatif: ngrok (hesap gerekir) veya localtunnel. Kalıcı/uzun süreli demo için kalıcı diskli
   bir barındırma (Render/Railway) daha uygundur; `DATA_DIR` + `UPLOAD_DIR` volume'a verilmelidir.
 
+### Sabit (kalıcı) link — `trycloudflare.com` yerine
+Hızlı tünel (`npm run tunnel`) adresi her açılışta **rastgele** üretir. Sabit bir adres için:
+
+**A) Cloudflare "named tunnel" (domain gerekir; en sağlam çözüm)**
+1. `npm run tunnel:login` → tarayıcı açılır, Cloudflare hesabınızla giriş yapın.
+2. `npm run tunnel:create` → `bionic-demo` tünelini ve kimlik dosyasını oluşturur.
+3. Cloudflare'e eklediğiniz bir alan adında sabit adres tanımlayın:
+   `cloudflared tunnel route dns bionic-demo demo.ornek.com`
+4. Çalıştırın: `npm run tunnel:run` (panelden yönetiliyorsa) ya da
+   `cloudflared/config.example.yml`'i `cloudflared/config.yml` olarak kopyalayıp düzenleyin ve
+   `cloudflared tunnel --config cloudflared/config.yml run`.
+   Artık adres sabittir: `https://demo.ornek.com`.
+
+**B) Domain almadan sabit link (hesap gerekir, domain gerekmez)**
+- **ngrok ücretsiz statik domain:** hesap açıp authtoken alın, panelden 1 adet ücretsiz statik
+  domain (`https://xxxx.ngrok-free.app`) tanımlayın, sonra:
+  `ngrok http --domain=xxxx.ngrok-free.app 3000`
+- **Tailscale Funnel:** `https://<makine>.<tailnet>.ts.net` gibi sabit adres verir.
+
+Not: Sabit linkin çalışması için bilgisayar ve tünel açık kalmalıdır. 7/24 sabit adres isteniyorsa
+ileride kalıcı diskli bir sunucu/barındırma (Render/Railway/VPS + kendi domain) gerekir.
+
+

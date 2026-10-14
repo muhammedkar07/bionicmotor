@@ -9,6 +9,9 @@
     "dev": "node --watch server.js",
     "demo": "node scripts/demo.js",
     "tunnel": "cloudflared tunnel --url http://localhost:3000",
+    "tunnel:login": "cloudflared tunnel login",
+    "tunnel:create": "cloudflared tunnel create bionic-demo",
+    "tunnel:run": "cloudflared tunnel run bionic-demo",
     "seed": "node scripts/seed.js",
     "backup": "node scripts/backup.js",
     "test": "node --test"

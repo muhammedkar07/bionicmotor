@@ -1,0 +1,23 @@
+# Sabit (kalıcı) link için Cloudflare "named tunnel" örnek yapılandırması.
+#
+# Kullanım:
+#   1) npm run tunnel:login      (tarayıcı açılır, Cloudflare hesabınızla giriş yapın)
+#   2) npm run tunnel:create     (bionic-demo adlı tüneli ve kimlik dosyasını oluşturur)
+#   3) Alan adını Cloudflare'e ekleyip bir hostname yönlendirin:
+#        cloudflared tunnel route dns bionic-demo demo.ornek.com
+#   4) Bu dosyayı cloudflared/config.yml olarak kopyalayıp aşağıda düzenleyin,
+#      sonra: cloudflared tunnel --config cloudflared/config.yml run
+#
+# Alternatif (daha kolay): Cloudflare Zero Trust panelinden tüneli "remotely-managed"
+# olarak ekleyip public hostname'i panelden tanımlayın; o zaman config dosyası gerekmez:
+#        npm run tunnel:run
+
+tunnel: bionic-demo
+credentials-file: C:\Users\<kullanici>\.cloudflared\<TUNEL-UUID>.json
+
+ingress:
+  # Sabit, paylaşılabilir adres (kendi alan adınız):
+  - hostname: demo.ornek.com
+    service: http://localhost:3000
+  # Eşleşmeyen istekler:
+  - service: http_status:404
