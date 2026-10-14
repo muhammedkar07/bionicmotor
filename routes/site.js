@@ -40,8 +40,9 @@ router.get('/sitemap.xml', (req, res) => {
 
 router.get('/', (req, res) => {
   const slides = db.prepare('SELECT * FROM slides WHERE active=1 ORDER BY sort,id').all();
+  const campaigns = db.prepare('SELECT * FROM campaigns WHERE active=1 ORDER BY sort,id').all();
   const models = db.prepare('SELECT * FROM models WHERE active=1 ORDER BY sort,id LIMIT 6').all();
-  render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models });
+  render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models, campaigns });
 });
 
 router.get('/modeller', (req, res) => {

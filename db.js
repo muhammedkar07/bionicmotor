@@ -87,6 +87,10 @@ CREATE TABLE IF NOT EXISTS models (
 CREATE TABLE IF NOT EXISTS slides (
   id INTEGER PRIMARY KEY, image TEXT, title TEXT, subtitle TEXT, old_price TEXT, new_price TEXT,
   bg TEXT, link TEXT, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS campaigns (
+  id INTEGER PRIMARY KEY, image TEXT, title TEXT NOT NULL, subtitle TEXT, old_price TEXT, new_price TEXT,
+  link TEXT, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS faqs (
   id INTEGER PRIMARY KEY, question TEXT NOT NULL, answer TEXT, sort INTEGER DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1);

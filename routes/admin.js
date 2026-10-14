@@ -305,6 +305,23 @@ const RES = {
       C('active')
     ]
   },
+  campaigns: {
+    title: 'Kampanyalar',
+    table: 'campaigns',
+    group: 'Web Sitesi',
+    list: ['sort', 'title', 'old_price', 'new_price', 'active'],
+    order: 'sort, id',
+    fields: [
+      I('image', 'Görsel (isteğe bağlı)'),
+      T('title', 'Başlık', { required: true }),
+      T('subtitle', 'Alt Yazı'),
+      T('old_price', 'Eski Fiyat (ör. 178.200₺)'),
+      T('new_price', 'Yeni Fiyat (ör. 111.500 TL)'),
+      T('link', 'Bağlantı (ör. /modeller)'),
+      N('sort', 'Sıra', { def: 0 }),
+      C('active')
+    ]
+  },
   models: {
     title: 'Modeller',
     table: 'models',

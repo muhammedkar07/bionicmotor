@@ -3,6 +3,7 @@
   const hero = (slides && slides[0]) || null;
   const m0 = (models && models[0]) || null;
   const extraSlides = (slides || []).slice(1);
+  const camps = campaigns && campaigns.length ? campaigns : extraSlides;
   const scooter = '<svg viewBox="0 0 520 300" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><circle cx="120" cy="232" r="52"/><circle cx="404" cy="232" r="52"/><path d="M120 232 L210 156 L306 156 L372 122"/><path d="M210 156 L262 232"/><path d="M306 156 L338 232"/><path d="M186 156 q42 -40 104 -24"/><path d="M372 122 L412 66 M412 66 L448 90"/><circle cx="448" cy="90" r="11"/></g></svg>';
 %>
 
@@ -51,11 +52,11 @@
   <div><b>2 Yıl</b><span>Garanti</span></div>
 </div></div>
 
-<% if (extraSlides.length) { %>
+<% if (camps.length) { %>
 <section class="section"><div class="wrap">
   <div class="h2"><h2>Kampanya<span>lar</span></h2><a href="/modeller">Tümünü gör ›</a></div>
   <div class="cards">
-    <% extraSlides.forEach(sl => { %>
+    <% camps.forEach(sl => { %>
     <a class="model-card" href="<%= sl.link || '/modeller' %>">
       <div class="model-img"><% if (sl.image) { %><img src="<%= sl.image %>" alt="<%= sl.title %>" loading="lazy" decoding="async"><% } else { %><span style="font-size:20px"><%= sl.title %></span><% } %></div>
       <div class="model-body">
@@ -74,7 +75,7 @@
 </div></section>
 <% } %>
 
-<section class="section" style="<%= extraSlides.length ? 'padding-top:0' : '' %>"><div class="wrap">
+<section class="section" style="<%= camps.length ? 'padding-top:0' : '' %>"><div class="wrap">
   <div class="h2"><h2>Modeller<span>imiz</span></h2><a href="/modeller">Tümünü gör ›</a></div>
   <div class="cards">
     <% models.slice(0, 6).forEach(m => { %>
