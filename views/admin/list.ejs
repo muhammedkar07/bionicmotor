@@ -26,7 +26,7 @@
       </div>
       <script>
       (() => {
-        const FIRMS = <%- JSON.stringify(firmList).replace(/</g, '\\u003c') %>;
+        const FIRMS = <%- j(firmList) %>;
         const form = document.querySelector('form.search');
         const combo = document.getElementById('fcombo');
         const inp = document.getElementById('srchInput'), list = document.getElementById('fList');

@@ -4,7 +4,7 @@
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <div class="fg"><label>Kullanıcı Adı</label><input name="username" value="<%= row ? row.username : '' %>" required></div>
   <div class="fg"><label>Ad Soyad</label><input name="name" value="<%= row && row.name ? row.name : '' %>"></div>
-  <div class="fg"><label>Parola <%= row ? '(boş bırakılırsa değişmez)' : '' %></label><input type="password" name="password" minlength="6" <%= row ? '' : 'required' %> autocomplete="new-password"></div>
+  <div class="fg"><label>Parola <%= row ? '(boş bırakılırsa değişmez)' : '' %></label><input type="password" name="password" minlength="14" <%= row ? '' : 'required' %> autocomplete="new-password"><small class="muted">En az 14 karakter, büyük/küçük harf, rakam ve simge içermelidir.</small></div>
   <label class="ck"><input type="checkbox" name="is_super" value="1" id="superToggle" <%= row && row.is_super ? 'checked' : '' %>> Süper Yönetici (tüm sayfalara erişir)</label>
 
   <div id="permBox" <%= row && row.is_super ? 'style="display:none"' : '' %>>

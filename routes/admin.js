@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit } = require('../db');
-const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears } = require('../lib/core');
+const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError } = require('../lib/core');
 const { overallSummary } = require('../lib/account');
 
 const DUMMY = bcrypt.hashSync('x', 10);
@@ -32,7 +32,7 @@ const RES = {
       AUTO('code', 'Kullanıcı Kodu', 'Firma seçildiğinde otomatik verilir (firma sırasına göre artar)'), T('name', 'Ad Soyad', { required: true }),
       T('email', 'E-posta (online ödeme girişi)', { nullable: true }),
       S('role', 'Rol', ['bayi', 'servis'], { def: 'bayi' }),
-      { name: 'password', label: 'Parola (boş bırakılırsa değişmez)', type: 'password' }, C('active')] },
+      { name: 'password', label: 'Parola (boş bırakılırsa değişmez)', type: 'password', help: 'En az 14 karakter, büyük/küçük harf, rakam ve simge içermelidir.' }, C('active')] },
   orders: { title: 'Sipariş Talepleri', table: 'orders', group: 'Bayi Yönetimi',
     list: ['request_date', 'request_no', 'firm_id', 'delivery_date', 'delivery_type', 'status'], order: 'CAST(request_no AS INTEGER) DESC, rowid DESC',
     fields: [FIRM, D('request_date', 'Talep Tarihi', { today: true }), AUTO('request_no', 'Talep No', 'Otomatik verilir (1\'den başlayarak artar)'),
@@ -340,11 +340,12 @@ router.post('/r/:res/save', (req, res) => {
       } else if (f.type === 'checkbox') v = v ? 1 : 0;
       else if (f.type === 'number') v = numAny(v);
       else if (f.type === 'ref') v = +v || null;
-      else if (f.type === 'password') {
+      else       if (f.type === 'password') {
         v = String(v || '');
         if (!v) { if (!id) throw new Error('Parola zorunludur.'); continue; }
-        if (v.length < 6) throw new Error('Parola en az 6 karakter olmalıdır.');
-        data.password_hash = bcrypt.hashSync(v, 10); continue;
+        const pe = passwordError(v);
+        if (pe) throw new Error(pe);
+        data.password_hash = bcrypt.hashSync(v, 12); continue;
       } else if (f.type === 'image' || f.type === 'file') {
         const up = (req.files || []).find(x => x.fieldname === f.name);
         if (!up) continue;
@@ -535,11 +536,14 @@ router.post('/sifre', (req, res) => {
   const a = db.prepare('SELECT * FROM admins WHERE id=?').get(res.locals.admin.id);
   const { current, next: nw, again } = req.body;
   if (!bcrypt.compareSync(String(current || ''), a.password_hash)) flash(req, 'danger', 'Mevcut parola hatalı.');
-  else if (String(nw || '').length < 8) flash(req, 'danger', 'Yeni parola en az 8 karakter olmalıdır.');
-  else if (nw !== again) flash(req, 'danger', 'Yeni parolalar eşleşmiyor.');
   else {
-    db.prepare('UPDATE admins SET password_hash=? WHERE id=?').run(bcrypt.hashSync(nw, 10), a.id);
-    flash(req, 'success', 'Parola güncellendi.');
+    const pe = passwordError(nw);
+    if (pe) flash(req, 'danger', pe);
+    else if (nw !== again) flash(req, 'danger', 'Yeni parolalar eşleşmiyor.');
+    else {
+      db.prepare('UPDATE admins SET password_hash=? WHERE id=?').run(bcrypt.hashSync(nw, 12), a.id);
+      flash(req, 'success', 'Parola güncellendi.');
+    }
   }
   res.redirect('/admin/sifre');
 });
@@ -597,7 +601,9 @@ router.post('/admin-users', (req, res) => {
     perms.res = resSel.filter(k => RES[k]);
     perms.sys = sysSel.filter(k => SYSTEM_PAGES.find(p => p.key === k));
   }
-  const hash = bcrypt.hashSync(String(password), 10);
+  const pe = passwordError(password);
+  if (pe) { flash(req, 'danger', pe); return res.redirect('/admin/admin-users/new'); }
+  const hash = bcrypt.hashSync(String(password), 12);
   try {
     db.prepare('INSERT INTO admins (username,name,password_hash,is_super,permissions) VALUES (?,?,?,?,?)').run(
       String(username).trim(),
@@ -627,7 +633,12 @@ router.post('/admin-users/:id/update', (req, res) => {
     perms.res = resSel.filter(k => RES[k]);
     perms.sys = sysSel.filter(k => SYSTEM_PAGES.find(p => p.key === k));
   }
-  const hash = password ? bcrypt.hashSync(String(password), 10) : a.password_hash;
+  let hash = a.password_hash;
+  if (password) {
+    const pe = passwordError(password);
+    if (pe) { flash(req, 'danger', pe); return res.redirect('/admin/admin-users/' + id); }
+    hash = bcrypt.hashSync(String(password), 12);
+  }
   db.prepare('UPDATE admins SET username=?,name=?,password_hash=?,is_super=?,permissions=? WHERE id=?').run(
     String(username || a.username).trim(),
     String(name || '').trim() || null,

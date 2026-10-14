@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const { db } = require('../db');
-const { flash } = require('../lib/core');
+const { flash, throttle } = require('../lib/core');
 
 const clip = (v, n) => String(v || '').trim().slice(0, n);
 const render = (res, view, title, active, extra = {}) => res.render(view, { title, active, ...extra });
@@ -33,6 +33,11 @@ router.get('/perakende-fiyat-listesi', (req, res) => {
 
 router.get('/iletisim', (req, res) => render(res, 'site/contact', 'İletişim', 'contact'));
 router.post('/iletisim', (req, res) => {
+  const t = throttle('site:contact:' + req.ip, 10, 60 * 1000);
+  if (t.blocked) {
+    flash(req, 'danger', 'Çok fazla gönderim. Daha sonra tekrar deneyin.');
+    return res.redirect('/iletisim');
+  }
   const b = req.body;
   const name = clip(b.name, 120), email = clip(b.email, 160), msg = clip(b.message, 3000);
   if (!name || !msg || !/^\S+@\S+\.\S+$/.test(email)) {
@@ -40,12 +45,18 @@ router.post('/iletisim', (req, res) => {
     return res.redirect('/iletisim');
   }
   db.prepare('INSERT INTO messages(name,email,phone,message) VALUES(?,?,?,?)').run(name, email, clip(b.phone, 40), msg);
+  t.hit();
   flash(req, 'success', 'Mesajınız alındı. En kısa sürede dönüş yapılacaktır.');
   res.redirect('/iletisim');
 });
 
 router.get('/bayilik-basvurusu', (req, res) => render(res, 'site/apply', 'Bayilik Başvurusu', ''));
 router.post('/bayilik-basvurusu', (req, res) => {
+  const t = throttle('site:apply:' + req.ip, 6, 60 * 1000);
+  if (t.blocked) {
+    flash(req, 'danger', 'Çok fazla başvuru. Daha sonra tekrar deneyin.');
+    return res.redirect('/bayilik-basvurusu');
+  }
   const b = req.body;
   const name = clip(b.name, 120), phone = clip(b.phone, 40);
   if (!name || !clip(b.city, 60) || phone.replace(/\D/g, '').length < 10) {
@@ -54,6 +65,7 @@ router.post('/bayilik-basvurusu', (req, res) => {
   }
   db.prepare('INSERT INTO applications(name,city,district,phone,note) VALUES(?,?,?,?,?)')
     .run(name, clip(b.city, 60), clip(b.district, 60), phone, clip(b.note, 2000));
+  t.hit();
   flash(req, 'success', 'Başvurunuz alındı. Sizinle iletişime geçeceğiz.');
   res.redirect('/bayilik-basvurusu');
 });

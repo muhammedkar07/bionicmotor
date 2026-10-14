@@ -14,7 +14,7 @@
   <form method="post" action="/bayi/giris" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <label>Kullanıcı Kodu:<input class="tint" name="code" required autofocus maxlength="50" autocomplete="username"></label>
-    <label>Parola:<input class="tint" type="password" name="password" required autocomplete="current-password"></label>
+    <label>Parola:<input class="tint" type="password" name="password" required minlength="14" autocomplete="current-password"></label>
     <button class="btn btn-info btn-block" type="submit">Giriş Yap</button>
   </form>
 </main>

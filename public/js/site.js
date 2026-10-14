@@ -20,7 +20,9 @@
       b.querySelector('.plus').textContent = open ? 'âˆ’' : '+';
     });
   });
+  var nt = document.getElementById('navToggle');
+  if (nt) nt.addEventListener('click', function () { document.body.classList.toggle('nav-open'); });
 })();
 
-// Sayfadaki tüm baðlantýlar yeni sekmede açýlýr
+// Sayfadaki tÃ¼m baÄŸlantÄ±lar yeni sekmede aÃ§Ä±lÄ±r
 document.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href'); if (h && !h.startsWith('#') && !h.startsWith('javascript:') && !h.startsWith('tel:') && !h.startsWith('mailto:')) { a.target = '_blank'; a.rel = 'noopener'; } });

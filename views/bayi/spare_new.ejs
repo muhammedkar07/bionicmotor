@@ -82,10 +82,10 @@
   </form>
 </div>
 <script>
-  const INST = <%- JSON.stringify(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
-  const PARTS = <%- JSON.stringify(parts.map(p => ({ id: p.id, name: p.name, code: p.code, price: +p.price || 0, max: +p.max_qty || 0 }))) %>;
-  const OLD = <%- JSON.stringify(old || {}) %>;
-  const CREDIT = <%- JSON.stringify(Number(credit) || 0) %>;
+  const INST = <%- j(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
+  const PARTS = <%- j(parts.map(p => ({ id: p.id, name: p.name, code: p.code, price: +p.price || 0, max: +p.max_qty || 0 }))) %>;
+  const OLD = <%- j(old || {}) %>;
+  const CREDIT = <%- j(Number(credit) || 0) %>;
   const CSRF = document.querySelector('input[name=_csrf]').value;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

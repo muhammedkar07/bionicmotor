@@ -19,6 +19,14 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  const isPanel = /^\/(admin|bayi|servis|odeme)(\/|$)/.test(req.path);
+  if (isPanel) res.setHeader('Cache-Control', 'no-store, private');
+  const isSecure = process.env.COOKIE_SECURE === '1' || req.secure;
+  if (isSecure) res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains; preload');
+  const publicCsp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
+  const panelCsp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
+  res.setHeader('Content-Security-Policy', isPanel ? panelCsp : publicCsp);
   next();
 });
 
@@ -53,11 +61,24 @@ app.use((req, res, next) => {
   if (req.session.flash) { delete req.session.flash; req.saveSession(); }
   res.locals.money = core.fmtMoney;
   res.locals.date = core.fmtDate;
-res.locals.dateSlash = core.fmtDateSlash;
+  res.locals.dateSlash = core.fmtDateSlash;
   res.locals.dt = core.fmtDateTime;
   res.locals.v = ASSET_V;
   res.locals.path = req.path;
   res.locals.files = req.files || [];
+  // Güvenli JSON seri  üretici (script bağlamı için < vektörünü \u003c olarak kaçar)
+  res.locals.j = (obj) => {
+    try {
+      return JSON.stringify(obj == null ? null : obj)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e')
+        .replace(/&/g, '\\u0026')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+    } catch (e) {
+      return 'null';
+    }
+  };
   next();
 });
 

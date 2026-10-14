@@ -69,7 +69,7 @@
 </div>
 </form>
 <script>
-  const INST = <%- JSON.stringify(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
+  const INST = <%- j(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const parse = v => parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0;
@@ -78,8 +78,9 @@
     const checked = (document.querySelector('input[name=installment_id]:checked') || {}).value || INST[0]?.id;
     $('itbody').innerHTML = INST.map(i => {
       const total = a + a * i.rate / 100;
+      const el = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       return `<tr><td><input type="radio" name="installment_id" value="${i.id}" ${i.id == checked ? 'checked' : ''}></td>
-        <td>${i.label}</td><td>%${fmt(i.rate)}</td><td>${fmt(total / i.count)} ${cur}</td><td>${fmt(total)} ${cur}</td></tr>`;
+        <td>${el(i.label)}</td><td>%${fmt(i.rate)}</td><td>${fmt(total / i.count)} ${cur}</td><td>${fmt(total)} ${cur}</td></tr>`;
     }).join('');
   }
   ['amount', 'cur'].forEach(i => $(i).addEventListener('input', renderInst));
