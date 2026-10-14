@@ -10,6 +10,8 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'bionic-auth-'));
 process.env.DATA_DIR = TMP;
 process.env.UPLOAD_DIR = path.join(TMP, 'uploads');
 process.env.ADMIN_PASSWORD = 'TestAdmin1234!xy';
+process.env.SEED_DEMO = '1';
+process.env.PARATIKA_SIMULATE = '1';
 process.env.NODE_ENV = 'test';
 
 const app = require('../server');
@@ -87,4 +89,18 @@ test('menü sırası kaydedilir ve panelde uygulanır', async () => {
   const iFirms = after.html.indexOf('data-menu-id="r:firms"');
   assert.ok(iSlides > -1 && iFirms > -1 && iSlides < iFirms, 'kaydedilen sıraya göre r:slides önce gelmeli');
   assert.ok(after.html.indexOf('data-menu-id="/admin"') < iSlides, 'Panel ilk sırada kalmalı');
+});
+
+test('sistem testi tüm kontrolleri geçer', async () => {
+  const g = await getPage('/admin/giris');
+  const login = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) }) });
+  const cookie = sidOf(login);
+  const res = await fetch(base + '/admin/test/api', { headers: { cookie } });
+  assert.strictEqual(res.status, 200);
+  const data = await res.json();
+  const failed = [];
+  for (const grp of data.groups) for (const r of grp.results) if (!r.ok) failed.push(`[${grp.name}] ${r.name} => ${r.detail}`);
+  assert.deepStrictEqual(failed, [], 'başarısız testler: ' + failed.join(' | '));
+  assert.strictEqual(data.ok, true);
+  assert.ok(data.groups.length >= 5, 'birden çok test grubu beklenir');
 });

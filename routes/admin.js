@@ -4,6 +4,9 @@ const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, sy
 const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError, csrfCheck } = require('../lib/core');
 const { parseAmount, kurusToTL, AMOUNT_HINT } = require('../lib/money');
 const { anyFiles } = require('../lib/upload');
+const fsp = require('fs');
+const pth = require('path');
+const ejsLib = require('ejs');
 
 // Fiziksel silinmeyip "storno" (deleted_at) uygulanan finansal tablolar.
 const SOFT_DELETE = new Set(['orders', 'spare_orders', 'payments', 'account_movements']);
@@ -190,6 +193,7 @@ function buildMenu(a, req) {
   if (can('stok')) entries.push({ id: 'sys:stok', label: 'Araç Stok Takibi', href: '/admin/stok', active: p === '/stok' });
   if (can('stok-parca')) entries.push({ id: 'sys:stok-parca', label: 'Yedek Parça Stok Takibi', href: '/admin/stok-parca', active: p === '/stok-parca' });
   if (can('ayarlar')) entries.push({ id: 'sys:ayarlar', label: 'Site Ayarları', href: '/admin/ayarlar', active: p === '/ayarlar' });
+  if (can('test')) entries.push({ id: 'sys:test', label: 'Sistem Testi', href: '/admin/test', active: p === '/test' });
   if (a.is_super) entries.push({ id: 'sys:admin-users', label: 'Admin Kullanıcıları', href: '/admin/admin-users', active: p === '/admin-users' });
   entries.push({ id: 'sys:sifre', label: 'Parola Değiştir', href: '/admin/sifre', active: p === '/sifre' });
   entries.push({ id: 'ext:site', label: 'Siteyi Görüntüle ↗', href: '/', external: true, active: false });
@@ -202,7 +206,7 @@ function buildMenu(a, req) {
   for (const e of entries) if (!used.has(e.id)) ordered.push(e);
   return ordered;
 }
-const FIXED_MENU_IDS = new Set(['/admin', 'sys:stok', 'sys:stok-parca', 'sys:ayarlar', 'sys:admin-users', 'sys:sifre', 'ext:site', 'ext:bayi']);
+const FIXED_MENU_IDS = new Set(['/admin', 'sys:stok', 'sys:stok-parca', 'sys:ayarlar', 'sys:test', 'sys:admin-users', 'sys:sifre', 'ext:site', 'ext:bayi']);
 const validMenuId = id => typeof id === 'string' && (FIXED_MENU_IDS.has(id) || (id.startsWith('r:') && !!RES[id.slice(2)]));
 
 router.use((req, res, next) => {
@@ -230,6 +234,7 @@ function sysKey(p) {
   if (p === '/stok') return 'stok';
   if (p === '/stok-parca') return 'stok-parca';
   if (p === '/ayarlar') return 'ayarlar';
+  if (p === '/test' || p.startsWith('/test/')) return 'test';
   return null;
 }
 router.use((req, res, next) => {
@@ -652,7 +657,8 @@ router.post('/sifre', (req, res) => {
 const SYSTEM_PAGES = [
   { key: 'stok', label: 'Araç Stok Takibi' },
   { key: 'stok-parca', label: 'Yedek Parça Stok Takibi' },
-  { key: 'ayarlar', label: 'Site Ayarları' }
+  { key: 'ayarlar', label: 'Site Ayarları' },
+  { key: 'test', label: 'Sistem Testi' }
 ];
 
 // Kaynakları grup başlıklarına göre düzenler (yetkilendirme formunda kullanılır).
@@ -760,6 +766,165 @@ router.post('/admin-users/:id/delete', (req, res) => {
   db.prepare('DELETE FROM admins WHERE id=?').run(id);
   flash(req, 'success', 'Silindi.');
   res.redirect('/admin/admin-users');
+});
+
+// ===================== SİSTEM TESTİ =====================
+// Tüm sayfaları, şablonları, veritabanını, ayarları ve temel iş mantığını tek tıkla test eder.
+function listViews(dir, out) {
+  out = out || [];
+  for (const e of fsp.readdirSync(dir, { withFileTypes: true })) {
+    const p = pth.join(dir, e.name);
+    if (e.isDirectory()) listViews(p, out);
+    else if (e.name.endsWith('.ejs')) out.push(p);
+  }
+  return out;
+}
+
+async function runSystemTests(req) {
+  const groups = [];
+  const add = (group, name, ok, detail) => {
+    let g = groups.find(x => x.name === group);
+    if (!g) { g = { name: group, results: [] }; groups.push(g); }
+    g.results.push({ name, ok: !!ok, detail: detail == null ? '' : String(detail) });
+  };
+
+  // --- Veritabanı ---
+  try {
+    const integ = db.prepare('PRAGMA integrity_check').get();
+    const v = integ && (integ.integrity_check || integ['integrity_check']);
+    add('Veritabanı', 'SQLite bütünlük kontrolü', v === 'ok', v);
+  } catch (e) { add('Veritabanı', 'SQLite bütünlük kontrolü', false, e.message); }
+  const tables = ['settings', 'sessions', 'admins', 'firms', 'dealer_users', 'user_firms', 'orders', 'order_items',
+    'account_movements', 'products', 'models', 'slides', 'payments', 'spare_orders', 'spare_order_items',
+    'warranty_records', 'work_orders', 'categories', 'audit_log', 'login_attempts', 'firm_stock', 'order_stock_snap'];
+  const missingTables = tables.filter(t => !db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(t));
+  add('Veritabanı', 'Gerekli tablolar', missingTables.length === 0, missingTables.length ? 'Eksik: ' + missingTables.join(', ') : tables.length + ' tablo tamam');
+  const cols = [['payments', 'provider'], ['payments', 'provider_ref'], ['payments', 'provider_order'], ['payments', 'amount_tl'],
+    ['payments', 'source'], ['orders', 'deleted_at'], ['spare_orders', 'deleted_at'], ['payments', 'deleted_at'],
+    ['account_movements', 'deleted_at'], ['products', 'stock'], ['products', 'model_id']];
+  const missingCols = cols.filter(([t, c]) => !db.prepare(`PRAGMA table_info(${t})`).all().some(x => x.name === c)).map(x => x[0] + '.' + x[1]);
+  add('Veritabanı', 'Gerekli kolonlar', missingCols.length === 0, missingCols.length ? 'Eksik: ' + missingCols.join(', ') : 'tamam');
+
+  // --- Kayıtlar (bilgi) ---
+  try {
+    const c = t => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
+    add('Kayıtlar', 'Yönetici / bayi / ürün / model', c('admins') > 0, `admin:${c('admins')} bayi:${c('dealer_users')} ürün:${c('products')} model:${c('models')}`);
+  } catch (e) { add('Kayıtlar', 'Kayıt sayıları okunamadı', false, e.message); }
+
+  // --- Şablonlar (EJS derleme) ---
+  try {
+    const viewsDir = pth.join(__dirname, '..', 'views');
+    const files = listViews(viewsDir);
+    let bad = 0;
+    for (const f of files) {
+      try { ejsLib.compile(fsp.readFileSync(f, 'utf8'), { filename: f }); }
+      catch (e) { bad++; add('Şablonlar (EJS)', pth.relative(viewsDir, f), false, String(e.message).split('\n')[0]); }
+    }
+    add('Şablonlar (EJS)', `Tüm görünümler derlendi (${files.length} dosya)`, bad === 0, bad ? bad + ' hatalı görünüm' : 'hepsi geçerli');
+  } catch (e) { add('Şablonlar (EJS)', 'Görünümler taranamadı', false, e.message); }
+
+  // --- Statik dosyalar ---
+  const assets = ['css/site.css', 'css/admin.css', 'js/site.js', 'js/theme.js', 'js/admin-menu.js', 'img/bionic-logo.png'];
+  for (const a of assets) {
+    const p = pth.join(__dirname, '..', 'public', ...a.split('/'));
+    add('Statik Dosyalar', a, fsp.existsSync(p), fsp.existsSync(p) ? 'var' : 'BULUNAMADI');
+  }
+
+  // --- İş mantığı ---
+  try {
+    const { parseAmount } = require('../lib/money');
+    const cases = [['12.50', 1250], ['1.250,50', 125050], ['1250.50', 125050], ['1.250', 125000], ['1,250.50', null], ['abc', null]];
+    const bad = cases.filter(([i, exp]) => parseAmount(i) !== exp).map(([i, exp]) => `${i}=>${parseAmount(i)} (beklenen ${exp})`);
+    add('İş Mantığı', 'Para ayrıştırma (kuruş)', bad.length === 0, bad.join(', '));
+  } catch (e) { add('İş Mantığı', 'Para ayrıştırma', false, e.message); }
+  try {
+    const { accountSummary } = require('../lib/account');
+    const f = db.prepare('SELECT id FROM firms LIMIT 1').get();
+    const a = f ? accountSummary(f.id, 'ana') : null;
+    add('İş Mantığı', 'Cari özet hesabı', !f || (a && typeof a.balance === 'number'), f ? 'bakiye: ' + a.balance : 'firma yok');
+  } catch (e) { add('İş Mantığı', 'Cari özet hesabı', false, e.message); }
+
+  // --- Ödeme (Paratika) ---
+  try {
+    const paratika = require('../lib/paratika');
+    const c = paratika.cfg();
+    add('Ödeme (Paratika)', 'Yapılandırma', c.simulate || paratika.isConfigured(),
+      c.simulate ? 'SİMÜLASYON modu açık' : (paratika.isConfigured() ? 'üye işyeri bilgileri tanımlı' : 'eksik: PARATIKA_* tanımlayın veya PARATIKA_SIMULATE=1'));
+    add('Ödeme (Paratika)', 'API adresi', /^https?:\/\//.test(c.apiBase), c.apiBase);
+    add('Ödeme (Paratika)', 'Ödeme sayfası adresi ({token})', /\{token\}/.test(c.hppUrl), c.hppUrl);
+  } catch (e) { add('Ödeme (Paratika)', 'Modül yüklenemedi', false, e.message); }
+
+  // --- Güvenlik ---
+  add('Güvenlik', 'CSRF koruması etkin', typeof csrfCheck === 'function');
+  try { const n = db.prepare('SELECT COUNT(*) n FROM admins').get().n; add('Güvenlik', 'Yönetici hesabı var', n > 0, n + ' yönetici'); } catch (e) { add('Güvenlik', 'Yönetici hesabı', false, e.message); }
+  try { db.exec('BEGIN'); db.exec('ROLLBACK'); add('Güvenlik', 'İşlem (transaction) desteği', true); } catch (e) { add('Güvenlik', 'İşlem (transaction) desteği', false, e.message); }
+
+  // --- Ayarlar ---
+  try {
+    add('Ayarlar', 'Marka bilgisi', !!(get('brand_1') || get('brand_2')), (get('brand_1') || '') + (get('brand_2') || ''));
+    add('Ayarlar', 'İletişim telefonu', !!get('phone'), get('phone') || 'boş');
+    add('Ayarlar', 'Döviz kurları', !!get('usd_rate') && !!get('eur_rate'), `USD ${get('usd_rate')} · EUR ${get('eur_rate')}`);
+  } catch (e) { add('Ayarlar', 'Ayarlar okunamadı', false, e.message); }
+
+  // --- Sayfalar (HTTP) ---
+  try {
+    const port = (req.socket && req.socket.localPort) || process.env.PORT || 3000;
+    const base = 'http://127.0.0.1:' + port;
+    const cookie = req.headers.cookie || '';
+    const routes = [
+      { path: '/', status: 200, marker: 'hero-in' },
+      { path: '/modeller', status: 200, marker: 'model-card' },
+      { path: '/satis-ve-servis', status: 200 },
+      { path: '/iletisim', status: 200 },
+      { path: '/destek', status: 200 },
+      { path: '/bayilik-basvurusu', status: 200 },
+      { path: '/perakende-fiyat-listesi', status: 200 },
+      { path: '/sayfa/kurumsal', status: 200 },
+      { path: '/admin/giris', status: [200, 302] },
+      { path: '/admin', status: 200, marker: 'class="side"' },
+      { path: '/admin/r/firms', status: 200 },
+      { path: '/admin/r/orders', status: 200 },
+      { path: '/admin/r/products', status: 200 },
+      { path: '/admin/r/payments', status: 200 },
+      { path: '/admin/r/movements', status: 200 },
+      { path: '/admin/r/models', status: 200 },
+      { path: '/admin/stok', status: 200 },
+      { path: '/admin/stok-parca', status: 200 },
+      { path: '/admin/ayarlar', status: 200 },
+      { path: '/admin/admin-users', status: 200 },
+      { path: '/bayi/giris', status: 200 },
+      { path: '/servis/giris', status: 200 },
+      { path: '/odeme', status: 200 },
+      { path: '/bayi', status: 302 },
+      { path: '/servis', status: 302 },
+      { path: '/olmayan-sayfa-xyz', status: 404 }
+    ];
+    for (const r of routes) {
+      try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 6000);
+        const res = await fetch(base + r.path, { redirect: 'manual', signal: ctrl.signal, headers: cookie ? { cookie } : {} });
+        clearTimeout(to);
+        const expect = Array.isArray(r.status) ? r.status : [r.status];
+        let ok = expect.includes(res.status);
+        let detail = 'HTTP ' + res.status + (!ok ? ' (beklenen ' + expect.join('/') + ')' : '');
+        if (ok && r.marker) {
+          const html = await res.text();
+          if (!html.includes(r.marker)) { ok = false; detail += ' · içerikte "' + r.marker + '" yok'; }
+        }
+        add('Sayfalar (HTTP)', r.path, ok, detail);
+      } catch (e) { add('Sayfalar (HTTP)', r.path, false, e.message); }
+    }
+  } catch (e) { add('Sayfalar (HTTP)', 'Rota testleri çalıştırılamadı', false, e.message); }
+
+  const ok = groups.every(g => g.results.every(r => r.ok));
+  return { ok, groups, time: new Date().toISOString() };
+}
+
+router.get('/test', (req, res) => res.render('admin/test', { title: 'Sistem Testi' }));
+router.get('/test/api', async (req, res) => {
+  try { res.json(await runSystemTests(req)); }
+  catch (e) { res.status(500).json({ ok: false, groups: [], error: e.message }); }
 });
 
 module.exports = router;
