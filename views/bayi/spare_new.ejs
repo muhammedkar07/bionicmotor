@@ -59,13 +59,7 @@
       </div>
 
       <div id="cardbox" class="box">
-        <label>Kart Üzerindeki Ad Soyad<input name="holder" maxlength="80"></label>
-        <label>Kart Numarası<input name="number" id="number" inputmode="numeric" maxlength="23"></label>
-        <div style="display:flex;gap:10px">
-          <label style="flex:1">Ay<select name="month"><option value="">Ay</option><% for (let m=1;m<=12;m++){ %><option value="<%= m %>"><%= String(m).padStart(2,'0') %></option><% } %></select></label>
-          <label style="flex:1">Yıl<select name="year"><option value="">Yıl</option><% for (let y=new Date().getFullYear(); y<new Date().getFullYear()+12; y++){ %><option><%= y %></option><% } %></select></label>
-          <label style="flex:1">CVC<input name="cvc" inputmode="numeric" maxlength="4"></label>
-        </div>
+        <p class="muted" style="margin-top:0">Kart bilgileriniz bu sitede <b>alınmaz</b>. “Öde ve Siparişi Gönder” dediğinizde Paratika’nın güvenli ödeme sayfasına yönlendirilirsiniz. Ödeme onaylandığında sipariş otomatik onaylanır ve hesabınıza işlenir.</p>
         <table class="ptbl">
           <thead><tr><th>Seç</th><th>Taksit</th><th class="r">Komisyon</th><th class="r">Taksit Tutarı</th><th class="r">Toplam</th></tr></thead>
           <tbody id="itbody"></tbody>
@@ -213,17 +207,11 @@
     $('sbtn').textContent = card ? 'Öde ve Siparişi Gönder' : 'Siparişi Kaydet';
   }
   document.querySelectorAll('input[name=pay_method]').forEach(r => r.onchange = method);
-  $('number').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim(); });
   $('sform').addEventListener('submit', e => {
     if (!cart.length) { e.preventDefault(); alert('Sepete en az bir parça ekleyin.'); }
   });
   document.querySelectorAll('input[name=pay_method]').forEach(r => { r.checked = r.value === (OLD.pay_method || 'kart'); });
   const setV = (sel, v, f) => { const el = document.querySelector(sel); if (el && v !== undefined && v !== null && v !== '') el.value = f ? f(String(v)) : v; };
-  setV('input[name=holder]', OLD.holder);
-  setV('input[name=number]', OLD.number, n => n.replace(/\D/g, '').slice(0, 19).replace(/(.{4})/g, '$1 ').trim());
-  setV('select[name=month]', OLD.month);
-  setV('select[name=year]', OLD.year);
-  setV('input[name=cvc]', OLD.cvc);
   setV('textarea[name=note]', OLD.note);
   setV('input[name=payer_name]', OLD.payer_name);
   (OLD.lines || []).filter(l => +l[0] > 0).forEach(l => add(+l[0], Math.max(1, Math.floor(+l[1]) || 1)));

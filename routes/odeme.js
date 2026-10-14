@@ -1,8 +1,9 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db } = require('../db');
-const { flash, throttle, regenerate } = require('../lib/core');
+const { db, tx, syncPaymentCredit, STATUS } = require('../db');
+const { flash, throttle, regenerate, publicOrigin } = require('../lib/core');
 const pay = require('../lib/pay');
+const paratika = require('../lib/paratika');
 
 const DUMMY = bcrypt.hashSync('x', 10);
 
@@ -33,12 +34,63 @@ router.post('/giris', (req, res) => {
 
 router.post('/cikis', (req, res) => { regenerate(req, res, 'pay'); res.redirect('/odeme'); });
 
+// Aktif firma seçimi (kullanıcının birden çok firması varsa ödeme doğru carisine işlenir).
+router.post('/firma-degistir', (req, res) => {
+  const u = payUser(req);
+  if (!u) return res.redirect('/odeme');
+  const f = db.prepare(
+    'SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
+    .get(u.id, +req.body.firm_id);
+  if (f) { req.session.pay.firmId = f.id; req.saveSession(); }
+  res.redirect('/odeme');
+});
+
+// ---- Paratika dönüş/callback ----
+// Kullanıcıya asla güvenilmez: ödeme durumu sunucudan sunucuya `query` ile doğrulanır.
+// Tüm paneller (bayi/servis/odeme) için TEK callback adresi kullanılır.
+async function paratikaResult(req, res) {
+  const b = Object.assign({}, req.query, req.body);
+  const orderId = b.o || b.orderId || b.ORDER_ID || b.order_id || b.orderid;
+  const payment = orderId ? db.prepare('SELECT * FROM payments WHERE provider_order=?').get(String(orderId)) : null;
+  const spare = payment ? db.prepare('SELECT id FROM spare_orders WHERE payment_id=? AND deleted_at IS NULL').get(payment.id) : null;
+  const back = (p, type, msg) => {
+    if (req.session) flash(req, type, msg);
+    const target = spare
+      ? (p && p.source === 'servis' ? '/servis/yedek-parca-siparisleri' : '/bayi/yedek-parca-siparisleri')
+      : (p && p.source === 'bayi' ? '/bayi/odeme' : p && p.source === 'servis' ? '/servis/odeme' : '/odeme');
+    res.redirect(target);
+  };
+  if (!payment) return back(null, 'danger', 'Ödeme kaydı bulunamadı.');
+  if (payment.status === STATUS.COLLECTED) return back(payment, 'success', 'Bu ödeme zaten tahsil edilmiş.');
+
+  const v = await paratika.query({ orderId: payment.provider_order });
+  if (v.ok) {
+    tx(() => {
+      const fresh = db.prepare('SELECT status FROM payments WHERE id=?').get(payment.id);
+      if (fresh && fresh.status === STATUS.COLLECTED) return; // yarış durumunda çift işleme engeli
+      db.prepare("UPDATE payments SET status=?, provider_ref=COALESCE(?,provider_ref), paid_at=COALESCE(paid_at,datetime('now')) WHERE id=?")
+        .run(STATUS.COLLECTED, v.ref || null, payment.id);
+      // Kartla ödenen yedek parça siparişi artık ödendiği için siparişe dönüştürülür;
+      // syncPaymentCredit -> syncOrderDebit borcu ve alacağı birlikte işler.
+      if (spare) db.prepare('UPDATE spare_orders SET status=? WHERE id=? AND status=?').run(STATUS.CONVERTED, spare.id, STATUS.PENDING);
+      syncPaymentCredit(payment.id);
+    });
+    return back(payment, 'success', 'Ödemeniz başarıyla alındı ve hesabınıza işlendi.');
+  }
+  db.prepare('UPDATE payments SET status=? WHERE id=? AND status=?').run('İptal', payment.id, STATUS.POS_PENDING);
+  return back(payment, 'danger', 'Ödeme tamamlanamadı: ' + (v.error || 'bilinmeyen hata'));
+}
+router.get('/paratika/sonuc', paratikaResult);
+router.post('/paratika/sonuc', paratikaResult);
+
 router.get('/', (req, res) => {
   const u = payUser(req);
   if (!u) return res.render('odeme/login', { title: 'Üye Girişi', pu: null });
   res.locals.pu = u;
+  const firms = db.prepare(
+    'SELECT f.id, f.name FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name').all(u.id);
   const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
-  res.render('odeme/pay', { title: 'Ödeme Ekranı', inst });
+  res.render('odeme/pay', { title: 'Ödeme Ekranı', inst, firms, firmId: req.session.pay.firmId });
 });
 
 router.use((req, res, next) => {
@@ -48,14 +100,24 @@ router.use((req, res, next) => {
   next();
 });
 
-const payCtx = (req, res) => ({ userId: res.locals.pu.id, firmId: req.session.pay.firmId });
+const payCtx = (req, res) => ({ userId: res.locals.pu.id, firmId: req.session.pay.firmId, source: 'odeme', origin: publicOrigin(req) });
 
-router.post('/ode', (req, res) => {
+router.post('/ode', async (req, res) => {
   const b = req.body;
   const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
-  const r = method === 'havale' ? pay.havale(payCtx(req, res), b) : pay.card(payCtx(req, res), b);
-  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
-  res.redirect('/odeme');
+  if (method === 'havale') {
+    const r = pay.havale(payCtx(req, res), b);
+    flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+    return res.redirect('/odeme');
+  }
+  try {
+    const r = await pay.beginCard(payCtx(req, res), b);
+    if (r.error) { flash(req, 'danger', r.error); return res.redirect('/odeme'); }
+    res.redirect(r.redirect);
+  } catch (e) {
+    flash(req, 'danger', 'Ödeme başlatılamadı: ' + e.message);
+    res.redirect('/odeme');
+  }
 });
 
 router.post('/talimat', (req, res) => {

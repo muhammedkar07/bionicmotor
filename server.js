@@ -50,7 +50,11 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // isteklerde CSRF kontrolü burada, dosya diske yazılmadan önce yapılır.
 const MULTIPART_UPLOAD_PATHS = [
   /^\/admin\/r\/[^/]+\/save$/, /^\/admin\/ayarlar$/, /^\/servis\/is-emri\/yeni$/, /^\/bayi\/is-emri\/yeni$/];
+// Paratika dönüş adresi bizim CSRF token'ımızı taşımaz; güvenlik, ödemenin sunucudan
+// sunucuya doğrulanmasıyla sağlanır (bkz. routes/odeme.js paratikaResult).
+const CSRF_EXEMPT_PATHS = [/^\/odeme\/paratika\/sonuc$/];
 app.use((req, res, next) => {
+  if (CSRF_EXEMPT_PATHS.some(re => re.test(req.path))) return next();
   if (!(req.headers['content-type'] || '').startsWith('multipart/form-data')) return core.csrfCheck(req, res, next);
   if (!MULTIPART_UPLOAD_PATHS.some(re => re.test(req.path))) return res.status(415).send('Desteklenmeyen içerik türü.');
   next();

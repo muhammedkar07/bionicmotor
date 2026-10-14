@@ -1,8 +1,8 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
-const { flash, throttle, regenerate, addYears, fmtMoney } = require('../lib/core');
-const { checkMaxQty, validateCard } = require('../lib/spareOrder');
+const { flash, throttle, regenerate, addYears, fmtMoney, publicOrigin } = require('../lib/core');
+const { checkMaxQty, createSpareCardOrder } = require('../lib/spareOrder');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
 
@@ -160,13 +160,23 @@ router.get('/odeme', (req, res) => {
   const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
   page(res, 'odeme', 'Online Ödeme', { inst, base: '/bayi/odeme' });
 });
-router.post('/odeme/ode', (req, res) => {
+router.post('/odeme/ode', async (req, res) => {
   const b = req.body;
-  const ctx = { userId: res.locals.bu.id, firmId: res.locals.bf.id };
+  const ctx = { userId: res.locals.bu.id, firmId: res.locals.bf.id, source: 'bayi', origin: publicOrigin(req) };
   const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
-  const r = method === 'havale' ? pay.havale(ctx, b) : pay.card(ctx, b);
-  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
-  res.redirect('/bayi/odeme');
+  if (method === 'havale') {
+    const r = pay.havale(ctx, b);
+    flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+    return res.redirect('/bayi/odeme');
+  }
+  try {
+    const r = await pay.beginCard(ctx, b);
+    if (r.error) { flash(req, 'danger', r.error); return res.redirect('/bayi/odeme'); }
+    res.redirect(r.redirect);
+  } catch (e) {
+    flash(req, 'danger', 'Ödeme başlatılamadı: ' + e.message);
+    res.redirect('/bayi/odeme');
+  }
 });
 router.post('/odeme/talimat', (req, res) => {
   const r = pay.talimat({ userId: res.locals.bu.id, firmId: res.locals.bf.id }, req.body);
@@ -203,16 +213,13 @@ router.get('/yedek-parca/yeni', (req, res) => {
   const credit = bal < 0 ? Math.round(-bal * 100) / 100 : 0;
   page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, models, old: null, credit });
 });
-router.post('/yedek-parca/yeni', (req, res) => {
+router.post('/yedek-parca/yeni', async (req, res) => {
   const b = req.body;
   const ids = [].concat(b.part_id || []), qtys = [].concat(b.qty || []);
   const old = {
     lines: ids.map((id, i) => [+id || '', String(qtys[i] ?? '').trim()]),
     note: String(b.note || '').slice(0, 1000),
     pay_method: b.pay_method || 'kart',
-    holder: String(b.holder || '').slice(0, 80),
-    number: String(b.number || '').trim(),
-    month: b.month || '', year: b.year || '', cvc: String(b.cvc || '').slice(0, 4),
     payer_name: String(b.payer_name || '').slice(0, 120),
     installment_id: b.installment_id || '',
   };
@@ -243,42 +250,40 @@ router.post('/yedek-parca/yeni', (req, res) => {
   if (!method) return back('Ödeme yöntemini seçin.');
   const payer = String(b.payer_name || '').trim().slice(0, 120);
   if (payable > 0 && b.pay_method === 'havale' && !payer) return back('Havale / EFT için gönderen hesap ad soyad bilgisini giriniz.');
+  const fullyCovered = payable <= 0;
 
-  let card = null;
+  // Kredi kartı: kart bilgisi alınmaz; sipariş "Beklemede" kaydedilir ve Paratika ödeme
+  // sayfasına yönlendirilir. Ödeme doğrulanınca siparişe dönüştürülüp cariye işlenir.
   if (payable > 0 && b.pay_method === 'kart') {
-    const r = validateCard(b);
+    const no = String(nextNo('spare_orders', 'no'));
+    let r;
+    try {
+      r = await createSpareCardOrder({
+        userId: res.locals.bu.id, firmId: res.locals.bf.id, source: 'bayi', origin: publicOrigin(req),
+        no, note: String(b.note || '').slice(0, 1000), payer, applied, method, lines, payable, installmentId: b.installment_id
+      });
+    } catch (e) { return back('Ödeme başlatılamadı: ' + e.message); }
     if (r.error) return back(r.error);
-    card = r;
+    const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı.` : '';
+    flash(req, 'success', `${no} numaralı siparişiniz kaydedildi. Ödeme için güvenli ödeme sayfasına yönlendiriliyorsunuz.` + creditMsg);
+    return res.redirect(r.redirect);
   }
 
-  const fullyCovered = payable <= 0;
   let no;
   tx(() => {
     no = String(nextNo('spare_orders', 'no'));
-    // Yalnızca tamamen bakiyeden (alacaktan) karşılanan sipariş anında onaylanır.
-    // Sanal POS entegrasyonu olmadığı için kart ödemesi tahsil edilmiş SAYILMAZ:
-    // ödeme "Sanal POS Bekliyor", sipariş "Beklemede" olarak kaydedilir ve yönetici onayı bekler.
+    // Tamamen bakiyeden karşılanan sipariş anında onaylanır; nakit/havale yönetici onayı bekler.
     const status = fullyCovered ? STATUS.CONVERTED : STATUS.PENDING;
-    let payId = null;
-    if (card) {
-      const commission = Math.round(payable * card.inst.rate) / 100;
-      payId = db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(res.locals.bu.id, res.locals.bf.id, 'odeme', payable, 'TL', 'Yedek Parça Siparişi #' + no,
-        card.inst.label, commission, payable + commission, card.holder, card.last4, STATUS.POS_PENDING).lastInsertRowid;
-    }
-    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payment_id,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?,?)")
-      .run(res.locals.bf.id, res.locals.bu.id, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payId, payer || null, applied).lastInsertRowid;
+    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?)")
+      .run(res.locals.bf.id, res.locals.bu.id, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payer || null, applied).lastInsertRowid;
     const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
-    // Sipariş ve (varsa) ödeme yedek parça cari hesabına işlenir
     syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
   });
   const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}` : '';
   const msg = fullyCovered
     ? `${no} numaralı siparişiniz onaylandı.`
-    : card
-      ? `${no} numaralı siparişiniz kaydedildi. Sanal POS entegrasyonu henüz aktif olmadığından ödeme alınmamıştır; yönetici onayından sonra hesabınıza işlenecektir.`
-      : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
+    : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
   flash(req, 'success', msg + creditMsg);
   res.redirect('/bayi/yedek-parca-siparisleri');
 });

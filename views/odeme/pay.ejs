@@ -1,3 +1,16 @@
 <%- include('../partials/pay_head') %>
+<% if (firms && firms.length > 1) { %>
+<div class="pc" style="padding-top:14px">
+  <form method="post" action="/odeme/firma-degistir" class="inline">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Ödemenin işleneceği firma:
+      <select name="firm_id">
+        <% firms.forEach(f => { %><option value="<%= f.id %>" <%= f.id === firmId ? 'selected' : '' %>><%= f.name %></option><% }) %>
+      </select>
+      <button class="btn-green" type="submit">Firma Değiştir</button>
+    </label>
+  </form>
+</div>
+<% } %>
 <%- include('../partials/pay_body', { base: '/odeme' }) %>
 <%- include('../partials/pay_foot') %>

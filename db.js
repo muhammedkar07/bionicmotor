@@ -155,6 +155,16 @@ addCol('orders', 'deleted_at', 'TEXT');
 addCol('spare_orders', 'deleted_at', 'TEXT');
 addCol('payments', 'deleted_at', 'TEXT');
 addCol('account_movements', 'deleted_at', 'TEXT');
+// Sanal POS (Paratika) alanları: sağlayıcı, sağlayıcı referansı/işlem no, bizim sipariş
+// numaramız ve ödeme yapılan panel (bayi/servis/odeme) bilgisi.
+addCol('payments', 'provider', 'TEXT');
+addCol('payments', 'provider_ref', 'TEXT');
+addCol('payments', 'provider_order', 'TEXT');
+addCol('payments', 'paid_at', 'TEXT');
+addCol('payments', 'source', 'TEXT');
+// Ödeme anındaki TL karşılığı (döviz kurları sonradan değişse bile cariye doğru tutar işlenir).
+addCol('payments', 'amount_tl', 'REAL');
+db.exec('CREATE INDEX IF NOT EXISTS idx_payments_provider_order ON payments(provider_order)');
 db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,
   action TEXT NOT NULL, entity TEXT NOT NULL, entity_id INTEGER, detail TEXT,
@@ -316,6 +326,16 @@ function revertOrderStock(orderId) {
   db.prepare('DELETE FROM order_stock_snap WHERE order_id=?').run(orderId);
 }
 addCol('payments', 'movement_id', 'INTEGER');
+// Ödemenin cari hesaba alacak olarak yazılacak TL tutarı. Cari TL cinsindendir; döviz
+// ödemeler ayarlardaki kur ile TL'ye çevrilir. Komisyon cari borcunu değiştirmediği için
+// yalnızca ödemenin kendisi (amount) yazılır, komisyon dahil toplam (total) yazılmaz.
+function cariAmount(p) {
+  if (p.amount_tl != null) return Math.round((+p.amount_tl || 0) * 100) / 100;
+  const amt = +p.amount || 0;
+  const rate = p.currency === 'USD' ? parseFloat(get('usd_rate'))
+    : p.currency === 'EUR' ? parseFloat(get('eur_rate')) : 1;
+  return Math.round(amt * (rate > 0 ? rate : 1) * 100) / 100;
+}
 // Online ödeme "Tahsil Edildi" olunca firmanın ana carisine alacak olarak işlenir.
 // Yedek parça siparişine bağlı ödemeler sipariş cari kaydı (syncOrderDebit) tarafından zaten işlenir.
 function syncPaymentCredit(paymentId) {
@@ -333,7 +353,7 @@ function syncPaymentCredit(paymentId) {
     }
     return;
   }
-  const amt = Math.round(p.total * 100) / 100;
+  const amt = cariAmount(p);
   if (!(amt > 0)) return;
   if (p.movement_id) {
     db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(amt, p.movement_id);

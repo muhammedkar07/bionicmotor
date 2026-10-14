@@ -1,8 +1,8 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
-const { flash, throttle, regenerate, addYears, fmtMoney, csrfCheck } = require('../lib/core');
-const { checkMaxQty, validateCard } = require('../lib/spareOrder');
+const { flash, throttle, regenerate, addYears, fmtMoney, csrfCheck, publicOrigin } = require('../lib/core');
+const { checkMaxQty, createSpareCardOrder } = require('../lib/spareOrder');
 const { singleImage } = require('../lib/upload');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
@@ -76,14 +76,24 @@ router.get('/odeme', (req, res) => {
   const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
   page(res, 'odeme', 'Online Ödeme', { inst, base: '/servis/odeme' });
 });
-router.post('/odeme/ode', (req, res) => {
+router.post('/odeme/ode', async (req, res) => {
   if (!req.session.servis.firmId) { flash(req, 'danger', 'Firma bilgisi bulunamadı.'); return res.redirect('/servis'); }
   const b = req.body;
-  const ctx = { userId: res.locals.su.id, firmId: req.session.servis.firmId };
+  const ctx = { userId: res.locals.su.id, firmId: req.session.servis.firmId, source: 'servis', origin: publicOrigin(req) };
   const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
-  const r = method === 'havale' ? pay.havale(ctx, b) : pay.card(ctx, b);
-  flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
-  res.redirect('/servis/odeme');
+  if (method === 'havale') {
+    const r = pay.havale(ctx, b);
+    flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
+    return res.redirect('/servis/odeme');
+  }
+  try {
+    const r = await pay.beginCard(ctx, b);
+    if (r.error) { flash(req, 'danger', r.error); return res.redirect('/servis/odeme'); }
+    res.redirect(r.redirect);
+  } catch (e) {
+    flash(req, 'danger', 'Ödeme başlatılamadı: ' + e.message);
+    res.redirect('/servis/odeme');
+  }
 });
 router.post('/odeme/talimat', (req, res) => {
   if (!req.session.servis.firmId) { flash(req, 'danger', 'Firma bilgisi bulunamadı.'); return res.redirect('/servis'); }
@@ -164,10 +174,10 @@ router.get('/yedek-parca/yeni', (req,res)=>{
   const credit=bal<0?Math.round(-bal*100)/100:0;
   page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,models,old:null,credit});
 });
-router.post('/yedek-parca/yeni', (req,res)=>{
+router.post('/yedek-parca/yeni', async (req,res)=>{
   const b=req.body;
   const ids=[].concat(b.part_id||[]), qtys=[].concat(b.qty||[]);
-  const old={lines:ids.map((id,i)=>[+id||'',String(qtys[i]??'').trim()]),note:String(b.note||'').slice(0,1000),pay_method:b.pay_method||'kart',holder:String(b.holder||'').slice(0,80),number:String(b.number||'').trim(),month:b.month||'',year:b.year||'',cvc:String(b.cvc||'').slice(0,4),payer_name:String(b.payer_name||'').slice(0,120),installment_id:b.installment_id||''};
+  const old={lines:ids.map((id,i)=>[+id||'',String(qtys[i]??'').trim()]),note:String(b.note||'').slice(0,1000),pay_method:b.pay_method||'kart',payer_name:String(b.payer_name||'').slice(0,120),installment_id:b.installment_id||''};
   const renderNew=()=>{const parts=db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();const inst=db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();const models=db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();const bal=accountSummary(firm,'parca').balance;const credit=bal<0?Math.round(-bal*100)/100:0;page(res,'spare_new','Yedek Parça Sipariş Oluştur',{parts,inst,models,old,credit});};
   const back=m=>{res.locals.flash={type:'danger',msg:m};renderNew();};
   const firm=req.session.servis.firmId, uid=req.session.servis.userId; if(!firm) return back('Firma bilgisi bulunamadı.');
@@ -183,25 +193,30 @@ router.post('/yedek-parca/yeni', (req,res)=>{
   const method={kart:'Kredi Kartı',nakit:'Nakit',havale:'Havale / EFT'}[b.pay_method];
   if(!method) return back('Ödeme yöntemini seçin.');
   const payer=String(b.payer_name||'').trim().slice(0,120); if(payable>0 && b.pay_method==='havale' && !payer) return back('Havale / EFT için gönderen hesap ad soyad bilgisini giriniz.');
-  let card=null;
-  if(payable>0 && b.pay_method==='kart'){ const r=validateCard(b); if(r.error) return back(r.error); card=r; }
   const fullyCovered = payable <= 0;
+
+  // Kredi kartı: sipariş "Beklemede" kaydedilir, Paratika ödeme sayfasına yönlendirilir.
+  if (payable > 0 && b.pay_method === 'kart') {
+    const no = String(nextNo('spare_orders', 'no'));
+    let r;
+    try {
+      r = await createSpareCardOrder({
+        userId: uid, firmId: firm, source: 'servis', origin: publicOrigin(req),
+        no, note: String(b.note || '').slice(0, 1000), payer, applied, method, lines, payable, installmentId: b.installment_id
+      });
+    } catch (e) { return back('Ödeme başlatılamadı: ' + e.message); }
+    if (r.error) return back(r.error);
+    const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı.` : '';
+    flash(req, 'success', `${no} numaralı siparişiniz kaydedildi. Ödeme için güvenli ödeme sayfasına yönlendiriliyorsunuz.` + creditMsg);
+    return res.redirect(r.redirect);
+  }
+
   let no;
   tx(() => {
     no = String(nextNo('spare_orders', 'no'));
-    // Yalnızca tamamen bakiyeden (alacaktan) karşılanan sipariş anında onaylanır.
-    // Sanal POS entegrasyonu olmadığı için kart ödemesi tahsil edilmiş SAYILMAZ:
-    // ödeme "Sanal POS Bekliyor", sipariş "Beklemede" olarak kaydedilir ve yönetici onayı bekler.
     const status = fullyCovered ? STATUS.CONVERTED : STATUS.PENDING;
-    let payId = null;
-    if (card) {
-      const commission = Math.round(payable * card.inst.rate) / 100;
-      payId = db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(uid, firm, 'odeme', payable, 'TL', 'Yedek Parça Siparişi #' + no,
-        card.inst.label, commission, payable + commission, card.holder, card.last4, STATUS.POS_PENDING).lastInsertRowid;
-    }
-    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payment_id,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?,?)")
-      .run(firm, uid, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payId, payer || null, applied).lastInsertRowid;
+    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?)")
+      .run(firm, uid, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payer || null, applied).lastInsertRowid;
     const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
     syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
@@ -209,10 +224,8 @@ router.post('/yedek-parca/yeni', (req,res)=>{
   const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}` : '';
   const msg = fullyCovered
     ? `${no} numaralı siparişiniz onaylandı.`
-    : card
-      ? `${no} numaralı siparişiniz kaydedildi. Sanal POS entegrasyonu henüz aktif olmadığından ödeme alınmamıştır; yönetici onayından sonra hesabınıza işlenecektir.`
-      : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
-  flash(req, 'success', msg + creditMsg);
+    : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
+  flash(req,'success',msg + creditMsg);
   res.redirect('/servis/yedek-parca-siparisleri');
 });
 router.post('/stok-bildirim',(req,res)=>{
