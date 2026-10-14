@@ -9,14 +9,17 @@
 <body class="admin">
 <aside class="side">
   <a class="sbrand" href="/admin"><%- include('logo') %><small>Yönetim Paneli</small></a>
-  <nav>
+  <nav<% if (admin.is_super) { %> data-menu-drag="1"<% } %>>
     <a href="/admin" class="<%= path==='/'?'on':'' %>">▣ Panel</a>
-    <% Object.entries(menu).forEach(([g, items]) => { %>
-      <div class="grp"><%= g %></div>
-      <% items.forEach(it => { %>
-        <a href="/admin/r/<%= it.key %>" class="<%= res && res.key===it.key ? 'on' : '' %>"><%= it.title %>
-          <% if (badges[it.key] > 0) { %><span class="bdg"><%= badges[it.key] %></span><% } %></a>
-      <% }) %>
+    <% const canDrag = admin.is_super; %>
+    <% menu.forEach(g => { %>
+      <div class="mgroup" data-group="<%= g.group %>">
+        <% if (canDrag) { %><div class="grp" draggable="true" title="Grubu taşımak için sürükleyin"><span class="ghandle">⠿</span> <%= g.group %></div><% } else { %><div class="grp"><%= g.group %></div><% } %>
+        <% g.items.forEach(it => { %>
+          <a href="/admin/r/<%= it.key %>" data-key="<%= it.key %>"<%= canDrag ? ' draggable="true" title="Sırayı değiştirmek için sürükleyin"' : '' %> class="<%= res && res.key===it.key ? 'on' : '' %>"><%= it.title %>
+            <% if (badges[it.key] > 0) { %><span class="bdg"><%= badges[it.key] %></span><% } %></a>
+        <% }) %>
+      </div>
     <% }) %>
     <div class="grp">Sistem</div>
     <% const sysP = (admin.perms && admin.perms.sys) || []; const can = k => admin.is_super || sysP.includes(k); %>

@@ -63,3 +63,30 @@ test('doğru parola ile giriş yapılır ve panele erişilir', async () => {
   const panel = await fetch(base + '/admin', { redirect: 'manual', headers: { cookie: newCookie } });
   assert.strictEqual(panel.status, 200);
 });
+
+test('menü sırası kaydedilir ve panelde uygulanır', async () => {
+  const g = await getPage('/admin/giris');
+  const login = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) }) });
+  const cookie = sidOf(login);
+  const panel = await getPage('/admin', cookie);
+  const before = panel.html.indexOf('data-group="Web Sitesi"');
+  const beforeBayi = panel.html.indexOf('data-group="Bayi Yönetimi"');
+  assert.ok(before > beforeBayi, 'başlangıçta Bayi Yönetimi önce gelmeli');
+
+  const data = JSON.stringify({ groups: [
+    { group: 'Web Sitesi', keys: ['slides', 'models', 'faqs', 'points', 'pages'] },
+    { group: 'Bayi Yönetimi', keys: ['firms', 'users', 'orders', 'movements', 'announcements', 'products'] }
+  ] });
+  const save = await fetch(base + '/admin/menu-sirala', {
+    method: 'POST', redirect: 'manual',
+    headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ _csrf: csrfOf(panel.html), data })
+  });
+  assert.strictEqual(save.status, 200);
+  assert.deepStrictEqual(await save.json(), { ok: true });
+
+  const after = await getPage('/admin', cookie);
+  const iWeb = after.html.indexOf('data-group="Web Sitesi"');
+  const iBayi = after.html.indexOf('data-group="Bayi Yönetimi"');
+  assert.ok(iWeb > -1 && iBayi > -1 && iWeb < iBayi, 'kaydedilen sıraya göre Web Sitesi önce gelmeli');
+});
