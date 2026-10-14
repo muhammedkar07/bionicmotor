@@ -116,11 +116,11 @@ test('bayi kart ödemesi tahsil edilir ve aktif firmanın carisine alacak işlen
   assert.ok(p.provider_order, 'provider_order kaydedilmeli');
   assert.ok(p.movement_id, 'cari hareketi bağlanmalı');
 
-  assert.strictEqual(balance(firmId), before - 1000, 'cari 1000 TL azalmalı');
+  assert.strictEqual(balance(firmId), before - 100000, 'cari 100000 kuruş (1000 TL) azalmalı');
   const mv = db.prepare('SELECT * FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id);
   assert.ok(mv, 'POS cari hareketi oluşmalı');
   assert.strictEqual(mv.kind, 'alacak');
-  assert.strictEqual(mv.amount, 1000);
+  assert.strictEqual(mv.amount, 100000);
 });
 
 test('komisyon cariye yazılmaz (alacak = amount, total değil)', async () => {
@@ -131,9 +131,9 @@ test('komisyon cariye yazılmaz (alacak = amount, total değil)', async () => {
   const { cb } = await payByCard(cookie, '/bayi', '1000.00', { installment_id: 3 });
   assert.strictEqual(cb.status, 302);
   const p = lastPayment();
-  assert.strictEqual(p.amount, 1000);
-  assert.strictEqual(p.total, 1035);
-  assert.strictEqual(balance(firmId), before - 1000, 'cari yalnızca ödenen borç kadar azalmalı');
+  assert.strictEqual(p.amount, 100000);
+  assert.strictEqual(p.total, 103500);
+  assert.strictEqual(balance(firmId), before - 100000, 'cari yalnızca ödenen borç kadar azalmalı');
 });
 
 test('döviz ödemesi kurdan TL’ye çevrilerek işlenir', async () => {
@@ -145,8 +145,8 @@ test('döviz ödemesi kurdan TL’ye çevrilerek işlenir', async () => {
   assert.strictEqual(cb.status, 302);
   const p = lastPayment();
   assert.strictEqual(p.currency, 'USD');
-  const expected = Math.round(100 * rate * 100) / 100;
-  assert.strictEqual(balance(firmId), before - expected, 'cari ' + expected + ' TL azalmalı');
+  const expected = Math.round(10000 * rate);
+  assert.strictEqual(balance(firmId), before - expected, 'cari ' + expected + ' kuruş azalmalı');
 });
 
 test('aynı callback iki kez gelirse çift kayıt olmaz (idempotent)', async () => {
@@ -171,7 +171,7 @@ test('servis panelinden ödeme servis firmasının carisine işlenir', async () 
   const p = lastPayment();
   assert.strictEqual(p.source, 'servis');
   assert.strictEqual(p.firm_id, firmId);
-  assert.strictEqual(balance(firmId), before - 250);
+  assert.strictEqual(balance(firmId), before - 25000);
 });
 
 test('Paratika POST callback (CSRF/çerez olmadan) işlenir', async () => {
@@ -201,7 +201,7 @@ test('Paratika POST callback (CSRF/çerez olmadan) işlenir', async () => {
   });
   assert.strictEqual(cb.status, 302, 'CSRF nedeniyle 403 olmamalı');
   assert.strictEqual(lastPayment().status, STATUS.COLLECTED);
-  assert.strictEqual(balance(firmId), before - 150);
+  assert.strictEqual(balance(firmId), before - 15000);
 });
 
 test('odeme panelinden (e-posta girişi) ödeme aktif firmanın carisine işlenir', async () => {
@@ -215,7 +215,7 @@ test('odeme panelinden (e-posta girişi) ödeme aktif firmanın carisine işleni
   assert.strictEqual(cb.status, 302);
   const p = lastPayment();
   assert.strictEqual(p.source, 'odeme');
-  assert.strictEqual(balance(firmId), before - 300);
+  assert.strictEqual(balance(firmId), before - 30000);
 });
 
 test('kartla yedek parça siparişi: ödeme sonrası sipariş dönüşür, cari borç+alacak işlenir', async () => {

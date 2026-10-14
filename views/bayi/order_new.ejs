@@ -43,7 +43,7 @@
   </form>
 </div>
 <script>
-  const PARTS = <%- j(products.map(p => ({ id: p.id, name: p.name, code: p.code, price: +p.price || 0, max: +p.max_qty || 0 }))) %>;
+  const PARTS = <%- j(products.map(p => ({ id: p.id, name: p.name, code: p.code, price: (+p.price || 0) / 100, max: +p.max_qty || 0 }))) %>;
   const OLD = <%- j(old || {}) %>;
   const CSRF = document.querySelector('input[name=_csrf]').value;
   const $ = id => document.getElementById(id);

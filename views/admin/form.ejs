@@ -1,4 +1,5 @@
 <%- include('../partials/admin_head') %>
+<% const isMoney = n => (moneyFields || []).includes(n); %>
 <h1><%= title %></h1>
 <form method="post" action="/admin/r/<%= res.key %>/save" enctype="multipart/form-data" class="fcard">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -42,7 +43,7 @@
           <small class="muted" id="catmsg">Eklenen kategoriler listede kalır, her seferinde yeniden yazmanız gerekmez.</small>
         <% } else if (f.type === 'file') { %><% if (v) { %><div><a href="<%= v %>" target="_blank">Mevcut dekontu görüntüle</a></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*,application/pdf">
         <% } else if (f.type === 'image') { %><% if (v) { %><div><img src="<%= v %>" style="max-height:80px" alt=""></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*">
-        <% } else if (f.type === 'number') { %><input type="number" step="any" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>">
+        <% } else if (f.type === 'number') { %><input type="number" step="any" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= isMoney(f.name) && v !== '' && v != null ? v / 100 : v %>">
         <% } else if (f.type === 'date') { %><input type="date" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>">
         <% } else if (f.type === 'password') { %><input type="password" id="f_<%= f.name %>" name="<%= f.name %>" minlength="14" autocomplete="new-password">
         <% } else { %><input id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>" <%= f.required ? 'required' : '' %>><% } %>
@@ -53,7 +54,7 @@
   <% if (res.children) { const ch = res.children;
      const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
      const opts = (sel) => { const groups = {}; catalog.forEach(p => { (groups[p.category || 'Diğer'] = groups[p.category || 'Diğer'] || []).push(p); });
-       return Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">` + ps.map(p => `<option value="${esc(p.name)}" data-code="${esc(p.code)}" data-price="${p.price}"${p.name===sel?' selected':''}>${esc((p.code ? p.code + ' - ' : '') + p.name)}</option>`).join('') + '</optgroup>').join(''); };
+       return Object.entries(groups).map(([g, ps]) => `<optgroup label="${esc(g)}">` + ps.map(p => `<option value="${esc(p.name)}" data-code="${esc(p.code)}" data-price="${(Number(p.price) || 0) / 100}"${p.name===sel?' selected':''}>${esc((p.code ? p.code + ' - ' : '') + p.name)}</option>`).join('') + '</optgroup>').join(''); };
      const hasLT = ch.cols.some(c => c.name === 'qty') && ch.cols.some(c => c.name === 'unit_price');
   %>
   <h2><%= ch.title %></h2>
@@ -62,7 +63,7 @@
     <% kids.forEach(k => { %><tr><% ch.cols.forEach(c => { %><td>
       <% if (c.type === 'product') { %><select name="ch_<%= c.name %>" class="pp"><option value="">Ürün seçin</option><%- opts(k[c.name]) %>
           <% if (k[c.name] && !catalog.some(p => p.name === k[c.name])) { %><option value="<%= k[c.name] %>" selected><%= k[c.name] %></option><% } %></select>
-      <% } else { %><input name="ch_<%= c.name %>" value="<%= k[c.name] %>" data-col="<%= c.name %>" <%= c.type==='number'?'type=number step=any':'' %>><% } %></td><% }) %>
+      <% } else { %><input name="ch_<%= c.name %>" value="<%= isMoney(c.name) && k[c.name] != null ? k[c.name] / 100 : k[c.name] %>" data-col="<%= c.name %>" <%= c.type==='number'?'type=number step=any':'' %>><% } %></td><% }) %>
       <% if (hasLT) { %><td class="lt" data-lt></td><% } %>
       <td><button type="button" class="btn btn-sm btn-danger rm">×</button></td></tr><% }) %>
     </tbody></table>

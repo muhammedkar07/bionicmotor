@@ -16,12 +16,12 @@ test('sipariş dönüşünce stok düşer, cariye borç yazılır', () => {
     .prepare("INSERT INTO products(kind,code,name,category,price,stock) VALUES('arac','C1',?,'K',1000,5)")
     .run(name).lastInsertRowid;
   const oid = db.prepare('INSERT INTO orders(firm_id,request_no,status) VALUES(?,?,?)').run(firm, '1001', STATUS.CONVERTED).lastInsertRowid;
-  db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)').run(oid, name, 2, 1000);
+  db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)').run(oid, name, 2, 100000);
 
   syncOrderDebit('orders', 'order_items', oid, 'ana');
   syncOrderStock(oid);
 
-  assert.strictEqual(accountSummary(firm, 'ana').balance, 2000, 'cariye 2000 borç yazılmalı');
+  assert.strictEqual(accountSummary(firm, 'ana').balance, 200000, 'cariye 200000 kuruş (2000 TL) borç yazılmalı');
   assert.strictEqual(db.prepare('SELECT stock FROM products WHERE id=?').get(pid).stock, 3, 'stok 5-2=3 olmalı');
   assert.strictEqual(
     db.prepare('SELECT qty FROM firm_stock WHERE firm_id=? AND product_id=?').get(firm, pid).qty,
@@ -37,22 +37,22 @@ test('stok yetersizse dönüştürme reddedilir ve stok değişmez', () => {
     .prepare("INSERT INTO products(kind,code,name,category,price,stock) VALUES('arac','C2',?,'K',1000,1)")
     .run(name).lastInsertRowid;
   const oid = db.prepare('INSERT INTO orders(firm_id,request_no,status) VALUES(?,?,?)').run(firm, '1002', STATUS.CONVERTED).lastInsertRowid;
-  db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)').run(oid, name, 5, 1000);
+  db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)').run(oid, name, 5, 100000);
 
   assert.throws(() => syncOrderStock(oid), /Stok yetersiz/);
   assert.strictEqual(db.prepare('SELECT stock FROM products WHERE id=?').get(pid).stock, 1, 'red sonrası stok değişmemeli');
 });
 
 test('storno: cari hareket fiziksel silinmez, bakiye dışına çıkar', () => {
-  const firm = db.prepare('INSERT INTO firms(code,name,devir) VALUES(?,?,?)').run('901.01.003', 'F3', 1000).lastInsertRowid;
+  const firm = db.prepare('INSERT INTO firms(code,name,devir) VALUES(?,?,?)').run('901.01.003', 'F3', 100000).lastInsertRowid;
   const mid = db
     .prepare(
-      "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',date('now'),'X','Sipariş','borc',500)"
+      "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',date('now'),'X','Sipariş','borc',50000)"
     )
     .run(firm).lastInsertRowid;
-  assert.strictEqual(accountSummary(firm, 'ana').balance, 1500);
+  assert.strictEqual(accountSummary(firm, 'ana').balance, 150000);
   db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=?").run(mid);
-  assert.strictEqual(accountSummary(firm, 'ana').balance, 1000, 'storno edilen hareket bakiyeyi etkilememeli');
+  assert.strictEqual(accountSummary(firm, 'ana').balance, 100000, 'storno edilen hareket bakiyeyi etkilememeli');
   assert.strictEqual(
     db.prepare('SELECT COUNT(c) c FROM (SELECT 1 c FROM account_movements WHERE id=?)').get(mid).c,
     1,

@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS admins (
   id INTEGER PRIMARY KEY, username TEXT UNIQUE NOT NULL, name TEXT, password_hash TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS firms (
   id INTEGER PRIMARY KEY, code TEXT, name TEXT NOT NULL, city TEXT, phone TEXT, email TEXT,
-  devir REAL NOT NULL DEFAULT 0, devir_parca REAL NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
+  devir INTEGER NOT NULL DEFAULT 0, devir_parca INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS dealer_users (
   id INTEGER PRIMARY KEY, code TEXT UNIQUE NOT NULL, email TEXT UNIQUE, name TEXT NOT NULL,
   password_hash TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, ann_seen_at TEXT);
@@ -69,21 +69,21 @@ CREATE TABLE IF NOT EXISTS orders (
   request_date TEXT, request_no TEXT, delivery_type TEXT, status TEXT, note TEXT);
 CREATE TABLE IF NOT EXISTS order_items (
   id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  product_name TEXT, qty REAL, unit_price REAL);
+  product_name TEXT, qty REAL, unit_price INTEGER);
 CREATE TABLE IF NOT EXISTS account_movements (
   id INTEGER PRIMARY KEY, firm_id INTEGER NOT NULL REFERENCES firms(id) ON DELETE CASCADE,
   ledger TEXT NOT NULL DEFAULT 'ana', date TEXT, doc_no TEXT, doc_type TEXT,
-  kind TEXT NOT NULL, amount REAL NOT NULL, has_detail INTEGER NOT NULL DEFAULT 0,
+  kind TEXT NOT NULL, amount INTEGER NOT NULL, has_detail INTEGER NOT NULL DEFAULT 0,
   bank TEXT, cheque_no TEXT, cheque_type TEXT, cheque_due TEXT, payer_name TEXT);
 CREATE TABLE IF NOT EXISTS announcements (
   id INTEGER PRIMARY KEY, text TEXT NOT NULL, author TEXT, sort INTEGER DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY, kind TEXT NOT NULL DEFAULT 'arac', code TEXT, name TEXT NOT NULL,
-  category TEXT, price REAL NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
+  category TEXT, price INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS models (
   id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT, cc TEXT, power TEXT, gearbox TEXT,
-  description TEXT, image TEXT, price REAL, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
+  description TEXT, image TEXT, price INTEGER, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS slides (
   id INTEGER PRIMARY KEY, image TEXT, title TEXT, subtitle TEXT, old_price TEXT, new_price TEXT,
   bg TEXT, link TEXT, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
@@ -105,8 +105,8 @@ CREATE TABLE IF NOT EXISTS installments (
   id INTEGER PRIMARY KEY, label TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 1,
   rate REAL NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS payments (
-  id INTEGER PRIMARY KEY, user_id INTEGER, firm_id INTEGER, kind TEXT, amount REAL, currency TEXT,
-  description TEXT, installment TEXT, commission REAL, total REAL, card_holder TEXT, card_last4 TEXT,
+  id INTEGER PRIMARY KEY, user_id INTEGER, firm_id INTEGER, kind TEXT, amount INTEGER, currency TEXT,
+  description TEXT, installment TEXT, commission INTEGER, total INTEGER, card_holder TEXT, card_last4 TEXT,
   status TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS warranty_records (
   id INTEGER PRIMARY KEY, firm_id INTEGER NOT NULL REFERENCES firms(id) ON DELETE CASCADE,
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS spare_orders (
   created_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS spare_order_items (
   id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL REFERENCES spare_orders(id) ON DELETE CASCADE,
-  part_code TEXT, part_name TEXT, qty REAL, unit_price REAL);
+  part_code TEXT, part_name TEXT, qty REAL, unit_price INTEGER);
 `);
 
 const get = (key, def = '') => {
@@ -176,12 +176,12 @@ addCol('account_movements', 'cheque_due', 'TEXT');
 addCol('account_movements', 'payer_name', 'TEXT');
 addCol('order_items', 'discount_pct', 'REAL NOT NULL DEFAULT 0');
 addCol('spare_order_items', 'discount_pct', 'REAL NOT NULL DEFAULT 0');
-addCol('models', 'warranty_setup_fee', 'REAL NOT NULL DEFAULT 0');
+addCol('models', 'warranty_setup_fee', 'INTEGER NOT NULL DEFAULT 0');
 addCol('models', 'warranty_setup_desc', 'TEXT');
-addCol('warranty_records', 'setup_fee', 'REAL NOT NULL DEFAULT 0');
+addCol('warranty_records', 'setup_fee', 'INTEGER NOT NULL DEFAULT 0');
 addCol('warranty_records', 'setup_movement_id', 'INTEGER');
-addCol('spare_orders', 'balance_applied', 'REAL NOT NULL DEFAULT 0');
-addCol('spare_order_items', 'balance_used', 'REAL NOT NULL DEFAULT 0');
+addCol('spare_orders', 'balance_applied', 'INTEGER NOT NULL DEFAULT 0');
+addCol('spare_order_items', 'balance_used', 'INTEGER NOT NULL DEFAULT 0');
 db.exec('UPDATE spare_orders SET request_date=date(created_at) WHERE request_date IS NULL');
 addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
 addCol('products', 'model_id', 'INTEGER');
@@ -200,7 +200,7 @@ addCol('payments', 'provider_order', 'TEXT');
 addCol('payments', 'paid_at', 'TEXT');
 addCol('payments', 'source', 'TEXT');
 // Ödeme anındaki TL karşılığı (döviz kurları sonradan değişse bile cariye doğru tutar işlenir).
-addCol('payments', 'amount_tl', 'REAL');
+addCol('payments', 'amount_tl', 'INTEGER');
 db.exec('CREATE INDEX IF NOT EXISTS idx_payments_provider_order ON payments(provider_order)');
 db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,
@@ -274,6 +274,35 @@ if (
   set('logo_image', '/static/img/bionic-logo.png');
 }
 
+// --- Para birimi migrasyonu: eski REAL (TL) değerleri kuruşa (×100) çevirir (tek seferlik, idempotent) ---
+if (get('money_unit') !== 'kurus') {
+  const moneyCols = [
+    ['firms', 'devir'],
+    ['firms', 'devir_parca'],
+    ['order_items', 'unit_price'],
+    ['account_movements', 'amount'],
+    ['products', 'price'],
+    ['models', 'price'],
+    ['models', 'warranty_setup_fee'],
+    ['warranty_records', 'setup_fee'],
+    ['spare_orders', 'balance_applied'],
+    ['spare_order_items', 'unit_price'],
+    ['spare_order_items', 'balance_used'],
+    ['payments', 'amount'],
+    ['payments', 'commission'],
+    ['payments', 'total'],
+    ['payments', 'amount_tl']
+  ];
+  for (const [t, c] of moneyCols) {
+    try {
+      db.exec(`UPDATE ${t} SET ${c}=CAST(ROUND(COALESCE(${c},0)*100) AS INTEGER)`);
+    } catch {
+      /* kolon yoksa yok say */
+    }
+  }
+  set('money_unit', 'kurus');
+}
+
 // Sıradaki otomatik numara (yalnızca rakamlardan oluşan değerler dikkate alınır)
 const nextNo = (table, col) =>
   (db.prepare(`SELECT MAX(CAST(${col} AS INTEGER)) m FROM ${table} WHERE ${col} GLOB '[0-9]*' AND ${col} NOT GLOB '*[^0-9]*'`).get().m ||
@@ -298,9 +327,9 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
     db.prepare(`UPDATE ${table} SET movement_id=NULL${hasPay ? ',pay_movement_id=NULL' : ''} WHERE rowid=?`).run(id);
     return null;
   }
-  const total = db
-    .prepare(`SELECT COALESCE(SUM(qty*unit_price*(1 - IFNULL(discount_pct,0)/100)),0) t FROM ${itemsTable} WHERE order_id=?`)
-    .get(id).t;
+  const total = Math.round(
+    db.prepare(`SELECT COALESCE(SUM(qty*unit_price*(1 - IFNULL(discount_pct,0)/100)),0) t FROM ${itemsTable} WHERE order_id=?`).get(id).t
+  );
   const no = o.request_no || o.no;
   const date = new Date().toISOString().slice(0, 10);
   const ins = (docNo, docType, kind, amt = total) =>
@@ -394,10 +423,10 @@ addCol('payments', 'movement_id', 'INTEGER');
 // ödemeler ayarlardaki kur ile TL'ye çevrilir. Komisyon cari borcunu değiştirmediği için
 // yalnızca ödemenin kendisi (amount) yazılır, komisyon dahil toplam (total) yazılmaz.
 function cariAmount(p) {
-  if (p.amount_tl != null) return Math.round((+p.amount_tl || 0) * 100) / 100;
+  if (p.amount_tl != null) return Math.round(+p.amount_tl || 0);
   const amt = +p.amount || 0;
   const rate = p.currency === 'USD' ? parseFloat(get('usd_rate')) : p.currency === 'EUR' ? parseFloat(get('eur_rate')) : 1;
-  return Math.round(amt * (rate > 0 ? rate : 1) * 100) / 100;
+  return Math.round(amt * (rate > 0 ? rate : 1));
 }
 // Online ödeme "Tahsil Edildi" olunca firmanın ana carisine alacak olarak işlenir.
 // Yedek parça siparişine bağlı ödemeler sipariş cari kaydı (syncOrderDebit) tarafından zaten işlenir.

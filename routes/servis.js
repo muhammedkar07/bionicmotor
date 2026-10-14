@@ -261,7 +261,7 @@ router.get('/yedek-parca/yeni', (req, res) => {
   const models = db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();
   const firm = req.session.servis.firmId;
   const bal = firm ? accountSummary(firm, 'parca').balance : 0;
-  const credit = bal < 0 ? Math.round(-bal * 100) / 100 : 0;
+  const credit = bal < 0 ? -bal : 0;
   page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, models, old: null, credit });
 });
 router.post('/yedek-parca/yeni', async (req, res) => {
@@ -280,7 +280,7 @@ router.post('/yedek-parca/yeni', async (req, res) => {
     const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
     const models = db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();
     const bal = accountSummary(firm, 'parca').balance;
-    const credit = bal < 0 ? Math.round(-bal * 100) / 100 : 0;
+    const credit = bal < 0 ? -bal : 0;
     page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, models, old, credit });
   };
   const back = m => {
@@ -301,9 +301,9 @@ router.post('/yedek-parca/yeni', async (req, res) => {
   if (overQty) return back(overQty);
   const total = lines.reduce((s, l) => s + l.qty * l.p.price, 0);
   const bal = accountSummary(firm, 'parca').balance;
-  const available = bal < 0 ? Math.round(-bal * 100) / 100 : 0;
-  const applied = Math.round(Math.min(available, total) * 100) / 100;
-  const payable = Math.round((total - applied) * 100) / 100;
+  const available = bal < 0 ? -bal : 0;
+  const applied = Math.min(available, total);
+  const payable = total - applied;
   const method = { kart: 'Kredi Kartı', nakit: 'Nakit', havale: 'Havale / EFT' }[b.pay_method];
   if (!method) return back('Ödeme yöntemini seçin.');
   const payer = String(b.payer_name || '')

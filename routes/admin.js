@@ -16,7 +16,7 @@ const {
   logAudit
 } = require('../db');
 const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError, csrfCheck } = require('../lib/core');
-const { parseAmount, kurusToTL, AMOUNT_HINT } = require('../lib/money');
+const { parseAmount, AMOUNT_HINT } = require('../lib/money');
 const { anyFiles } = require('../lib/upload');
 
 // Fiziksel silinmeyip "storno" (deleted_at) uygulanan finansal tablolar.
@@ -39,7 +39,7 @@ const MONEY_FIELDS = new Set([
 function moneyVal(v, label) {
   const k = parseAmount(v);
   if (k === null) throw new Error(`"${label || 'Tutar'}" geçerli bir tutar olmalıdır. ${AMOUNT_HINT}`);
-  return kurusToTL(k);
+  return k; // kuruş (tam sayı)
 }
 const { overallSummary } = require('../lib/account');
 
@@ -536,6 +536,7 @@ router.use((req, res, next) => {
   a.perms = parsePerms(a.permissions);
   res.locals.admin = a;
   res.locals.menu = buildMenu(a, req);
+  res.locals.moneyFields = Array.from(MONEY_FIELDS);
   res.locals.res = null;
   res.locals.path = req.path;
   res.locals.badges = {
@@ -628,7 +629,8 @@ function cell(f, v, refs) {
     const m = (refs[f.name] || []).find(x => x.id === v);
     return m ? m.label : v;
   }
-  if (f.type === 'number' || ['amount', 'price'].includes(f.name)) return fmtMoney(v, 0);
+  if (MONEY_FIELDS.has(f.name)) return fmtMoney(v, 0);
+  if (f.type === 'number') return String(v);
   const s = String(v);
   return s.length > 90 ? s.slice(0, 90) + '…' : s;
 }

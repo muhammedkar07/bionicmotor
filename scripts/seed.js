@@ -61,9 +61,9 @@ function ensureSeed() {
     );
 
     const model = db.prepare('INSERT INTO models(name,category,cc,power,gearbox,description,price,sort) VALUES(?,?,?,?,?,?,?,?)');
-    model.run('SST125', 'Scooter', '125 cc', '11,3 HP', 'Otomatik', 'Sıvı soğutmalı, 10,5 L depolu maxi scooter.', 178200, 1);
-    model.run('Cruiser 150', 'Motosiklet', '150 cc', '12 HP', 'Manuel', 'Şehir içi ve uzun yol için rahat sürüş.', 129900, 2);
-    model.run('Urban 50', 'Scooter', '50 cc', '3,5 HP', 'Otomatik', 'Şehir içi pratik kullanım.', 69900, 3);
+    model.run('SST125', 'Scooter', '125 cc', '11,3 HP', 'Otomatik', 'Sıvı soğutmalı, 10,5 L depolu maxi scooter.', 17820000, 1);
+    model.run('Cruiser 150', 'Motosiklet', '150 cc', '12 HP', 'Manuel', 'Şehir içi ve uzun yol için rahat sürüş.', 12990000, 2);
+    model.run('Urban 50', 'Scooter', '50 cc', '3,5 HP', 'Otomatik', 'Şehir içi pratik kullanım.', 6990000, 3);
 
     const faq = db.prepare('INSERT INTO faqs(question,answer,sort) VALUES(?,?,?)');
     [
@@ -156,8 +156,8 @@ function ensureSeed() {
       ['2026-09-14', '9']
     ].forEach(([d, n]) => {
       const id = ord.run(firm, d, n, 'İleri Vadeli Teslim', 'Siparişe Dönüştürüldü').lastInsertRowid;
-      item.run(id, 'SST125', 4, 111500);
-      item.run(id, 'Urban 50', 2, 52000);
+      item.run(id, 'SST125', 4, 11150000);
+      item.run(id, 'Urban 50', 2, 5200000);
     });
 
     const mv = db.prepare(
@@ -165,27 +165,27 @@ function ensureSeed() {
     );
     const F = 'Toptan Satış Faturası',
       K = 'Kredi Kartı Fişi';
-    mv.run(firm, 'ana', '2026-03-13', 'SIA2026000000035', F, 'borc', 1253776, 1);
-    mv.run(firm, 'ana', '2026-03-23', 'C202603196964SO1', K, 'alacak', 115000, 0);
-    mv.run(firm, 'ana', '2026-04-11', '09517', 'Çek Girişi', 'alacak', 1250000, 0);
-    mv.run(firm, 'ana', '2026-05-01', 'SIA2026000000059', F, 'borc', 693796, 1);
-    mv.run(firm, 'ana', '2026-05-04', 'C202605202237SO1', K, 'alacak', 29500, 0);
-    mv.run(firm, 'ana', '2026-05-06', '0000000000021411', K, 'alacak', 30000, 0);
-    mv.run(firm, 'ana', '2026-05-08', 'C202605202767SO1', K, 'alacak', 50000, 0);
-    mv.run(firm, 'ana', '2026-05-09', 'C202605202851SO1', K, 'alacak', 45000, 0);
-    mv.run(firm, 'ana', '2026-06-25', 'SIA2026000000101', F, 'borc', 4164492, 1);
-    mv.run(firm, 'ana', '2026-07-02', 'C202607000001SO1', K, 'alacak', 3116000, 0);
-    mv.run(firm, 'ana', '2026-07-10', '09600', 'Vadesi Gelmemiş Çek', 'bilgi', 700000, 0);
-    mv.run(firm, 'parca', '2026-04-02', 'YP2026000001', 'Yedek Parça Faturası', 'borc', 48500, 1);
-    mv.run(firm, 'parca', '2026-04-20', 'C202604200001SO1', K, 'alacak', 20000, 0);
+    mv.run(firm, 'ana', '2026-03-13', 'SIA2026000000035', F, 'borc', 125377600, 1);
+    mv.run(firm, 'ana', '2026-03-23', 'C202603196964SO1', K, 'alacak', 11500000, 0);
+    mv.run(firm, 'ana', '2026-04-11', '09517', 'Çek Girişi', 'alacak', 125000000, 0);
+    mv.run(firm, 'ana', '2026-05-01', 'SIA2026000000059', F, 'borc', 69379600, 1);
+    mv.run(firm, 'ana', '2026-05-04', 'C202605202237SO1', K, 'alacak', 2950000, 0);
+    mv.run(firm, 'ana', '2026-05-06', '0000000000021411', K, 'alacak', 3000000, 0);
+    mv.run(firm, 'ana', '2026-05-08', 'C202605202767SO1', K, 'alacak', 5000000, 0);
+    mv.run(firm, 'ana', '2026-05-09', 'C202605202851SO1', K, 'alacak', 4500000, 0);
+    mv.run(firm, 'ana', '2026-06-25', 'SIA2026000000101', F, 'borc', 416449200, 1);
+    mv.run(firm, 'ana', '2026-07-02', 'C202607000001SO1', K, 'alacak', 311600000, 0);
+    mv.run(firm, 'ana', '2026-07-10', '09600', 'Vadesi Gelmemiş Çek', 'bilgi', 70000000, 0);
+    mv.run(firm, 'parca', '2026-04-02', 'YP2026000001', 'Yedek Parça Faturası', 'borc', 4850000, 1);
+    mv.run(firm, 'parca', '2026-04-20', 'C202604200001SO1', K, 'alacak', 2000000, 0);
 
     const pr = db.prepare('INSERT INTO products(kind,code,name,category,price,model_id,stock,max_qty) VALUES(?,?,?,?,?,?,?,?)');
-    pr.run('arac', 'SST125', 'SST125', 'Scooter', 111500, 1, 20, 5);
-    pr.run('arac', 'CRZ150', 'Cruiser 150', 'Motosiklet', 96000, 2, 10, 3);
-    pr.run('arac', 'URB50', 'Urban 50', 'Scooter', 52000, 3, 0, 0);
-    pr.run('parca', 'YP-001', 'Ön Fren Balatası', 'Fren', 320, 1, 50, 10);
-    pr.run('parca', 'YP-002', 'Yağ Filtresi', 'Motor', 95, 1, 0, 0);
-    pr.run('parca', 'YP-003', 'Ayna Takımı', 'Gövde', 410, 2, 15, 4);
+    pr.run('arac', 'SST125', 'SST125', 'Scooter', 11150000, 1, 20, 5);
+    pr.run('arac', 'CRZ150', 'Cruiser 150', 'Motosiklet', 9600000, 2, 10, 3);
+    pr.run('arac', 'URB50', 'Urban 50', 'Scooter', 5200000, 3, 0, 0);
+    pr.run('parca', 'YP-001', 'Ön Fren Balatası', 'Fren', 32000, 1, 50, 10);
+    pr.run('parca', 'YP-002', 'Yağ Filtresi', 'Motor', 9500, 1, 0, 0);
+    pr.run('parca', 'YP-003', 'Ayna Takımı', 'Gövde', 41000, 2, 15, 4);
 
     // Ürün kategorilerini categories tablosuna aktar (ürün formundaki kategori listesi buradan beslenir)
     db.exec(
