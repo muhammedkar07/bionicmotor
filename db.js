@@ -149,6 +149,16 @@ db.exec("UPDATE spare_orders SET request_date=date(created_at) WHERE request_dat
 addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
 addCol('products', 'model_id', 'INTEGER');
 addCol('products', 'max_qty', 'REAL');
+// Finansal kayıtlar fiziksel silinmez; "storno" için deleted_at işaretlenir ve okuma
+// sorguları deleted_at IS NULL ile filtrelenir. Böylece denetim izi korunur.
+addCol('orders', 'deleted_at', 'TEXT');
+addCol('spare_orders', 'deleted_at', 'TEXT');
+addCol('payments', 'deleted_at', 'TEXT');
+addCol('account_movements', 'deleted_at', 'TEXT');
+db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,
+  action TEXT NOT NULL, entity TEXT NOT NULL, entity_id INTEGER, detail TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')));`);
 // Admin yetkilendirme: süper yönetici bayrağı ve sayfa izinleri (JSON: {res:[],sys:[]})
 addCol('admins', 'is_super', 'INTEGER NOT NULL DEFAULT 0');
 addCol('admins', 'permissions', 'TEXT');
@@ -210,8 +220,10 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
   const cancelled = [STATUS.CANCELLED, STATUS.CANCELLED_DATED].includes(o.status);
   const active = ![STATUS.PENDING, STATUS.CANCELLED, STATUS.CANCELLED_DATED].includes(o.status);
   if (!active) {
-    if (o.movement_id) db.prepare('DELETE FROM account_movements WHERE id=?').run(o.movement_id);
-    if (hasPay && o.pay_movement_id) db.prepare('DELETE FROM account_movements WHERE id=?').run(o.pay_movement_id);
+    // Cari hareketler fiziksel silinmez; storno için deleted_at işaretlenir.
+    const endMv = id => db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(id);
+    if (o.movement_id) endMv(o.movement_id);
+    if (hasPay && o.pay_movement_id) endMv(o.pay_movement_id);
     db.prepare(`UPDATE ${table} SET movement_id=NULL${hasPay ? ',pay_movement_id=NULL' : ''} WHERE rowid=?`).run(id);
     return null;
   }
@@ -232,11 +244,10 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
     let payAmount = null, payType = null;
     const applied = Math.max(0, +o.balance_applied || 0);
     if (o.payment_id) {
-      const pay = db.prepare('SELECT amount,status FROM payments WHERE id=?').get(o.payment_id);
+      const pay = db.prepare('SELECT amount,status FROM payments WHERE id=? AND deleted_at IS NULL').get(o.payment_id);
       // Kart/POS ödemesi ancak gerçekten tahsil edildiğinde (Onaylandı/Tahsil Edildi)
       // alacak sayılır; "Sanal POS Bekliyor" durumundaki ödeme borç kapatmaz.
       if (pay && [STATUS.APPROVED, STATUS.COLLECTED].includes(pay.status)) payAmount = pay.amount;
-      else if (!pay) payAmount = Math.max(0, total - applied);
       if (payAmount > 0) payType = 'Kredi Kartı Fişi';
     } else if (['Kredi Kartı', 'Nakit', 'Havale / EFT'].includes(o.pay_method)) {
       payAmount = Math.max(0, total - applied);
@@ -250,7 +261,7 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
         db.prepare(`UPDATE ${table} SET pay_movement_id=? WHERE rowid=?`).run(pid, id);
       }
     } else if (o.pay_movement_id) {
-      db.prepare('DELETE FROM account_movements WHERE id=?').run(o.pay_movement_id);
+      db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(o.pay_movement_id);
       db.prepare(`UPDATE ${table} SET pay_movement_id=NULL WHERE rowid=?`).run(id);
     }
   }
@@ -309,12 +320,12 @@ function syncPaymentCredit(paymentId) {
   if (!p) return;
   // Yedek parça siparişine bağlı ödemeler sipariş cari kaydı (syncOrderDebit) tarafından işlenir.
   // Ödeme sonradan "Onaylandı/Tahsil Edildi" yapıldığında sipariş kaydı yeniden hesaplanır.
-  const so = db.prepare('SELECT id FROM spare_orders WHERE payment_id=?').get(paymentId);
+  const so = db.prepare('SELECT id FROM spare_orders WHERE payment_id=? AND deleted_at IS NULL').get(paymentId);
   if (so) return syncOrderDebit('spare_orders', 'spare_order_items', so.id, 'parca');
   const completed = p.status === STATUS.APPROVED || p.status === STATUS.COLLECTED;
   if (!completed) {
     if (p.movement_id) {
-      db.prepare('DELETE FROM account_movements WHERE id=?').run(p.movement_id);
+      db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(p.movement_id);
       db.prepare('UPDATE payments SET movement_id=NULL WHERE id=?').run(paymentId);
     }
     return;
@@ -332,7 +343,7 @@ function syncPaymentCredit(paymentId) {
 }
 function revertPaymentCredit(paymentId) {
   const p = db.prepare('SELECT movement_id FROM payments WHERE id=?').get(paymentId);
-  if (p && p.movement_id) db.prepare('DELETE FROM account_movements WHERE id=?').run(p.movement_id);
+  if (p && p.movement_id) db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(p.movement_id);
 }
 const nextUserCode = firmId => {
   const prefix = String(firmId).padStart(3, '0');
@@ -348,9 +359,19 @@ const tx = fn => {
   catch (e) { db.exec('ROLLBACK'); throw e; }
 };
 
+// Yönetici işlemlerinin denetim izi. İşlemi engellememesi için hatalar yutulur.
+function logAudit(admin, action, entity, entityId, detail) {
+  try {
+    const who = admin && (admin.name || admin.username) || null;
+    db.prepare('INSERT INTO audit_log(admin_id,admin_name,action,entity,entity_id,detail) VALUES(?,?,?,?,?,?)')
+      .run(admin && admin.id || null, who, action, entity, entityId || null,
+        detail == null ? null : (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 4000));
+  } catch { /* denetim kaydı başarısız olsa da asıl işlem sürer */ }
+}
+
 // Onaylanmış/tahsil edilmiş fakat cari hesaba işlenmemiş eski ödemeleri yansıt (idempotent).
-for (const r of db.prepare('SELECT id FROM payments WHERE movement_id IS NULL AND status IN (?,?)').all(STATUS.APPROVED, STATUS.COLLECTED)) {
+for (const r of db.prepare('SELECT id FROM payments WHERE movement_id IS NULL AND deleted_at IS NULL AND status IN (?,?)').all(STATUS.APPROVED, STATUS.COLLECTED)) {
   try { syncPaymentCredit(r.id); } catch {}
 }
 
-module.exports = { db, get, set, allSettings, tx, nextNo, nextFirmCode, nextUserCode, STATUS, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit };
+module.exports = { db, get, set, allSettings, tx, logAudit, nextNo, nextFirmCode, nextUserCode, STATUS, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit };

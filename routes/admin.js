@@ -1,9 +1,12 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit } = require('../db');
+const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit, logAudit } = require('../db');
 const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError, csrfCheck } = require('../lib/core');
 const { parseAmount, kurusToTL, AMOUNT_HINT } = require('../lib/money');
 const { anyFiles } = require('../lib/upload');
+
+// Fiziksel silinmeyip "storno" (deleted_at) uygulanan finansal tablolar.
+const SOFT_DELETE = new Set(['orders', 'spare_orders', 'payments', 'account_movements']);
 
 // Para birimi tutan alanlar (kuruş çevrimi ve katı doğrulama uygulanır).
 const MONEY_FIELDS = new Set(['amount', 'price', 'devir', 'devir_parca', 'unit_price', 'commission', 'total', 'warranty_setup_fee', 'setup_fee', 'balance_applied', 'balance_used']);
@@ -175,12 +178,12 @@ router.use((req, res, next) => {
   res.locals.res = null;
   res.locals.path = req.path;
   res.locals.badges = {
-    orders: db.prepare("SELECT COUNT(*) c FROM orders WHERE status='Beklemede'").get().c,
+    orders: db.prepare("SELECT COUNT(*) c FROM orders WHERE status='Beklemede' AND deleted_at IS NULL").get().c,
     messages: db.prepare('SELECT COUNT(*) c FROM messages WHERE is_read=0').get().c,
     applications: db.prepare("SELECT COUNT(*) c FROM applications WHERE status='Yeni'").get().c,
     workorders: db.prepare("SELECT COUNT(*) c FROM work_orders WHERE status='Beklemede'").get().c,
-    spareorders: db.prepare("SELECT COUNT(*) c FROM spare_orders WHERE status='Beklemede'").get().c,
-    payments: db.prepare("SELECT COUNT(*) c FROM payments WHERE status IN ('Sanal POS Bekliyor','Talimat Oluşturuldu')").get().c
+    spareorders: db.prepare("SELECT COUNT(*) c FROM spare_orders WHERE status='Beklemede' AND deleted_at IS NULL").get().c,
+    payments: db.prepare("SELECT COUNT(*) c FROM payments WHERE deleted_at IS NULL AND status IN ('Sanal POS Bekliyor','Talimat Oluşturuldu')").get().c
   };
   next();
 });
@@ -269,6 +272,7 @@ router.get('/r/:res', (req, res) => {
     where.push('(' + parts.join(' OR ') + ')');
   }
   if (firmWhere && firm) where.push(firmWhere);
+  if (SOFT_DELETE.has(r.table)) where.push('deleted_at IS NULL');
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const sql = `SELECT rowid AS _id, * FROM ${r.table} ${whereSql} ORDER BY ${r.order || 'rowid DESC'} LIMIT 500`;
   // Parametreler yalnızca SQL içinde kullanıldıklarında eklenir (kullanılmayan named parametre hata verir)
@@ -332,6 +336,8 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
   if (!id && r.noCreate) return res.status(403).send('Yetkisiz');
   const data = {};
   let debitTotal = 0;
+  const before = id ? db.prepare(`SELECT * FROM ${r.table} WHERE rowid=?`).get(id) : null;
+  let savedId = id;
   try {
     const firmIds = [].concat(b.firms || []).map(Number).filter(Boolean);
     if (r.table === 'dealer_users' && !firmIds.length) throw new Error('En az bir firma seçmelisiniz.');
@@ -390,6 +396,7 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
         } else {
           rowid = db.prepare(`INSERT INTO ${r.table}(${cols.join(',')}) VALUES(${cols.map(c => '@' + c).join(',')})`).run(data).lastInsertRowid;
         }
+        savedId = rowid;
       if (r.table === 'dealer_users') {
         db.prepare('DELETE FROM user_firms WHERE user_id=?').run(rowid);
         const ins = db.prepare('INSERT OR IGNORE INTO user_firms(user_id,firm_id) VALUES(?,?)');
@@ -423,6 +430,15 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
         }
       }
     });
+    // Denetim izi: kim, neyi, ne zaman değiştirdi (parola hash'i gizlenir).
+    const scrub = o => { const x = { ...o }; if ('password_hash' in x) x.password_hash = '***'; return x; };
+    if (id && before) {
+      const changed = {};
+      for (const k of Object.keys(data)) if (String(before[k]) !== String(data[k])) changed[k] = data[k];
+      logAudit(res.locals.admin, 'update', r.table, id, { changed: scrub(changed) });
+    } else {
+      logAudit(res.locals.admin, 'create', r.table, savedId, { created: scrub(data) });
+    }
     flash(req, 'success', debitTotal ? `Kaydedildi. ${fmtMoney(debitTotal, 2)} ₺ tutarı firmanın hesap hareketlerine borç olarak yansıtıldı.` : 'Kaydedildi.');
     res.redirect('/admin/r/' + req.params.res);
   } catch (e) {
@@ -524,14 +540,26 @@ router.post('/stok-parca', (req, res) => {
 
 router.post('/r/:res/:id/delete', (req, res) => {
   const id = +req.params.id;
-  if (req.r.debit) {
-    const o = db.prepare(`SELECT * FROM ${req.r.table} WHERE rowid=?`).get(id);
-    for (const m of [o && o.movement_id, o && o.pay_movement_id]) if (m) db.prepare('DELETE FROM account_movements WHERE id=?').run(m);
+  const before = db.prepare(`SELECT * FROM ${req.r.table} WHERE rowid=?`).get(id);
+  if (!before) {
+    flash(req, 'danger', 'Kayıt bulunamadı.');
+    return res.redirect('/admin/r/' + req.params.res);
   }
-  if (req.r.table === 'orders') revertOrderStock(id);
-  if (req.r.table === 'payments') revertPaymentCredit(id);
-  db.prepare(`DELETE FROM ${req.r.table} WHERE rowid=?`).run(id);
-  flash(req, 'success', 'Silindi.');
+  const soft = SOFT_DELETE.has(req.r.table);
+  const scrub = o => { const x = { ...o }; if ('password_hash' in x) x.password_hash = '***'; return x; };
+  tx(() => {
+    if (req.r.debit) {
+      for (const m of [before.movement_id, before.pay_movement_id]) {
+        if (m) db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(m);
+      }
+    }
+    if (req.r.table === 'orders') revertOrderStock(id);
+    if (req.r.table === 'payments') revertPaymentCredit(id);
+    if (soft) db.prepare(`UPDATE ${req.r.table} SET deleted_at=datetime('now') WHERE rowid=?`).run(id);
+    else db.prepare(`DELETE FROM ${req.r.table} WHERE rowid=?`).run(id);
+    logAudit(res.locals.admin, soft ? 'storno' : 'delete', req.r.table, id, { before: scrub(before) });
+  });
+  flash(req, 'success', soft ? 'Kayıt iptal edildi (storno); etkileri geri alındı ve denetim kaydı korundu.' : 'Silindi.');
   res.redirect('/admin/r/' + req.params.res);
 });
 

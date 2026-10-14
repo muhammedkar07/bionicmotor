@@ -101,11 +101,11 @@ router.post('/firma-degistir', (req, res) => {
 });
 
 router.get('/siparisler', (req, res) => {
-  const orders = db.prepare('SELECT * FROM orders WHERE firm_id=? ORDER BY request_date,id').all(res.locals.bf.id);
+  const orders = db.prepare('SELECT * FROM orders WHERE firm_id=? AND deleted_at IS NULL ORDER BY request_date,id').all(res.locals.bf.id);
   page(res, 'orders', 'Sipariş Taleplerim', { orders });
 });
 router.get('/siparisler/:id', (req, res, next) => {
-  const order = db.prepare('SELECT * FROM orders WHERE id=? AND firm_id=?').get(+req.params.id, res.locals.bf.id);
+  const order = db.prepare('SELECT * FROM orders WHERE id=? AND firm_id=? AND deleted_at IS NULL').get(+req.params.id, res.locals.bf.id);
   if (!order) return next();
   const items = db.prepare('SELECT * FROM order_items WHERE order_id=?').all(order.id);
   page(res, 'order_detail', 'Talep İçeriği', { order, items });
@@ -310,7 +310,7 @@ router.post('/stok-bildirim', (req, res) => {
 });
 
 router.get('/yedek-parca-siparisleri', (req, res) => {
-  const orders = db.prepare('SELECT * FROM spare_orders WHERE firm_id=? ORDER BY id DESC').all(res.locals.bf.id);
+  const orders = db.prepare('SELECT * FROM spare_orders WHERE firm_id=? AND deleted_at IS NULL ORDER BY id DESC').all(res.locals.bf.id);
   orders.forEach(o => {
     o.items = db.prepare('SELECT * FROM spare_order_items WHERE order_id=?').all(o.id);
     o.total = o.items.reduce((s, i) => s + i.qty * i.unit_price, 0);
