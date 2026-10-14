@@ -26,34 +26,69 @@
       .then(function (data) {
         var groups = (data && data.groups) || [];
         var pass = 0,
-          fail = 0;
+          fail = 0,
+          warn = 0;
         groups.forEach(function (g) {
           (g.results || []).forEach(function (x) {
-            x.ok ? pass++ : fail++;
+            if (x.ok) pass++;
+            else if (x.severity === 'warning') warn++;
+            else fail++;
           });
         });
-        top.className = 'alert ' + (fail ? 'alert-danger' : 'alert-success');
-        top.textContent =
-          (fail ? '✗ ' + fail + ' hata, ' + pass + ' test geçti.' : '✓ Tüm testler başarılı — ' + pass + ' test geçti.') +
-          '  (' +
-          new Date(data.time).toLocaleString('tr-TR') +
-          ')';
+        if (fail) {
+          top.className = 'alert alert-danger';
+          top.textContent =
+            '✗ ' +
+            fail +
+            ' hata' +
+            (warn ? ', ' + warn + ' uyarı' : '') +
+            ', ' +
+            pass +
+            ' test geçti.  (' +
+            new Date(data.time).toLocaleString('tr-TR') +
+            ')';
+        } else if (warn) {
+          top.className = 'alert';
+          top.style.background = '#fff7e6';
+          top.style.borderColor = '#f0c36d';
+          top.style.color = '#7a5900';
+          top.textContent =
+            '✓ Hata yok — ' +
+            pass +
+            ' test geçti, ' +
+            warn +
+            ' uyarı (yapılandırma).  (' +
+            new Date(data.time).toLocaleString('tr-TR') +
+            ')';
+        } else {
+          top.className = 'alert alert-success';
+          top.textContent = '✓ Tüm testler başarılı — ' + pass + ' test geçti.  (' + new Date(data.time).toLocaleString('tr-TR') + ')';
+        }
         results.innerHTML = groups
           .map(function (g) {
-            var f = (g.results || []).filter(function (x) {
-              return !x.ok;
+            var rs = g.results || [];
+            var f = rs.filter(function (x) {
+              return !x.ok && x.severity !== 'warning';
             }).length;
-            var rows = (g.results || [])
+            var w = rs.filter(function (x) {
+              return !x.ok && x.severity === 'warning';
+            }).length;
+            var rows = rs
               .map(function (x) {
+                var warnRow = !x.ok && x.severity === 'warning';
+                var mark = x.ok ? '✓' : warnRow ? '!' : '✗';
+                var cls = x.ok ? 'ok' : warnRow ? 'warn' : 'no';
                 return (
                   '<tr><td style="width:26px" class="' +
-                  (x.ok ? 'ok' : 'no') +
+                  cls +
                   '">' +
-                  (x.ok ? '✓' : '✗') +
+                  mark +
                   '</td>' +
                   '<td>' +
                   esc(x.name) +
-                  '</td><td class="muted">' +
+                  (warnRow ? ' <span class="badge-warn">UYARI</span>' : '') +
+                  '</td>' +
+                  '<td class="muted">' +
                   esc(x.detail || '') +
                   '</td></tr>'
                 );
@@ -63,11 +98,17 @@
               '<div class="tg"><h3>' +
               esc(g.name) +
               ' <span class="cnt">(' +
-              (g.results || []).length +
+              rs.length +
               ' test, ' +
               f +
-              ' hata)</span> ' +
-              (f ? '<span class="badge-no">HATA</span>' : '<span class="badge-ok">TAMAM</span>') +
+              ' hata' +
+              (w ? ', ' + w + ' uyarı' : '') +
+              ')</span> ' +
+              (f
+                ? '<span class="badge-no">HATA</span>'
+                : w
+                  ? '<span class="badge-warn">UYARI</span>'
+                  : '<span class="badge-ok">TAMAM</span>') +
               '</h3>' +
               '<table class="tres"><tbody>' +
               rows +
