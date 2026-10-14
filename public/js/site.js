@@ -33,5 +33,13 @@
   });
 })();
 
-// Sayfadaki tüm bağlantılar yeni sekmede açılır
-document.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href'); if (h && !h.startsWith('#') && !h.startsWith('javascript:') && !h.startsWith('tel:') && !h.startsWith('mailto:')) { a.target = '_blank'; a.rel = 'noopener'; } });
+// Bağlantı davranışı: kendi sayfalarımız aynı sekmede açılır; yalnızca FARKLI siteye
+// giden dış bağlantılar (ve şablonda target belirtilenler) yeni sekmede açılır.
+document.querySelectorAll('a[href]').forEach(a => {
+  if (a.hasAttribute('target')) return; // şablonda zaten ayarlanmış (ör. sosyal medya)
+  const h = a.getAttribute('href');
+  if (!h || h.startsWith('#') || h.startsWith('javascript:') || h.startsWith('tel:') || h.startsWith('mailto:')) return;
+  let external = false;
+  try { external = new URL(h, location.href).origin !== location.origin; } catch (e) {}
+  if (external) { a.target = '_blank'; a.rel = 'noopener'; }
+});
