@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bionic Motor — Tema 3: Carbon Editorial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0a0a0a;--paper:#f3f0ea;--red:#e0252f;--mut:#6d6a63;--line:#d8d3c8}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Raleway',Arial,sans-serif;font-size:15px;line-height:1.6}
+.serif{font-family:'Playfair Display',Georgia,serif}
+.g{font-family:'Space Grotesk','Raleway',sans-serif;letter-spacing:-.02em}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1280px;margin:0 auto;padding:0 26px}
+header{border-bottom:2px solid var(--ink);position:sticky;top:0;background:var(--paper);z-index:40}
+.topbar{border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.topbar-in{display:flex;justify-content:space-between;gap:16px;min-height:36px;align-items:center;flex-wrap:wrap}
+.topbar-in nav{display:flex;gap:20px;flex-wrap:wrap}
+.topbar-in a:hover{color:var(--red)}
+.masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:22px 0 16px;flex-wrap:wrap}
+.logo{font-family:'Playfair Display';font-weight:800;font-size:clamp(30px,4vw,52px);line-height:1}
+.logo b{color:var(--red);font-style:italic}
+.mastmeta{display:flex;gap:26px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.mastmeta b{display:block;color:var(--ink);font-size:20px;letter-spacing:0;font-family:'Space Grotesk'}
+.hero{display:grid;grid-template-columns:1.15fr .85fr;gap:0;border-bottom:2px solid var(--ink)}
+.hero-l{padding:56px 44px 56px 0;border-right:2px solid var(--ink)}
+.kick{display:flex;align-items:center;gap:12px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);font-weight:700}
+.kick:before{content:'';width:46px;height:2px;background:var(--red)}
+h1{font-family:'Playfair Display';font-weight:800;font-size:clamp(52px,8.6vw,132px);line-height:.88;margin:18px 0 18px;letter-spacing:-.02em}
+h1 em{font-style:italic;color:var(--red)}
+.hero p.lead{max-width:520px;color:#3c3a35;font-size:16.5px}
+.cta{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;font-weight:700;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;border:2px solid var(--ink);transition:.18s}
+.btn-black{background:var(--ink);color:var(--paper)}
+.btn-black:hover{background:var(--red);border-color:var(--red)}
+.btn-line:hover{background:var(--ink);color:var(--paper)}
+.hero-r{position:relative;background:var(--ink);color:var(--paper);display:flex;flex-direction:column;justify-content:space-between;padding:40px 36px}
+.hero-r .idx{font-family:'Space Grotesk';font-size:14px;letter-spacing:.2em;color:#8d8a82}
+.hero-r svg{width:100%;height:300px;color:#fff;margin:6px 0}
+.hero-r .data{border-top:1px solid #333;padding-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.hero-r .data span{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8d8a82}
+.hero-r .data b{display:block;font-family:'Space Grotesk';font-size:22px;color:#fff;margin-top:2px}
+.hero-r .price{font-family:'Space Grotesk';font-size:40px;font-weight:700}
+.hero-r .price s{font-size:18px;color:#8d8a82;font-weight:400;margin-right:10px}
+.marquee{border-bottom:2px solid var(--ink);overflow:hidden;background:var(--ink);color:var(--paper)}
+.marquee-in{display:flex;gap:40px;white-space:nowrap;padding:14px 0;font-family:'Space Grotesk';font-size:13px;letter-spacing:.18em;text-transform:uppercase;animation:run 26s linear infinite}
+.marquee-in i{color:var(--red);font-style:normal}
+@keyframes run{to{transform:translateX(-50%)}}
+.sec{padding:70px 0}
+.sechead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:0}
+.sechead h2{font-family:'Playfair Display';font-weight:800;font-size:clamp(30px,4vw,52px);margin:0}
+.sechead .no{font-family:'Space Grotesk';font-size:13px;letter-spacing:.2em;color:var(--mut)}
+.modelrow{display:grid;grid-template-columns:70px 1.4fr 1fr auto;gap:20px;align-items:center;padding:26px 0;border-bottom:1px solid var(--line);transition:.2s}
+.modelrow:hover{background:#fff;padding-left:14px}
+.modelrow .n{font-family:'Space Grotesk';font-size:26px;color:var(--red)}
+.modelrow h3{font-family:'Playfair Display';font-weight:700;font-size:clamp(24px,3vw,40px);margin:0}
+.modelrow .meta{color:var(--mut);font-size:13px;letter-spacing:.04em}
+.modelrow .pr{font-family:'Space Grotesk';font-size:22px;font-weight:600;text-align:right}
+.modelrow .pr s{display:block;color:#a8a49b;font-size:14px;font-weight:400}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--line)}
+.col{padding:34px 30px;border-right:1px solid var(--line)}
+.col:last-child{border-right:0}
+.col .ic{font-size:26px;margin-bottom:14px;color:var(--red)}
+.col h4{font-family:'Space Grotesk';font-size:19px;margin:0 0 8px}
+.col p{margin:0;color:#4a4842;font-size:14px}
+.bigcta{background:var(--ink);color:var(--paper);padding:70px 0}
+.bigcta .in{display:flex;align-items:center;justify-content:space-between;gap:30px;flex-wrap:wrap}
+.bigcta h3{font-family:'Playfair Display';font-weight:800;font-size:clamp(32px,5vw,72px);margin:0;line-height:1}
+.bigcta h3 em{color:var(--red);font-style:italic}
+.bigcta .btn{border-color:var(--paper);color:var(--paper)}
+.bigcta .btn:hover{background:var(--red);border-color:var(--red);color:#fff}
+footer{padding:46px 0 30px;border-top:2px solid var(--ink);font-size:13.5px;color:var(--mut)}
+.foot{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap}
+.foot b{color:var(--ink)}
+@media(max-width:960px){.hero{grid-template-columns:1fr}.hero-l{border-right:0;padding-right:0}.cols{grid-template-columns:1fr}.col{border-right:0;border-bottom:1px solid var(--line)}.modelrow{grid-template-columns:44px 1fr auto}.modelrow .meta{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar"><div class="wrap topbar-in">
+    <span>Bionic Motor · 2026 Sezon Bülteni</span>
+    <nav><a href="#">Kurumsal</a><a href="#">Modeller</a><a href="#">Satış &amp; Servis</a><a href="#">Dijital Katalog</a><a href="#">Online Ödeme</a><a href="#">Bayi Girişi</a><a href="#">İletişim</a></nav>
+  </div></div>
+  <div class="wrap masthead">
+    <div class="logo">Bionic <b>Motor</b></div>
+    <div class="mastmeta">
+      <div>Sezon<b>2026</b></div><div>Sayı<b>01</b></div><div>Yer<b>Mersin</b></div><div>Destek<b>7/24</b></div>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap" style="display:contents"></div>
+  <div class="hero-l" style="padding-left:26px">
+    <div class="kick">Öne Çıkan Model</div>
+    <h1>Sürüşün<br><em>karakteri.</em></h1>
+    <p class="lead">SST125; sıvı soğutmalı motoru, 10,5 L deposu ve akıllı gösterge paneliyle şehirde fark yaratır. Bionic güvencesiyle 9-12 taksit.</p>
+    <div class="cta"><a class="btn btn-black" href="#">Modeli İncele ›</a><a class="btn btn-line" href="#">Tüm Modeller</a></div>
+  </div>
+  <div class="hero-r">
+    <div class="idx">01 — SST125</div>
+    <svg viewBox="0 0 520 300"><g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="120" cy="232" r="52"/><circle cx="404" cy="232" r="52"/>
+      <path d="M120 232 L210 156 L306 156 L372 122"/><path d="M210 156 L262 232"/><path d="M306 156 L338 232"/>
+      <path d="M186 156 q42 -40 104 -24"/><path d="M372 122 L412 66 M412 66 L448 90"/><circle cx="448" cy="90" r="11"/>
+    </g></svg>
+    <div>
+      <div class="data">
+        <div><span>Motor</span><b>125 cc</b></div><div><span>Güç</span><b>11,3 HP</b></div>
+        <div><span>Şanzıman</span><b>Otomatik</b></div><div><span>Depo</span><b>10,5 L</b></div>
+      </div>
+      <div style="margin-top:20px"><span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8d8a82">Kampanyalı Fiyat</span>
+        <div class="price"><s>178.200 ₺</s>111.500 ₺</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee"><div class="marquee-in">
+  <span>125 cc</span><i>◆</i><span>Sıvı Soğutma</span><i>◆</i><span>10,5 L Depo</span><i>◆</i><span>Otomatik Şanzıman</span><i>◆</i><span>LED Far</span><i>◆</i><span>Akıllı Ekran</span><i>◆</i><span>2 Yıl Garanti</span><i>◆</i>
+  <span>125 cc</span><i>◆</i><span>Sıvı Soğutma</span><i>◆</i><span>10,5 L Depo</span><i>◆</i><span>Otomatik Şanzıman</span><i>◆</i><span>LED Far</span><i>◆</i><span>Akıllı Ekran</span><i>◆</i><span>2 Yıl Garanti</span><i>◆</i>
+</div></div>
+
+<section class="sec"><div class="wrap">
+  <div class="sechead"><h2>Seçki — Modeller</h2><span class="no">02 / KOLEKSİYON</span></div>
+  <a class="modelrow" href="#">
+    <div class="n">01</div>
+    <div><h3>SST125</h3><div class="meta">Scooter · 125 cc · Otomatik · Maxi</div></div>
+    <div class="meta">Sıvı soğutmalı, 10,5 L depo, akıllı ekran</div>
+    <div class="pr"><s>178.200 ₺</s>111.500 ₺</div>
+  </a>
+  <a class="modelrow" href="#">
+    <div class="n">02</div>
+    <div><h3>Cruiser 150</h3><div class="meta">Motosiklet · 150 cc · Manuel</div></div>
+    <div class="meta">Şehir içi ve uzun yol için rahat sürüş</div>
+    <div class="pr">129.900 ₺</div>
+  </a>
+  <a class="modelrow" href="#">
+    <div class="n">03</div>
+    <div><h3>Urban 50</h3><div class="meta">Scooter · 50 cc · Otomatik</div></div>
+    <div class="meta">Şehir içi pratik ve ekonomik kullanım</div>
+    <div class="pr">69.900 ₺</div>
+  </a>
+</div></section>
+
+<section class="sec" style="padding-top:0"><div class="wrap">
+  <div class="sechead"><h2>Editör Notu — Neden Bionic</h2><span class="no">03 / AVANTAJLAR</span></div>
+  <div class="cols">
+    <div class="col"><div class="ic">⚡</div><h4>Hızlı Tedarik</h4><p>Merkez stoktan aynı gün sevkiyat; kargo takibi panel üzerinden.</p></div>
+    <div class="col"><div class="ic">🛠️</div><h4>Yetkili Servis Ağı</h4><p>18 noktada orijinal yedek parça ve uzman servis hizmeti.</p></div>
+    <div class="col"><div class="ic">💳</div><h4>Dijital Bayi Ağı</h4><p>Sipariş, stok, cari ve online ödeme tek panelde.</p></div>
+  </div>
+</div></section>
+
+<section class="bigcta"><div class="wrap in">
+  <h3>Markanın<br><em>parçası</em> olun.</h3>
+  <a class="btn" href="#">Bayilik Başvurusu ›</a>
+</div></section>
+
+<footer><div class="wrap foot">
+  <div><div class="logo" style="font-size:26px">Bionic <b>Motor</b></div><p>SANCARLAR MOTOR · Merkez Mah. 52039 Sk. No:17/A · Mersin</p></div>
+  <div><b>İletişim</b><p>0544 733 73 73<br>info@bionicmotorsiklet.com</p></div>
+  <div><b>Kurumsal</b><p>KVKK · İptal &amp; İade · Hizmet Sözleşmesi</p></div>
+</div><div class="wrap" style="padding-top:18px">© Tüm hakları saklıdır.</div></footer>
+</body>
+</html>
