@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { db } = require('../db');
+const { db, logAudit } = require('../db');
 const { flash, throttle, publicOrigin } = require('../lib/core');
 const { clean } = require('../lib/sanitize');
 
@@ -80,6 +80,7 @@ router.post('/iletisim', (req, res) => {
     return res.redirect('/iletisim');
   }
   db.prepare('INSERT INTO messages(name,email,phone,message) VALUES(?,?,?,?)').run(name, email, clip(b.phone, 40), msg);
+  logAudit({ type: 'ziyaretci', name }, 'create', 'messages', null, { email }, req.ip);
   t.hit();
   flash(req, 'success', 'Mesajınız alındı. En kısa sürede dönüş yapılacaktır.');
   res.redirect('/iletisim');
@@ -106,6 +107,7 @@ router.post('/bayilik-basvurusu', (req, res) => {
     phone,
     clip(b.note, 2000)
   );
+  logAudit({ type: 'ziyaretci', name }, 'create', 'applications', null, { city: clip(b.city, 60), phone }, req.ip);
   t.hit();
   flash(req, 'success', 'Başvurunuz alındı. Sizinle iletişime geçeceğiz.');
   res.redirect('/bayilik-basvurusu');

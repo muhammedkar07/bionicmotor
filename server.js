@@ -69,6 +69,9 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   const isPanel = /^\/(admin|bayi|servis|odeme)(\/|$)/.test(req.path);
   if (isPanel) res.setHeader('Cache-Control', 'no-store, private');
   const isSecure = process.env.COOKIE_SECURE === '1' || req.secure;

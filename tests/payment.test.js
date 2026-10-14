@@ -121,6 +121,10 @@ test('bayi kart ödemesi tahsil edilir ve aktif firmanın carisine alacak işlen
   assert.ok(mv, 'POS cari hareketi oluşmalı');
   assert.strictEqual(mv.kind, 'alacak');
   assert.strictEqual(mv.amount, 100000);
+  assert.ok(
+    db.prepare("SELECT COUNT(*) n FROM audit_log WHERE action='payment_collected'").get().n > 0,
+    'audit_log payment_collected kaydı olmalı'
+  );
 });
 
 test('komisyon cariye yazılmaz (alacak = amount, total değil)', async () => {

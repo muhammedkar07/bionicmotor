@@ -139,3 +139,16 @@ test('sistem testi tüm kontrolleri geçer', async () => {
   assert.strictEqual(data.ok, true);
   assert.ok(data.groups.length >= 5, 'birden çok test grubu beklenir');
 });
+
+test('admin girişi denetim izlerine yazılır', async () => {
+  const { db } = require('../db');
+  const g = await getPage('/admin/giris');
+  await fetch(base + '/admin/giris', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) })
+  });
+  const n = db.prepare("SELECT COUNT(*) n FROM audit_log WHERE action='login' AND actor='admin'").get().n;
+  assert.ok(n > 0, 'admin login denetim kaydı olmalı');
+});

@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
+const { db, tx, syncOrderDebit, nextNo, STATUS, logAudit } = require('../db');
 const { flash, throttle, regenerate, addYears, fmtMoney, csrfCheck, publicOrigin } = require('../lib/core');
 const { checkMaxQty, createSpareCardOrder } = require('../lib/spareOrder');
 const { singleImage } = require('../lib/upload');
@@ -29,6 +29,7 @@ router.post('/giris', (req, res) => {
   const ok = bcrypt.compareSync(pass, u ? u.password_hash : DUMMY) && u;
   if (!ok) {
     t.hit();
+    logAudit({ type: 'servis', name: code }, 'login_failed', 'dealer_user', null, null, req.ip);
     flash(req, 'danger', 'Kullanıcı kodu veya parola hatalı.');
     return res.redirect('/servis/giris');
   }
@@ -43,11 +44,13 @@ router.post('/giris', (req, res) => {
     regenerate(req, res, 'dealer');
     req.session.dealer = { userId: u.id, firmId: firmRow.firm_id };
     req.saveSession();
+    logAudit({ type: 'bayi', id: u.id, name: u.code }, 'login', 'dealer_user', u.id, { firm: firmRow.firm_id }, req.ip);
     return res.redirect('/bayi');
   }
   regenerate(req, res, 'servis');
   req.session.servis = { userId: u.id, firmId: firmRow ? firmRow.firm_id : null };
   req.saveSession();
+  logAudit({ type: 'servis', id: u.id, name: u.code }, 'login', 'dealer_user', u.id, null, req.ip);
   res.redirect('/servis');
 });
 
@@ -78,6 +81,8 @@ router.get('/', (req, res) => {
   page(res, 'home', 'Servis Portalı', { unread });
 });
 router.post('/cikis', (req, res) => {
+  if (res.locals.su)
+    logAudit({ type: 'servis', id: res.locals.su.id, name: res.locals.su.code }, 'logout', 'dealer_user', res.locals.su.id, null, req.ip);
   regenerate(req, res, 'servis');
   res.redirect('/servis/giris');
 });
@@ -205,6 +210,14 @@ router.post('/garanti/yeni', (req, res) => {
       db.prepare('UPDATE warranty_records SET setup_movement_id=? WHERE rowid=?').run(md, wrid);
     }
   });
+  logAudit(
+    { type: 'servis', id: req.session.servis.userId, name: res.locals.su ? res.locals.su.code : null },
+    'create',
+    'warranty_records',
+    wrid,
+    { serial, model: m.name, fee },
+    req.ip
+  );
   flash(
     req,
     'success',
@@ -245,6 +258,14 @@ router.post('/is-emri/yeni', singleImage, csrfCheck, (req, res) => {
     '',
     clip(b.description, 3000),
     '/static/uploads/' + img.filename
+  );
+  logAudit(
+    { type: 'servis', id: uid, name: res.locals.su ? res.locals.su.code : null },
+    'create',
+    'work_orders',
+    null,
+    { no, serial: clip(b.serial_no, 40) },
+    req.ip
   );
   flash(req, 'success', `İş emriniz oluşturuldu: ${no}. İş emri türü yönetici tarafından belirlenecektir.`);
   res.redirect('/servis/is-emirlerim');
@@ -335,12 +356,21 @@ router.post('/yedek-parca/yeni', async (req, res) => {
       return back('Ödeme başlatılamadı: ' + e.message);
     }
     if (r.error) return back(r.error);
+    logAudit(
+      { type: 'servis', id: uid, name: res.locals.su ? res.locals.su.code : null },
+      'create',
+      'spare_orders',
+      r.orderId,
+      { no, method: 'Kredi Kartı', payable, payment_id: r.paymentId },
+      req.ip
+    );
     const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı.` : '';
     flash(req, 'success', `${no} numaralı siparişiniz kaydedildi. Ödeme için güvenli ödeme sayfasına yönlendiriliyorsunuz.` + creditMsg);
     return res.redirect(r.redirect);
   }
 
   let no;
+  let newOid;
   tx(() => {
     no = String(nextNo('spare_orders', 'no'));
     const status = fullyCovered ? STATUS.CONVERTED : STATUS.PENDING;
@@ -358,10 +388,19 @@ router.post('/yedek-parca/yeni', async (req, res) => {
         payer || null,
         applied
       ).lastInsertRowid;
+    newOid = oid;
     const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
     syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
   });
+  logAudit(
+    { type: 'servis', id: uid, name: res.locals.su ? res.locals.su.code : null },
+    'create',
+    'spare_orders',
+    newOid,
+    { no, method: fullyCovered ? 'Bakiye (Alacak)' : method, payable, applied },
+    req.ip
+  );
   const creditMsg =
     applied > 0
       ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}`

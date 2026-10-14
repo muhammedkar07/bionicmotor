@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, syncPaymentCredit, STATUS } = require('../db');
+const { db, tx, syncPaymentCredit, STATUS, logAudit } = require('../db');
 const { flash, throttle, regenerate, publicOrigin } = require('../lib/core');
 const pay = require('../lib/pay');
 const paratika = require('../lib/paratika');
@@ -33,6 +33,7 @@ router.post('/giris', (req, res) => {
     db.prepare('SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.id').get(u.id);
   if (!ok || !firm) {
     t.hit();
+    logAudit({ type: 'odeme', name: email }, 'login_failed', 'dealer_user', null, null, req.ip);
     flash(req, 'danger', 'E-posta veya şifre hatalı.');
     return res.redirect('/odeme');
   }
@@ -40,10 +41,13 @@ router.post('/giris', (req, res) => {
   regenerate(req, res, 'pay');
   req.session.pay = { userId: u.id, firmId: firm.id };
   req.saveSession();
+  logAudit({ type: 'odeme', id: u.id, name: email }, 'login', 'dealer_user', u.id, { firm: firm.id }, req.ip);
   res.redirect('/odeme');
 });
 
 router.post('/cikis', (req, res) => {
+  const u = payUser(req);
+  if (u) logAudit({ type: 'odeme', id: u.id, name: u.email || u.code }, 'logout', 'dealer_user', u.id, null, req.ip);
   regenerate(req, res, 'pay');
   res.redirect('/odeme');
 });
@@ -99,9 +103,18 @@ async function paratikaResult(req, res) {
       if (spare) db.prepare('UPDATE spare_orders SET status=? WHERE id=? AND status=?').run(STATUS.CONVERTED, spare.id, STATUS.PENDING);
       syncPaymentCredit(payment.id);
     });
+    logAudit(
+      { type: payment.source === 'servis' ? 'servis' : payment.source === 'bayi' ? 'bayi' : 'odeme', id: payment.user_id, name: null },
+      'payment_collected',
+      'payments',
+      payment.id,
+      { amount: payment.amount, provider_order: payment.provider_order, firm: payment.firm_id },
+      req.ip
+    );
     return back(payment, 'success', 'Ödemeniz başarıyla alındı ve hesabınıza işlendi.');
   }
   db.prepare('UPDATE payments SET status=? WHERE id=? AND status=?').run('İptal', payment.id, STATUS.POS_PENDING);
+  logAudit({ type: 'sistem', name: 'paratika' }, 'payment_failed', 'payments', payment.id, { error: v.error || null }, req.ip);
   return back(payment, 'danger', 'Ödeme tamamlanamadı: ' + (v.error || 'bilinmeyen hata'));
 }
 router.get('/paratika/sonuc', paratikaResult);
@@ -132,6 +145,8 @@ router.post('/ode', async (req, res) => {
   const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
   if (method === 'havale') {
     const r = pay.havale(payCtx(req, res), b);
+    if (!r.error)
+      logAudit({ type: 'odeme', id: res.locals.pu.id, name: res.locals.pu.email }, 'create', 'payments', null, { kind: 'havale' }, req.ip);
     flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
     return res.redirect('/odeme');
   }
@@ -141,6 +156,14 @@ router.post('/ode', async (req, res) => {
       flash(req, 'danger', r.error);
       return res.redirect('/odeme');
     }
+    logAudit(
+      { type: 'odeme', id: res.locals.pu.id, name: res.locals.pu.email },
+      'create',
+      'payments',
+      r.paymentId,
+      { kind: 'kart' },
+      req.ip
+    );
     res.redirect(r.redirect);
   } catch (e) {
     flash(req, 'danger', 'Ödeme başlatılamadı: ' + e.message);
@@ -150,6 +173,8 @@ router.post('/ode', async (req, res) => {
 
 router.post('/talimat', (req, res) => {
   const r = pay.talimat(payCtx(req, res), req.body);
+  if (!r.error)
+    logAudit({ type: 'odeme', id: res.locals.pu.id, name: res.locals.pu.email }, 'create', 'payments', null, { kind: 'talimat' }, req.ip);
   flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
   res.redirect('/odeme');
 });

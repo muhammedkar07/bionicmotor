@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
+const { db, tx, syncOrderDebit, nextNo, STATUS, logAudit } = require('../db');
 const { flash, throttle, regenerate, fmtMoney, publicOrigin } = require('../lib/core');
 const { checkMaxQty, createSpareCardOrder } = require('../lib/spareOrder');
 const { accountSummary } = require('../lib/account');
@@ -27,6 +27,7 @@ router.post('/giris', (req, res) => {
   const ok = bcrypt.compareSync(pass, u ? u.password_hash : DUMMY) && u;
   if (!ok) {
     t.hit();
+    logAudit({ type: 'bayi', name: code }, 'login_failed', 'dealer_user', null, null, req.ip);
     flash(req, 'danger', 'Kullanıcı kodu veya parola hatalı.');
     return res.redirect('/bayi/giris');
   }
@@ -40,12 +41,14 @@ router.post('/giris', (req, res) => {
     regenerate(req, res, 'servis');
     req.session.servis = { userId: u.id, firmId: firms[0].id };
     req.saveSession();
+    logAudit({ type: 'servis', id: u.id, name: u.code }, 'login', 'dealer_user', u.id, null, req.ip);
     return res.redirect('/servis');
   }
   if (u.role === null || u.role === '') db.prepare("UPDATE dealer_users SET role='bayi' WHERE id=?").run(u.id);
   regenerate(req, res, 'dealer');
   req.session.dealer = { userId: u.id, firmId: firms[0].id };
   req.saveSession();
+  logAudit({ type: 'bayi', id: u.id, name: u.code }, 'login', 'dealer_user', u.id, { firm: firms[0].id }, req.ip);
   res.redirect('/bayi');
 });
 
@@ -80,6 +83,8 @@ router.get('/', (req, res) => {
 });
 
 router.post('/cikis', (req, res) => {
+  if (res.locals.bu)
+    logAudit({ type: 'bayi', id: res.locals.bu.id, name: res.locals.bu.code }, 'logout', 'dealer_user', res.locals.bu.id, null, req.ip);
   regenerate(req, res, 'dealer');
   flash(req, 'danger', 'Başarıyla çıkış yaptınız.');
   res.redirect('/bayi/giris');
@@ -140,6 +145,7 @@ router.post('/siparis-olustur', (req, res) => {
   const overQty = checkMaxQty(lines);
   if (overQty) return back(overQty);
   const no = String(nextNo('orders', 'request_no'));
+  let newOid;
   tx(() => {
     // Talep oluşturmak tutarı etkilemez; "Siparişe Dönüştürüldü" olunca borca işlenir ve stok düşer.
     const oid = db
@@ -147,9 +153,18 @@ router.post('/siparis-olustur', (req, res) => {
         `INSERT INTO orders(firm_id,request_date,request_no,delivery_date,delivery_type,status,note) VALUES(?,date('now'),?,NULL,'İleri Vadeli Teslim','Beklemede',?)`
       )
       .run(res.locals.bf.id, no, old.note || null).lastInsertRowid;
+    newOid = oid;
     const ins = db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.name, l.qty, l.p.price));
   });
+  logAudit(
+    { type: 'bayi', id: res.locals.bu.id, name: res.locals.bu.code },
+    'create',
+    'orders',
+    newOid,
+    { no, lines: lines.map(l => ({ name: l.p.name, qty: l.qty, unit_price: l.p.price })) },
+    req.ip
+  );
   flash(
     req,
     'success',
@@ -317,12 +332,21 @@ router.post('/yedek-parca/yeni', async (req, res) => {
       return back('Ödeme başlatılamadı: ' + e.message);
     }
     if (r.error) return back(r.error);
+    logAudit(
+      { type: 'bayi', id: res.locals.bu.id, name: res.locals.bu.code },
+      'create',
+      'spare_orders',
+      r.orderId,
+      { no, method: 'Kredi Kartı', payable, payment_id: r.paymentId },
+      req.ip
+    );
     const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı.` : '';
     flash(req, 'success', `${no} numaralı siparişiniz kaydedildi. Ödeme için güvenli ödeme sayfasına yönlendiriliyorsunuz.` + creditMsg);
     return res.redirect(r.redirect);
   }
 
   let no;
+  let newOid;
   tx(() => {
     no = String(nextNo('spare_orders', 'no'));
     // Tamamen bakiyeden karşılanan sipariş anında onaylanır; nakit/havale yönetici onayı bekler.
@@ -341,10 +365,19 @@ router.post('/yedek-parca/yeni', async (req, res) => {
         payer || null,
         applied
       ).lastInsertRowid;
+    newOid = oid;
     const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
     syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
   });
+  logAudit(
+    { type: 'bayi', id: res.locals.bu.id, name: res.locals.bu.code },
+    'create',
+    'spare_orders',
+    newOid,
+    { no, method: fullyCovered ? 'Bakiye (Alacak)' : method, payable, applied },
+    req.ip
+  );
   const creditMsg =
     applied > 0
       ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}`

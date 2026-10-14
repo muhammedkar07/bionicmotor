@@ -206,6 +206,12 @@ db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,
   action TEXT NOT NULL, entity TEXT NOT NULL, entity_id INTEGER, detail TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')));`);
+// Denetim kaydı zenginleştirme: aktör türü (admin/bayi/servis/odeme/sistem/ziyaretci), aktör adı ve IP.
+addCol('audit_log', 'actor', 'TEXT');
+addCol('audit_log', 'actor_name', 'TEXT');
+addCol('audit_log', 'ip', 'TEXT');
+db.exec('CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_log(created_at)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity)');
 // Giriş denemesi sayacı (bellek yerine veritabanında): yeniden başlatmada sıfırlanmaz.
 db.exec(`CREATE TABLE IF NOT EXISTS login_attempts (key TEXT NOT NULL, at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_login_attempts_key ON login_attempts(key);`);
@@ -490,17 +496,36 @@ const tx = fn => {
   }
 };
 
-// Yönetici işlemlerinin denetim izi. İşlemi engellememesi için hatalar yutulur.
-function logAudit(admin, action, entity, entityId, detail) {
+// Denetim izi: kim (aktör), ne, ne zaman, hangi IP ile. İşlemi engellememesi için hatalar yutulur.
+// actor: { type:'admin'|'bayi'|'servis'|'odeme'|'sistem'|'ziyaretci', id, name } ya da bir admin satırı.
+function logAudit(actor, action, entity, entityId, detail, ip) {
   try {
-    const who = (admin && (admin.name || admin.username)) || null;
-    db.prepare('INSERT INTO audit_log(admin_id,admin_name,action,entity,entity_id,detail) VALUES(?,?,?,?,?,?)').run(
-      (admin && admin.id) || null,
-      who,
+    let type = 'sistem',
+      id = null,
+      name = null;
+    if (actor) {
+      if (actor.type !== undefined) {
+        type = actor.type || 'sistem';
+        id = actor.id || null;
+        name = actor.name || null;
+      } else {
+        type = 'admin';
+        id = actor.id || null;
+        name = actor.name || actor.username || null;
+      }
+    }
+    db.prepare(
+      'INSERT INTO audit_log(actor,actor_name,admin_id,admin_name,action,entity,entity_id,detail,ip) VALUES(?,?,?,?,?,?,?,?,?)'
+    ).run(
+      type,
+      name,
+      type === 'admin' ? id : null,
+      type === 'admin' ? name : null,
       action,
       entity,
       entityId || null,
-      detail == null ? null : (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 4000)
+      detail == null ? null : (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 4000),
+      ip || null
     );
   } catch {
     /* denetim kaydı başarısız olsa da asıl işlem sürer */

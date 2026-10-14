@@ -1,0 +1,48 @@
+<%- include('../partials/admin_head') %>
+<div class="bar">
+  <h1>Denetim İzleri</h1>
+  <form method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <input name="q" value="<%= q || '' %>" placeholder="Ara (eylem, varlık, ad, IP, detay)...">
+    <select name="actor">
+      <option value="">Tüm aktörler</option>
+      <% actors.forEach(a => { %><option value="<%= a %>" <%= a === actor ? 'selected' : '' %>><%= a %></option><% }) %>
+    </select>
+    <select name="entity">
+      <option value="">Tüm varlıklar</option>
+      <% entities.forEach(e => { %><option value="<%= e %>" <%= e === entity ? 'selected' : '' %>><%= e %></option><% }) %>
+    </select>
+    <button class="btn btn-sm">Filtrele</button>
+    <a class="btn btn-sm" href="/admin/audit">Temizle</a>
+  </form>
+</div>
+<p class="muted" style="margin:-6px 0 14px">
+  Sistemde yapılan tüm işlemler (girişler, kayıt ekleme/güncelleme/silme, ödemeler, siparişler, ayar değişiklikleri) burada izlenir.
+  Toplam <b><%= total %></b> kayıt.
+</p>
+<div class="tw"><table class="tbl">
+  <thead><tr><th style="width:140px">Tarih</th><th style="width:110px">Aktör</th><th>Ad / Kimlik</th><th style="width:120px">IP</th><th>Eylem</th><th>Varlık</th><th style="width:70px">Kayıt</th><th>Detay</th></tr></thead>
+  <tbody>
+  <% rows.forEach(r => { %>
+    <tr>
+      <td><%= dt(r.created_at) %></td>
+      <td><span class="bdg" style="background:#374151"><%= r.actor || 'sistem' %></span></td>
+      <td><%= r.actor_name || r.admin_name || '-' %></td>
+      <td class="muted"><%= r.ip || '-' %></td>
+      <td><b><%= r.action %></b></td>
+      <td><%= r.entity %></td>
+      <td><%= r.entity_id == null ? '-' : r.entity_id %></td>
+      <td class="muted" title="<%= r.detail || '' %>"><%= r.detail ? String(r.detail).slice(0, 140) : '' %></td>
+    </tr>
+  <% }) %>
+  <% if (!rows.length) { %><tr><td colspan="8" class="muted">Kayıt yok.</td></tr><% } %>
+  </tbody>
+</table></div>
+<% if (pages > 1) { %>
+<div class="bar" style="justify-content:center;gap:12px;margin-top:14px">
+  <% const pg = n => '/admin/audit?' + new URLSearchParams({ q: q || '', actor: actor || '', entity: entity || '', page: String(n) }).toString(); %>
+  <a class="btn btn-sm" href="<%= page > 1 ? pg(page - 1) : '#' %>" <%= page <= 1 ? 'aria-disabled="true" style="opacity:.45;pointer-events:none"' : '' %>>‹ Önceki</a>
+  <span class="muted">Sayfa <b><%= page %></b> / <%= pages %></span>
+  <a class="btn btn-sm" href="<%= page < pages ? pg(page + 1) : '#' %>" <%= page >= pages ? 'aria-disabled="true" style="opacity:.45;pointer-events:none"' : '' %>>Sonraki ›</a>
+</div>
+<% } %>
+<%- include('../partials/admin_foot') %>

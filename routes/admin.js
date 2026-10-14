@@ -445,6 +445,7 @@ router.post('/giris', (req, res) => {
   const a = db.prepare('SELECT * FROM admins WHERE username=?').get(username);
   if (!(bcrypt.compareSync(String(req.body.password || '').slice(0, 200), a ? a.password_hash : DUMMY) && a)) {
     t.hit();
+    logAudit({ type: 'admin', name: username }, 'login_failed', 'admin', null, null, req.ip);
     flash(req, 'danger', 'Kullanıcı adı veya parola hatalı.');
     return res.redirect('/admin/giris');
   }
@@ -452,6 +453,7 @@ router.post('/giris', (req, res) => {
   regenerate(req, res, 'admin');
   req.session.admin = { id: a.id };
   req.saveSession();
+  logAudit({ type: 'admin', id: a.id, name: a.name || a.username }, 'login', 'admin', a.id, null, req.ip);
   res.redirect('/admin');
 });
 
@@ -498,6 +500,7 @@ function buildMenu(a, req) {
     entries.push({ id: 'sys:stok-parca', label: 'Yedek Parça Stok Takibi', href: '/admin/stok-parca', active: p === '/stok-parca' });
   if (can('ayarlar')) entries.push({ id: 'sys:ayarlar', label: 'Site Ayarları', href: '/admin/ayarlar', active: p === '/ayarlar' });
   if (can('test')) entries.push({ id: 'sys:test', label: 'Sistem Testi', href: '/admin/test', active: p === '/test' });
+  if (can('audit')) entries.push({ id: 'sys:audit', label: 'Denetim İzleri', href: '/admin/audit', active: p === '/audit' });
   if (a.is_super)
     entries.push({ id: 'sys:admin-users', label: 'Admin Kullanıcıları', href: '/admin/admin-users', active: p === '/admin-users' });
   entries.push({ id: 'sys:sifre', label: 'Parola Değiştir', href: '/admin/sifre', active: p === '/sifre' });
@@ -523,6 +526,7 @@ const FIXED_MENU_IDS = new Set([
   'sys:stok-parca',
   'sys:ayarlar',
   'sys:test',
+  'sys:audit',
   'sys:admin-users',
   'sys:sifre',
   'ext:site',
@@ -560,6 +564,7 @@ function sysKey(p) {
   if (p === '/stok-parca') return 'stok-parca';
   if (p === '/ayarlar') return 'ayarlar';
   if (p === '/test' || p.startsWith('/test/')) return 'test';
+  if (p === '/audit') return 'audit';
   return null;
 }
 router.use((req, res, next) => {
@@ -585,6 +590,7 @@ router.use((req, res, next) => {
 });
 
 router.post('/cikis', (req, res) => {
+  logAudit(res.locals.admin, 'logout', 'admin', res.locals.admin.id, null, req.ip);
   regenerate(req, res, 'admin');
   res.redirect('/admin/giris');
 });
@@ -898,9 +904,9 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
     if (id && before) {
       const changed = {};
       for (const k of Object.keys(data)) if (String(before[k]) !== String(data[k])) changed[k] = data[k];
-      logAudit(res.locals.admin, 'update', r.table, id, { changed: scrub(changed) });
+      logAudit(res.locals.admin, 'update', r.table, id, { changed: scrub(changed) }, req.ip);
     } else {
-      logAudit(res.locals.admin, 'create', r.table, savedId, { created: scrub(data) });
+      logAudit(res.locals.admin, 'create', r.table, savedId, { created: scrub(data) }, req.ip);
     }
     flash(
       req,
@@ -967,7 +973,7 @@ router.post('/menu-sirala', (req, res) => {
   }
   const order = (Array.isArray(data.order) ? data.order : []).filter(validMenuId);
   set('admin_menu_order', JSON.stringify({ order }));
-  logAudit(res.locals.admin, 'update', 'admin_menu_order', null, { adet: order.length });
+  logAudit(res.locals.admin, 'update', 'admin_menu_order', null, { adet: order.length }, req.ip);
   res.json({ ok: true });
 });
 
@@ -978,6 +984,7 @@ router.post('/kategori-ekle', (req, res) => {
   if (!name) return res.status(400).json({ error: 'Kategori adı boş olamaz.' });
   db.prepare('INSERT OR IGNORE INTO categories(name) VALUES(?)').run(name);
   const row = db.prepare('SELECT name FROM categories WHERE name=? COLLATE NOCASE').get(name);
+  logAudit(res.locals.admin, 'create', 'category', null, { name }, req.ip);
   res.json({ name: row.name });
 });
 
@@ -1086,7 +1093,7 @@ router.post('/r/:res/:id/delete', (req, res) => {
     if (req.r.table === 'payments') revertPaymentCredit(id);
     if (soft) db.prepare(`UPDATE ${req.r.table} SET deleted_at=datetime('now') WHERE rowid=?`).run(id);
     else db.prepare(`DELETE FROM ${req.r.table} WHERE rowid=?`).run(id);
-    logAudit(res.locals.admin, soft ? 'storno' : 'delete', req.r.table, id, { before: scrub(before) });
+    logAudit(res.locals.admin, soft ? 'storno' : 'delete', req.r.table, id, { before: scrub(before) }, req.ip);
   });
   flash(req, 'success', soft ? 'Kayıt iptal edildi (storno); etkileri geri alındı ve denetim kaydı korundu.' : 'Silindi.');
   res.redirect('/admin/r/' + req.params.res);
@@ -1095,15 +1102,25 @@ router.post('/r/:res/:id/delete', (req, res) => {
 // ---- Ayarlar ----
 router.get('/ayarlar', (req, res) => res.render('admin/settings', { title: 'Site Ayarları', groups: SETTINGS }));
 router.post('/ayarlar', anyFiles, csrfCheck, (req, res) => {
+  const changed = [];
   SETTINGS.forEach(([, items]) =>
     items.forEach(([key, , type]) => {
       if (type === 'image') {
         const up = (req.files || []).find(f => f.fieldname === key);
-        if (up) set(key, '/static/uploads/' + up.filename);
-        else if (req.body['clear_' + key]) set(key, '');
-      } else if (key in req.body) set(key, String(req.body[key]).slice(0, 500));
+        if (up) {
+          set(key, '/static/uploads/' + up.filename);
+          changed.push(key);
+        } else if (req.body['clear_' + key]) {
+          set(key, '');
+          changed.push(key);
+        }
+      } else if (key in req.body) {
+        set(key, String(req.body[key]).slice(0, 500));
+        changed.push(key);
+      }
     })
   );
+  logAudit(res.locals.admin, 'update', 'settings', null, { keys: changed }, req.ip);
   flash(req, 'success', 'Ayarlar kaydedildi.');
   res.redirect('/admin/ayarlar');
 });
@@ -1112,13 +1129,16 @@ router.get('/sifre', (req, res) => res.render('admin/password', { title: 'Parola
 router.post('/sifre', (req, res) => {
   const a = db.prepare('SELECT * FROM admins WHERE id=?').get(res.locals.admin.id);
   const { current, next: nw, again } = req.body;
-  if (!bcrypt.compareSync(String(current || ''), a.password_hash)) flash(req, 'danger', 'Mevcut parola hatalı.');
-  else {
+  if (!bcrypt.compareSync(String(current || ''), a.password_hash)) {
+    logAudit(res.locals.admin, 'password_change_failed', 'admin', a.id, null, req.ip);
+    flash(req, 'danger', 'Mevcut parola hatalı.');
+  } else {
     const pe = passwordError(nw);
     if (pe) flash(req, 'danger', pe);
     else if (nw !== again) flash(req, 'danger', 'Yeni parolalar eşleşmiyor.');
     else {
       db.prepare('UPDATE admins SET password_hash=? WHERE id=?').run(bcrypt.hashSync(nw, 12), a.id);
+      logAudit(res.locals.admin, 'password_change', 'admin', a.id, null, req.ip);
       flash(req, 'success', 'Parola güncellendi.');
     }
   }
@@ -1131,6 +1151,7 @@ const SYSTEM_PAGES = [
   { key: 'stok', label: 'Araç Stok Takibi' },
   { key: 'stok-parca', label: 'Yedek Parça Stok Takibi' },
   { key: 'ayarlar', label: 'Site Ayarları' },
+  { key: 'audit', label: 'Denetim İzleri' },
   { key: 'test', label: 'Sistem Testi' }
 ];
 
@@ -1201,6 +1222,7 @@ router.post('/admin-users', (req, res) => {
       isSuper,
       JSON.stringify(perms)
     );
+    logAudit(res.locals.admin, 'create', 'admin_user', null, { username: String(username).trim(), is_super: isSuper }, req.ip);
     flash(req, 'success', 'Admin kullanıcısı eklendi.');
   } catch (e) {
     flash(req, 'danger', 'Kullanıcı adı zaten kullanılıyor olabilir.');
@@ -1239,6 +1261,7 @@ router.post('/admin-users/:id/update', (req, res) => {
     JSON.stringify(perms),
     id
   );
+  logAudit(res.locals.admin, 'update', 'admin_user', id, { username: String(username || a.username).trim(), is_super: isSuper }, req.ip);
   flash(req, 'success', 'Güncellendi.');
   res.redirect('/admin/admin-users');
 });
@@ -1251,8 +1274,46 @@ router.post('/admin-users/:id/delete', (req, res) => {
     return res.redirect('/admin/admin-users');
   }
   db.prepare('DELETE FROM admins WHERE id=?').run(id);
+  logAudit(res.locals.admin, 'delete', 'admin_user', id, null, req.ip);
   flash(req, 'success', 'Silindi.');
   res.redirect('/admin/admin-users');
+});
+
+// ===================== DENETİM İZLERİ (AUDIT LOG) =====================
+router.get('/audit', (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const actor = String(req.query.actor || '').trim();
+  const entity = String(req.query.entity || '').trim();
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const PAGE = 100;
+  const where = [];
+  const params = {};
+  if (q) {
+    where.push('(action LIKE @q OR entity LIKE @q OR actor_name LIKE @q OR detail LIKE @q OR ip LIKE @q)');
+    params.q = '%' + q + '%';
+  }
+  if (actor) {
+    where.push('actor=@actor');
+    params.actor = actor;
+  }
+  if (entity) {
+    where.push('entity=@entity');
+    params.entity = entity;
+  }
+  const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const total = db.prepare(`SELECT COUNT(*) n FROM audit_log ${whereSql}`).get(params).n;
+  const pages = Math.max(1, Math.ceil(total / PAGE));
+  const p = Math.min(pages, page);
+  const rows = db.prepare(`SELECT * FROM audit_log ${whereSql} ORDER BY id DESC LIMIT ${PAGE} OFFSET ${(p - 1) * PAGE}`).all(params);
+  const actors = db
+    .prepare('SELECT DISTINCT actor FROM audit_log WHERE actor IS NOT NULL ORDER BY actor')
+    .all()
+    .map(r => r.actor);
+  const entities = db
+    .prepare('SELECT DISTINCT entity FROM audit_log ORDER BY entity')
+    .all()
+    .map(r => r.entity);
+  res.render('admin/audit', { title: 'Denetim İzleri', rows, q, actor, entity, actors, entities, page: p, pages, total });
 });
 
 // ===================== SİSTEM TESTİ =====================
