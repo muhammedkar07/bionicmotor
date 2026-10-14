@@ -51,3 +51,27 @@ değiştirmediği için alacağa eklenmez. Döviz ödemeler, ödeme anındaki ku
 
 Yedek parça siparişinde kart seçilirse: sanal POS tahsilatı yapılmadan sipariş **"Beklemede"**
 kalır ve tahsil edilmiş sayılmaz; ödeme onayı/callback'i sonrası cariye işlenir.
+
+## Yayına almadan demo (paylaşılabilir link)
+Gerçek sunucu/domain gerekmeden, kendi bilgisayarından müşteriye gösterebileceğin geçici bir
+**HTTPS link** üretebilirsin. Demo **ayrı bir veritabanı** (`demo-data/`) ile çalışır; gerçek
+verilere dokunmaz ve kart ödemeleri Paratika **simülasyon** modundadır.
+
+1. Bir terminalde demo sunucusunu başlat:
+       npm run demo        # http://localhost:3000  (admin / DemoAdmin12345!x)
+2. İkinci bir terminalde tüneli aç (Cloudflare; hesap gerekmez):
+       npm run tunnel      # https://<rastgele>.trycloudflare.com linkini verir
+3. Linki müşteriyle paylaş. Demo bitince iki terminali de kapat (Ctrl+C).
+
+Girişler: Yönetim `admin / DemoAdmin12345!x` · Bayi `kullanıcı kodu 25895 / demo1234Ab!` ·
+Online ödeme `demo@bayi.local / demo1234Ab!`.
+
+Notlar:
+- Tünel yalnızca iki komut açıkken çalışır ve her açılışta link değişir. Sabit link için
+  Cloudflare "named tunnel" + kendi domain'iniz, ya da Render/Railway gibi kalıcı diskli
+  barındırma kullanın.
+- Linke sahip olan herkes panele erişebilir; hassas veri koymayın, iş bitince tüneli kapatın.
+- `cloudflared` kurulu değilse: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+- Alternatif: ngrok (hesap gerekir) veya localtunnel. Kalıcı/uzun süreli demo için kalıcı diskli
+  bir barındırma (Render/Railway) daha uygundur; `DATA_DIR` + `UPLOAD_DIR` volume'a verilmelidir.
+
