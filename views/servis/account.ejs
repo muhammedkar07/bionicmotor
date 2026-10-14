@@ -8,7 +8,7 @@
     <div class="stat bg-yellow"><div>Vadesi Gelmemiş Çekler</div><b><%= money(a.pendingChecks) %> ₺</b></div>
     <div class="stat bg-blue"><div>Kredi Kartı Ödemeleri</div><b><%= money(a.card) %> ₺</b></div>
     <div class="stat bg-yellow"><div>Bekleyen Siparişler</div><b><%= money(a.pendingOrders) %> ₺</b></div>
-    <div class="stat bg-red"><div>Bakiye</div><b><%= money(a.balance) %> ₺</b></div>
+    <div class="stat bg-red stat-balance"><div>Bakiye</div><b><%= money(a.balance) %> ₺</b></div>
   </div>
   <hr>
   <% } else { %>

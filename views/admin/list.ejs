@@ -119,7 +119,7 @@
   <div class="stat bg-yellow"><div>Vadesi Gelmemiş Çekler</div><b><%= money(acct.pendingChecks) %> ₺</b></div>
   <div class="stat bg-blue"><div>Kredi Kartı Ödemeleri</div><b><%= money(acct.card) %> ₺</b></div>
   <div class="stat bg-yellow"><div>Bekleyen Siparişler</div><b><%= money(acct.pendingOrders) %> ₺</b></div>
-  <div class="stat bg-red"><div>Bakiye</div><b><%= money(acct.balance) %> ₺</b></div>
+  <div class="stat bg-red stat-balance"><div>Bakiye</div><b><%= money(acct.balance) %> ₺</b></div>
 </div>
 <p class="muted" style="margin:-6px 0 14px"><%= acctLabel %></p>
 <% } %>
