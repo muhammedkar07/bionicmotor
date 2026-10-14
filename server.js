@@ -1,9 +1,8 @@
 const express = require('express');
 const path = require('path');
-const multer = require('multer');
-const crypto = require('crypto');
 const { allSettings } = require('./db');
 const core = require('./lib/core');
+const { UPLOAD_DIR } = require('./lib/upload');
 
 require('./scripts/seed').ensureSeed();
 
@@ -30,29 +29,22 @@ app.use((req, res, next) => {
   next();
 });
 
-const fs = require('fs');
-// Yüklenen dosyalar UPLOAD_DIR ortam değişkeniyle kalıcı bir diske taşınabilir.
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-
+// Yükleme dizini lib/upload tarafından oluşturulur; burada yalnızca statik olarak sunulur.
 app.use('/static/uploads', express.static(UPLOAD_DIR, { maxAge: '1h' }));
 app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '1h' }));
-const ALLOWED = { '.jpg': 1, '.jpeg': 1, '.png': 1, '.webp': 1, '.gif': 1, '.pdf': 1 };
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (req, file, cb) =>
-      cb(null, crypto.randomBytes(12).toString('hex') + path.extname(file.originalname).toLowerCase())
-  }),
-  limits: { fileSize: 8 * 1024 * 1024, files: 5 },
-  fileFilter: (req, file, cb) =>
-    cb(null, !!ALLOWED[path.extname(file.originalname).toLowerCase()] && /^(image\/|application\/pdf)/.test(file.mimetype))
-});
 
 app.use(core.sessionMiddleware);
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-app.use(upload.any());
-app.use(core.csrfCheck);
+// multipart/form-data yalnızca dosya yükleyen rotalarda kabul edilir. Bu rotalarda CSRF
+// kontrolü, gövde Multer ile ayrıştırıldıktan sonra rota içinde yapılır. Tüm diğer
+// isteklerde CSRF kontrolü burada, dosya diske yazılmadan önce yapılır.
+const MULTIPART_UPLOAD_PATHS = [
+  /^\/admin\/r\/[^/]+\/save$/, /^\/admin\/ayarlar$/, /^\/servis\/is-emri\/yeni$/, /^\/bayi\/is-emri\/yeni$/];
+app.use((req, res, next) => {
+  if (!(req.headers['content-type'] || '').startsWith('multipart/form-data')) return core.csrfCheck(req, res, next);
+  if (!MULTIPART_UPLOAD_PATHS.some(re => re.test(req.path))) return res.status(415).send('Desteklenmeyen içerik türü.');
+  next();
+});
 
 app.use((req, res, next) => {
   res.locals.s = allSettings();
@@ -91,7 +83,7 @@ app.use('/', require('./routes/site'));
 app.use((req, res) => res.status(404).render('site/404', { title: 'Sayfa bulunamadı', active: '' }));
 app.use((err, req, res, next) => {
   console.error(err);
-  if (err instanceof multer.MulterError) return res.status(400).send('Dosya yükleme hatası: ' + err.message);
+  if (err && err.name === 'MulterError') return res.status(400).send('Dosya yükleme hatası: ' + err.message);
   res.status(500).send('Beklenmeyen bir hata oluştu.');
 });
 

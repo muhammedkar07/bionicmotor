@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
-const { flash, throttle, regenerate, addYears, fmtMoney } = require('../lib/core');
+const { flash, throttle, regenerate, addYears, fmtMoney, csrfCheck } = require('../lib/core');
+const { singleImage } = require('../lib/upload');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
 
@@ -144,7 +145,7 @@ router.post('/garanti/yeni', (req, res) => {
 });
 
 router.get('/is-emri/yeni', (req,res)=>page(res,'workorder_new','İş Emri Oluştur',{old:null}));
-router.post('/is-emri/yeni', (req,res)=>{
+router.post('/is-emri/yeni', singleImage, csrfCheck, (req,res)=>{
   const b=req.body, clip=(v,n)=>String(v||'').trim().slice(0,n), img=(req.files||[]).find(f=>f.fieldname==='image');
   const old={}; for(const k of ['serial_no','model','km','description']) old[k]=clip(b[k],3000);
   const back=m=>{res.locals.flash={type:'danger',msg:m};page(res,'workorder_new','İş Emri Oluştur',{old});};

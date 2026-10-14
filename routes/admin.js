@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, get, set, nextNo, nextFirmCode, nextUserCode, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit } = require('../db');
-const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError } = require('../lib/core');
+const { flash, throttle, regenerate, fmtDate, fmtDateTime, fmtMoney, addYears, passwordError, csrfCheck } = require('../lib/core');
+const { anyFiles } = require('../lib/upload');
 const { overallSummary } = require('../lib/account');
 
 const DUMMY = bcrypt.hashSync('x', 10);
@@ -317,7 +318,7 @@ const numAny = v => {
   return num(s);
 };
 
-router.post('/r/:res/save', (req, res) => {
+router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
   const r = req.r, b = req.body, id = +b._id || 0;
   if (!id && r.noCreate) return res.status(403).send('Yetkisiz');
   const data = {};
@@ -519,7 +520,7 @@ router.post('/r/:res/:id/delete', (req, res) => {
 
 // ---- Ayarlar ----
 router.get('/ayarlar', (req, res) => res.render('admin/settings', { title: 'Site Ayarları', groups: SETTINGS }));
-router.post('/ayarlar', (req, res) => {
+router.post('/ayarlar', anyFiles, csrfCheck, (req, res) => {
   SETTINGS.forEach(([, items]) => items.forEach(([key, , type]) => {
     if (type === 'image') {
       const up = (req.files || []).find(f => f.fieldname === key);
