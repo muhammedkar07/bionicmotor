@@ -1,12 +1,27 @@
-﻿const bcrypt = require('bcryptjs');
+﻿const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { db, set, tx } = require('../db');
+const { passwordError } = require('../lib/core');
 
+// Boş veritabanında ilk yöneticiyi ve (isteğe bağlı) demo verileri oluşturur.
+// - Canlıda (NODE_ENV=production) ADMIN_PASSWORD tanımlı değilse uygulama başlatılmaz.
+// - Demo bayi ve örnek finansal veriler yalnızca SEED_DEMO=1 iken oluşturulur.
 function ensureSeed() {
   if (db.prepare('SELECT COUNT(*) c FROM admins').get().c > 0) return;
+
+  const adminPass = process.env.ADMIN_PASSWORD;
+  if (!adminPass && process.env.NODE_ENV === 'production') {
+    throw new Error('Canlı ortamda (NODE_ENV=production) ADMIN_PASSWORD ortam değişkeni zorunludur. Uygulama başlatılmadı.');
+  }
+  const generated = !adminPass;
+  const pass = adminPass || crypto.randomBytes(9).toString('base64url') + 'Aa1!';
+  const pe = passwordError(pass);
+  if (pe) throw new Error('ADMIN_PASSWORD parola politikasına uymuyor: ' + pe);
+  const seedDemo = process.env.SEED_DEMO === '1';
+
   tx(() => {
-    const adminPass = process.env.ADMIN_PASSWORD || 'admin123Ab!';
     db.prepare('INSERT INTO admins(username,name,password_hash,is_super) VALUES(?,?,?,1)')
-      .run('admin', 'Yönetici', bcrypt.hashSync(adminPass, 12));
+      .run('admin', 'Yönetici', bcrypt.hashSync(pass, 12));
 
     const S = {
       brand_1: 'Bionic ', brand_2: 'Motor', logo_image: '/static/img/bionic-logo.png',
@@ -70,11 +85,14 @@ function ensureSeed() {
     ann.run('Değerli iş ortağımız, garantiden değiştirilmiş ürünler ve ücretli yedek parçadan iade edeceğiniz ürünleri tarafımıza *bilgi vermeden* lütfen kargo ile tarafımıza iade işlemi yapmayınız. İade edeceğiniz ürünler kendi araçlarımızla alınacaktır. Tarafımıza bilgi verilmeden kargo ile yaptığınız gönderilerin ücreti tarafınıza fatura edilecektir.', au, 2);
     ann.run('Değerli Bayi ve Servis Yetkililerimiz,\nİş süreçlerimizin daha sağlıklı ve hızlı ilerleyebilmesi adına, iş emri oluşturulurken iş emriyle ilgili görsel eklenmesi zorunlu hale getirilmiştir.\nOluşturulan iş emirlerinde;\n-Arıza, hasar veya yapılan işlemle ilgili net ve anlaşılır görsellerin eklenmesi,\n-Görsellerin iş emrini açıkça desteklemesi\nönemle rica olunur.\nAlakasız görselle oluşturulan iş emirleri, inceleme sürecini uzatabileceği için onay sürecine alınmayabilir.\nBilgilerinize sunar, iş birliğiniz için teşekkür ederiz.', au, 3);
 
-    // Demo bayi
+    // ---- Demo veriler (yalnızca SEED_DEMO=1) ----
+    if (!seedDemo) return;
+
     const firm = db.prepare('INSERT INTO firms(code,name,city,phone,email) VALUES(?,?,?,?,?)')
       .run('120.01.001', 'SİMMOTO', 'Aksaray', '0544 733 73 73', 'bayi@example.com').lastInsertRowid;
+    const demoPass = process.env.DEMO_PASSWORD || 'demo1234Ab!';
     const user = db.prepare('INSERT INTO dealer_users(code,email,name,password_hash) VALUES(?,?,?,?)')
-      .run('25895', 'demo@bayi.local', 'DEMO BAYİ', bcrypt.hashSync('demo1234Ab!', 12)).lastInsertRowid;
+      .run('25895', 'demo@bayi.local', 'DEMO BAYİ', bcrypt.hashSync(demoPass, 12)).lastInsertRowid;
     db.prepare('INSERT INTO user_firms(user_id,firm_id) VALUES(?,?)').run(user, firm);
 
     const ord = db.prepare('INSERT INTO orders(firm_id,request_date,request_no,delivery_type,status,movement_id) VALUES(?,?,?,?,?,-1)');
@@ -120,12 +138,13 @@ function ensureSeed() {
     db.prepare('INSERT INTO work_orders(firm_id,no,serial_no,model,km,type,description,status) VALUES(?,?,?,?,?,?,?,?)')
       .run(firm, 'IE2026000001', 'NLCSST125R0001234', 'SST125', '1200', 'Garanti', 'İlk bakım', 'Tamamlandı');
   });
-  console.log('Veritabanı örnek verilerle oluşturuldu.');
-  console.log('Yönetici: admin / ' + (process.env.ADMIN_PASSWORD || 'admin123Ab!') + '  (canlıya almadan önce değiştirin!)');
-  console.log('Bayi: kullanıcı kodu 25895 / parola demo1234Ab! (e-posta: demo@bayi.local)');
+
+  console.log('Veritabanı oluşturuldu.');
+  if (generated) console.log('Yönetici: admin / ' + pass + '  (bu parola rastgele üretildi; hemen değiştirin!)');
+  else console.log('Yönetici: admin  (parola ADMIN_PASSWORD ile verildi)');
+  if (seedDemo) console.log('Demo bayi: kullanıcı kodu 25895 / ' + (process.env.DEMO_PASSWORD || 'demo1234Ab!') + ' (e-posta: demo@bayi.local)');
+  else console.log('Demo veriler oluşturulmadı (istemiyorsanız bu normaldir; SEED_DEMO=1 ile açılabilir).');
 }
 
 module.exports = { ensureSeed };
 if (require.main === module) ensureSeed();
-
-
