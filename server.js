@@ -87,5 +87,8 @@ app.use((err, req, res, next) => {
   res.status(500).send('Beklenmeyen bir hata oluştu.');
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}`));
+module.exports = app;
+if (require.main === module) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}`));
+}
