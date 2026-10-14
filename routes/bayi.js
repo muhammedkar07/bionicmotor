@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, syncOrderDebit, nextNo } = require('../db');
-const { flash, throttle, regenerate, luhn, addYears, fmtMoney } = require('../lib/core');
+const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
+const { flash, throttle, regenerate, addYears, fmtMoney } = require('../lib/core');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
 
@@ -273,15 +273,16 @@ router.post('/yedek-parca/yeni', (req, res) => {
   let no;
   tx(() => {
     no = String(nextNo('spare_orders', 'no'));
-    // Kredi kartı ödemesi başarıyla tamamlanmış sayılır ve sipariş anında onaylanır;
-    // nakit/havale siparişler yönetici onayı bekler.
-    const status = (card || fullyCovered) ? 'Siparişe Dönüştürüldü' : 'Beklemede';
+    // Yalnızca tamamen bakiyeden (alacaktan) karşılanan sipariş anında onaylanır.
+    // Sanal POS entegrasyonu olmadığı için kart ödemesi tahsil edilmiş SAYILMAZ:
+    // ödeme "Sanal POS Bekliyor", sipariş "Beklemede" olarak kaydedilir ve yönetici onayı bekler.
+    const status = fullyCovered ? STATUS.CONVERTED : STATUS.PENDING;
     let payId = null;
     if (card) {
       const commission = Math.round(payable * card.inst.rate) / 100;
       payId = db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(res.locals.bu.id, res.locals.bf.id, 'odeme', payable, 'TL', 'Yedek Parça Siparişi #' + no,
-        card.inst.label, commission, payable + commission, card.holder, card.last4, 'Tahsil Edildi').lastInsertRowid;
+        card.inst.label, commission, payable + commission, card.holder, card.last4, STATUS.POS_PENDING).lastInsertRowid;
     }
     const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payment_id,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?,?)")
       .run(res.locals.bf.id, res.locals.bu.id, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payId, payer || null, applied).lastInsertRowid;
@@ -291,7 +292,12 @@ router.post('/yedek-parca/yeni', (req, res) => {
     syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
   });
   const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}` : '';
-  flash(req, 'success', ((card || fullyCovered) ? `${no} numaralı siparişiniz onaylandı.` : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`) + creditMsg);
+  const msg = fullyCovered
+    ? `${no} numaralı siparişiniz onaylandı.`
+    : card
+      ? `${no} numaralı siparişiniz kaydedildi. Sanal POS entegrasyonu henüz aktif olmadığından ödeme alınmamıştır; yönetici onayından sonra hesabınıza işlenecektir.`
+      : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
+  flash(req, 'success', msg + creditMsg);
   res.redirect('/bayi/yedek-parca-siparisleri');
 });
 

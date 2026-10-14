@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, syncOrderDebit, nextNo } = require('../db');
-const { flash, throttle, regenerate, luhn, addYears, fmtMoney } = require('../lib/core');
+const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
+const { flash, throttle, regenerate, addYears, fmtMoney } = require('../lib/core');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
 
@@ -199,20 +199,34 @@ router.post('/yedek-parca/yeni', (req,res)=>{
     if(!(month>=1&&month<=12)||year<now.getFullYear()||(year===now.getFullYear()&&month<now.getMonth()+1)) return back('Kartın son kullanma tarihi geçersiz.');
     if(!/^\d{3,4}$/.test(cvc)) return back('CVC geçersiz.'); card={inst,holder,last4:number.slice(-4)};
   }
-  const fullyCovered=payable<=0;
-  let no; tx(()=>{ no=String(nextNo('spare_orders','no'));
-    // Tamamen bakiyeden karşılanan veya kredi kartıyla ödenen sipariş anında onaylanır; nakit/havale yönetici onayı bekler.
-    const status=(card||fullyCovered)?'Siparişe Dönüştürüldü':'Beklemede';
-    let payId=null;
-    if(card){ const commission=Math.round(payable*card.inst.rate)/100;
-      payId=db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(uid,firm,'odeme',payable,'TL','Yedek Parça Siparişi #'+no,card.inst.label,commission,payable+commission,card.holder,card.last4,'Tahsil Edildi').lastInsertRowid;
+  const fullyCovered = payable <= 0;
+  let no;
+  tx(() => {
+    no = String(nextNo('spare_orders', 'no'));
+    // Yalnızca tamamen bakiyeden (alacaktan) karşılanan sipariş anında onaylanır.
+    // Sanal POS entegrasyonu olmadığı için kart ödemesi tahsil edilmiş SAYILMAZ:
+    // ödeme "Sanal POS Bekliyor", sipariş "Beklemede" olarak kaydedilir ve yönetici onayı bekler.
+    const status = fullyCovered ? STATUS.CONVERTED : STATUS.PENDING;
+    let payId = null;
+    if (card) {
+      const commission = Math.round(payable * card.inst.rate) / 100;
+      payId = db.prepare(`INSERT INTO payments(user_id,firm_id,kind,amount,currency,description,installment,commission,total,card_holder,card_last4,status)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).run(uid, firm, 'odeme', payable, 'TL', 'Yedek Parça Siparişi #' + no,
+        card.inst.label, commission, payable + commission, card.holder, card.last4, STATUS.POS_PENDING).lastInsertRowid;
     }
-    const oid=db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payment_id,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?,?)").run(firm,uid,no,status,String(b.note||'').slice(0,1000),fullyCovered?'Bakiye (Alacak)':method,payId,payer||null,applied).lastInsertRowid;
-    const ins=db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)'); lines.forEach(l=>ins.run(oid,l.p.code,l.p.name,l.qty,l.p.price));
-    syncOrderDebit('spare_orders','spare_order_items',oid,'parca');
+    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payment_id,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?,?)")
+      .run(firm, uid, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payId, payer || null, applied).lastInsertRowid;
+    const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
+    lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
+    syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
   });
-  const creditMsg=applied>0?` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable>0?`, kalan ${fmtMoney(payable)} ₺ ödendi.`:' olup siparişiniz tamamen bakiyenizden karşılandı.'}`:'';
-  flash(req,'success',((card||fullyCovered)?`${no} numaralı siparişiniz onaylandı.`:`${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`)+creditMsg);
+  const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}` : '';
+  const msg = fullyCovered
+    ? `${no} numaralı siparişiniz onaylandı.`
+    : card
+      ? `${no} numaralı siparişiniz kaydedildi. Sanal POS entegrasyonu henüz aktif olmadığından ödeme alınmamıştır; yönetici onayından sonra hesabınıza işlenecektir.`
+      : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
+  flash(req, 'success', msg + creditMsg);
   res.redirect('/servis/yedek-parca-siparisleri');
 });
 router.post('/stok-bildirim',(req,res)=>{

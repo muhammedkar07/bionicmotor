@@ -13,6 +13,8 @@ const STATUS = {
   // payments
   APPROVED: 'Onaylandı',
   COLLECTED: 'Tahsil Edildi',
+  POS_PENDING: 'Sanal POS Bekliyor',
+  TALIMAT: 'Talimat Oluşturuldu',
 };
 
 // Veritabanı klasörü DATA_DIR ortam değişkeniyle yapılandırılabilir. Render/Railway gibi
@@ -230,9 +232,12 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
     let payAmount = null, payType = null;
     const applied = Math.max(0, +o.balance_applied || 0);
     if (o.payment_id) {
-      const pay = db.prepare('SELECT amount FROM payments WHERE id=?').get(o.payment_id);
-      payAmount = pay ? pay.amount : Math.max(0, total - applied);
-      payType = 'Kredi Kartı Fişi';
+      const pay = db.prepare('SELECT amount,status FROM payments WHERE id=?').get(o.payment_id);
+      // Kart/POS ödemesi ancak gerçekten tahsil edildiğinde (Onaylandı/Tahsil Edildi)
+      // alacak sayılır; "Sanal POS Bekliyor" durumundaki ödeme borç kapatmaz.
+      if (pay && [STATUS.APPROVED, STATUS.COLLECTED].includes(pay.status)) payAmount = pay.amount;
+      else if (!pay) payAmount = Math.max(0, total - applied);
+      if (payAmount > 0) payType = 'Kredi Kartı Fişi';
     } else if (['Kredi Kartı', 'Nakit', 'Havale / EFT'].includes(o.pay_method)) {
       payAmount = Math.max(0, total - applied);
       payType = o.pay_method;
@@ -292,7 +297,10 @@ addCol('payments', 'movement_id', 'INTEGER');
 function syncPaymentCredit(paymentId) {
   const p = db.prepare('SELECT * FROM payments WHERE id=?').get(paymentId);
   if (!p) return;
-  if (db.prepare('SELECT 1 FROM spare_orders WHERE payment_id=?').get(paymentId)) return;
+  // Yedek parça siparişine bağlı ödemeler sipariş cari kaydı (syncOrderDebit) tarafından işlenir.
+  // Ödeme sonradan "Onaylandı/Tahsil Edildi" yapıldığında sipariş kaydı yeniden hesaplanır.
+  const so = db.prepare('SELECT id FROM spare_orders WHERE payment_id=?').get(paymentId);
+  if (so) return syncOrderDebit('spare_orders', 'spare_order_items', so.id, 'parca');
   const completed = p.status === STATUS.APPROVED || p.status === STATUS.COLLECTED;
   if (!completed) {
     if (p.movement_id) {

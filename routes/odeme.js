@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db } = require('../db');
-const { flash, throttle, regenerate, luhn } = require('../lib/core');
+const { flash, throttle, regenerate } = require('../lib/core');
 const pay = require('../lib/pay');
 
 const DUMMY = bcrypt.hashSync('x', 10);
