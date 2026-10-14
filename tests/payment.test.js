@@ -26,10 +26,18 @@ test.before(async () => {
   await new Promise(r => server.once('listening', r));
   base = 'http://127.0.0.1:' + server.address().port;
 });
-test.after(() => { server && server.close(); });
+test.after(() => {
+  server && server.close();
+});
 
-const sidOf = res => { const m = (res.headers.get('set-cookie') || '').match(/sid=([^;]+)/); return m ? 'sid=' + m[1] : ''; };
-const csrfOf = html => { const m = html.match(/name="_csrf" value="([^"]+)"/); return m ? m[1] : ''; };
+const sidOf = res => {
+  const m = (res.headers.get('set-cookie') || '').match(/sid=([^;]+)/);
+  return m ? 'sid=' + m[1] : '';
+};
+const csrfOf = html => {
+  const m = html.match(/name="_csrf" value="([^"]+)"/);
+  return m ? m[1] : '';
+};
 
 async function get(url, cookie) {
   const res = await fetch(base + url, { redirect: 'manual', headers: cookie ? { cookie } : {} });
@@ -38,7 +46,12 @@ async function get(url, cookie) {
 }
 async function postForm(url, fields, cookie) {
   const body = new URLSearchParams(fields);
-  const res = await fetch(base + url, { method: 'POST', redirect: 'manual', headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' }, body });
+  const res = await fetch(base + url, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body
+  });
   return res;
 }
 async function loginBayi() {
@@ -48,8 +61,13 @@ async function loginBayi() {
 }
 async function loginServis() {
   const p = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
-  db.prepare('INSERT INTO dealer_users(code,email,name,password_hash,role) VALUES(?,?,?,?,?)')
-    .run('90001', 'servis@test.local', 'TEST SERVIS', bcrypt.hashSync('ServisPass123!x', 12), 'servis');
+  db.prepare('INSERT INTO dealer_users(code,email,name,password_hash,role) VALUES(?,?,?,?,?)').run(
+    '90001',
+    'servis@test.local',
+    'TEST SERVIS',
+    bcrypt.hashSync('ServisPass123!x', 12),
+    'servis'
+  );
   const uid = db.prepare('SELECT id FROM dealer_users WHERE code=?').get('90001').id;
   db.prepare('INSERT INTO user_firms(user_id,firm_id) VALUES(?,?)').run(uid, p);
   const g = await get('/servis/giris');
@@ -63,9 +81,18 @@ const lastPayment = () => db.prepare('SELECT * FROM payments ORDER BY id DESC LI
 // Kart ödemesi başlatır ve simüle callback'i takip eder. Sonuç: finalize edilmiş ödeme.
 async function payByCard(cookie, panel, amount, { currency = 'TL', installment_id = 1 } = {}) {
   const page = await get(panel + '/odeme', cookie);
-  const res = await postForm(panel + '/odeme/ode', {
-    method: 'kart', amount, currency, description: 'test', installment_id, _csrf: csrfOf(page.html)
-  }, cookie);
+  const res = await postForm(
+    panel + '/odeme/ode',
+    {
+      method: 'kart',
+      amount,
+      currency,
+      description: 'test',
+      installment_id,
+      _csrf: csrfOf(page.html)
+    },
+    cookie
+  );
   assert.strictEqual(res.status, 302, 'Paratika yönlendirmesi bekleniyor');
   const loc = res.headers.get('location');
   assert.ok(loc && loc.startsWith('/odeme/paratika/sonuc'), 'callback adresine yönlenmeli: ' + loc);
@@ -90,7 +117,7 @@ test('bayi kart ödemesi tahsil edilir ve aktif firmanın carisine alacak işlen
   assert.ok(p.movement_id, 'cari hareketi bağlanmalı');
 
   assert.strictEqual(balance(firmId), before - 1000, 'cari 1000 TL azalmalı');
-  const mv = db.prepare("SELECT * FROM account_movements WHERE doc_no=? AND deleted_at IS NULL").get('POS-' + p.id);
+  const mv = db.prepare('SELECT * FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id);
   assert.ok(mv, 'POS cari hareketi oluşmalı');
   assert.strictEqual(mv.kind, 'alacak');
   assert.strictEqual(mv.amount, 1000);
@@ -152,13 +179,23 @@ test('Paratika POST callback (CSRF/çerez olmadan) işlenir', async () => {
   const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
   const before = balance(firmId);
   const page = await get('/bayi/odeme', cookie);
-  const res = await postForm('/bayi/odeme/ode', {
-    method: 'kart', amount: '150.00', currency: 'TL', description: 't', installment_id: 1, _csrf: csrfOf(page.html)
-  }, cookie);
+  const res = await postForm(
+    '/bayi/odeme/ode',
+    {
+      method: 'kart',
+      amount: '150.00',
+      currency: 'TL',
+      description: 't',
+      installment_id: 1,
+      _csrf: csrfOf(page.html)
+    },
+    cookie
+  );
   const orderId = new URL(base + res.headers.get('location')).searchParams.get('o');
   // Paratika'nın sunucudan yaptığı POST benzeri: CSRF token ve çerez yok.
   const cb = await fetch(base + '/odeme/paratika/sonuc', {
-    method: 'POST', redirect: 'manual',
+    method: 'POST',
+    redirect: 'manual',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ o: orderId, ORDER_ID: orderId })
   });
@@ -188,9 +225,18 @@ test('kartla yedek parça siparişi: ödeme sonrası sipariş dönüşür, cari 
   const before = accountSummary(firmId, 'parca').balance;
 
   const page = await get('/bayi/yedek-parca/yeni', cookie);
-  const res = await postForm('/bayi/yedek-parca/yeni', {
-    _csrf: csrfOf(page.html), part_id: String(part.id), qty: '2', pay_method: 'kart', installment_id: '1', note: 'test'
-  }, cookie);
+  const res = await postForm(
+    '/bayi/yedek-parca/yeni',
+    {
+      _csrf: csrfOf(page.html),
+      part_id: String(part.id),
+      qty: '2',
+      pay_method: 'kart',
+      installment_id: '1',
+      note: 'test'
+    },
+    cookie
+  );
   assert.strictEqual(res.status, 302, 'Paratika yönlendirmesi bekleniyor');
   const loc = res.headers.get('location');
   assert.ok(loc.startsWith('/odeme/paratika/sonuc'), 'callback adresine yönlenmeli: ' + loc);
@@ -205,6 +251,10 @@ test('kartla yedek parça siparişi: ödeme sonrası sipariş dönüşür, cari 
   assert.strictEqual(pay.source, 'bayi');
   // Borç (sipariş) ve alacak (ödeme) birlikte işlendiği için net bakiye değişmemeli.
   assert.strictEqual(accountSummary(firmId, 'parca').balance, before, 'net bakiye değişmemeli');
-  const borc = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM account_movements WHERE ledger='parca' AND firm_id=? AND kind='borc' AND deleted_at IS NULL").get(firmId).s;
+  const borc = db
+    .prepare(
+      "SELECT COALESCE(SUM(amount),0) s FROM account_movements WHERE ledger='parca' AND firm_id=? AND kind='borc' AND deleted_at IS NULL"
+    )
+    .get(firmId).s;
   assert.ok(borc > 0, 'sipariş borcu işlenmeli');
 });

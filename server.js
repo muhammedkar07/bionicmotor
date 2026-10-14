@@ -10,9 +10,13 @@ const { UPLOAD_DIR } = require('./lib/upload');
 // Hatalar hem konsola hem de logs/error.log dosyasına yazılır.
 const LOG_DIR = path.join(__dirname, 'logs');
 function logError(...args) {
-  const line = new Date().toISOString() + ' ' +
-    args.map(a => (a && a.stack) ? a.stack : String(a)).join(' ') + '\n';
-  try { fs.mkdirSync(LOG_DIR, { recursive: true }); fs.appendFileSync(path.join(LOG_DIR, 'error.log'), line); } catch { /* yok say */ }
+  const line = new Date().toISOString() + ' ' + args.map(a => (a && a.stack ? a.stack : String(a))).join(' ') + '\n';
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+    fs.appendFileSync(path.join(LOG_DIR, 'error.log'), line);
+  } catch {
+    /* yok say */
+  }
   console.error(...args);
 }
 
@@ -31,15 +35,27 @@ function assetVersion() {
   const walk = dir => {
     let out = [];
     let entries = [];
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return out;
+    }
     for (const e of entries) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) out = out.concat(walk(p)); else out.push(p);
+      if (e.isDirectory()) out = out.concat(walk(p));
+      else out.push(p);
     }
     return out;
   };
   for (const f of walk(path.join(__dirname, 'public', 'css')).concat(walk(path.join(__dirname, 'public', 'js')))) {
-    try { const s = fs.statSync(f); h.update(f).update(String(s.size)).update(String(Math.round(s.mtimeMs))); } catch { /* yok say */ }
+    try {
+      const s = fs.statSync(f);
+      h.update(f)
+        .update(String(s.size))
+        .update(String(Math.round(s.mtimeMs)));
+    } catch {
+      /* yok say */
+    }
   }
   return h.digest('hex').slice(0, 8);
 }
@@ -57,8 +73,10 @@ app.use((req, res, next) => {
   if (isPanel) res.setHeader('Cache-Control', 'no-store, private');
   const isSecure = process.env.COOKIE_SECURE === '1' || req.secure;
   if (isSecure) res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains; preload');
-  const publicCsp = "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
-  const panelCsp = "default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
+  const publicCsp =
+    "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
+  const panelCsp =
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
   res.setHeader('Content-Security-Policy', isPanel ? panelCsp : publicCsp);
   next();
 });
@@ -73,8 +91,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // multipart/form-data yalnızca dosya yükleyen rotalarda kabul edilir. Bu rotalarda CSRF
 // kontrolü, gövde Multer ile ayrıştırıldıktan sonra rota içinde yapılır. Tüm diğer
 // isteklerde CSRF kontrolü burada, dosya diske yazılmadan önce yapılır.
-const MULTIPART_UPLOAD_PATHS = [
-  /^\/admin\/r\/[^/]+\/save$/, /^\/admin\/ayarlar$/, /^\/servis\/is-emri\/yeni$/, /^\/bayi\/is-emri\/yeni$/];
+const MULTIPART_UPLOAD_PATHS = [/^\/admin\/r\/[^/]+\/save$/, /^\/admin\/ayarlar$/, /^\/servis\/is-emri\/yeni$/, /^\/bayi\/is-emri\/yeni$/];
 // Paratika dönüş adresi bizim CSRF token'ımızı taşımaz; güvenlik, ödemenin sunucudan
 // sunucuya doğrulanmasıyla sağlanır (bkz. routes/odeme.js paratikaResult).
 const CSRF_EXEMPT_PATHS = [/^\/odeme\/paratika\/sonuc$/];
@@ -89,17 +106,20 @@ app.use((req, res, next) => {
   res.locals.s = allSettings();
   res.locals.csrf = req.csrf;
   res.locals.flash = req.session.flash || null;
-  if (req.session.flash) { delete req.session.flash; req.saveSession(); }
+  if (req.session.flash) {
+    delete req.session.flash;
+    req.saveSession();
+  }
   res.locals.money = core.fmtMoney;
   res.locals.date = core.fmtDate;
   res.locals.dateSlash = core.fmtDateSlash;
   res.locals.dt = core.fmtDateTime;
   res.locals.v = ASSET_V;
   res.locals.path = req.path;
-  res.locals.origin = process.env.PUBLIC_URL || (req.protocol + '://' + req.get('host'));
+  res.locals.origin = process.env.PUBLIC_URL || req.protocol + '://' + req.get('host');
   res.locals.files = req.files || [];
   // Güvenli JSON seri  üretici (script bağlamı için < vektörünü \u003c olarak kaçar)
-  res.locals.j = (obj) => {
+  res.locals.j = obj => {
     try {
       return JSON.stringify(obj == null ? null : obj)
         .replace(/</g, '\\u003c')
@@ -140,7 +160,11 @@ function start(port) {
     closing = true;
     console.log((sig ? '[' + sig + '] ' : '') + 'Sunucu kapatılıyor...');
     server.close(() => {
-      try { db.close(); } catch { /* yok say */ }
+      try {
+        db.close();
+      } catch {
+        /* yok say */
+      }
       process.exit(0);
     });
     const t = setTimeout(() => process.exit(0), 10000);

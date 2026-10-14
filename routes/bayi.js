@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, tx, syncOrderDebit, nextNo, STATUS } = require('../db');
-const { flash, throttle, regenerate, addYears, fmtMoney, publicOrigin } = require('../lib/core');
+const { flash, throttle, regenerate, fmtMoney, publicOrigin } = require('../lib/core');
 const { checkMaxQty, createSpareCardOrder } = require('../lib/spareOrder');
 const { accountSummary } = require('../lib/account');
 const pay = require('../lib/pay');
@@ -14,7 +14,9 @@ router.get('/giris', (req, res) => {
 });
 
 router.post('/giris', (req, res) => {
-  const code = String(req.body.code || '').trim().slice(0, 50);
+  const code = String(req.body.code || '')
+    .trim()
+    .slice(0, 50);
   const pass = String(req.body.password || '').slice(0, 200);
   const t = throttle('bayi:' + req.ip + ':' + code);
   if (t.blocked) {
@@ -51,20 +53,26 @@ router.use((req, res, next) => {
   const d = req.session.dealer;
   const u = d && db.prepare('SELECT * FROM dealer_users WHERE id=? AND active=1').get(d.userId);
   if (u && u.role === 'servis') return res.redirect('/servis');
-  const f = u && db.prepare(
-    'SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1').get(u.id, d.firmId);
+  const f =
+    u &&
+    db
+      .prepare('SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
+      .get(u.id, d.firmId);
   if (!f) return res.redirect('/bayi/giris');
-  res.locals.bu = u; res.locals.bf = f;
+  res.locals.bu = u;
+  res.locals.bf = f;
   res.locals.multiFirm = db.prepare('SELECT COUNT(*) c FROM user_firms WHERE user_id=?').get(u.id).c > 1;
-  res.locals.bell = db.prepare(
-    'SELECT COUNT(*) c FROM announcements WHERE active=1 AND (? IS NULL OR created_at > ?)').get(u.ann_seen_at, u.ann_seen_at).c;
+  res.locals.bell = db
+    .prepare('SELECT COUNT(*) c FROM announcements WHERE active=1 AND (? IS NULL OR created_at > ?)')
+    .get(u.ann_seen_at, u.ann_seen_at).c;
   next();
 });
 
 const page = (res, view, title, extra = {}) => res.render('bayi/' + view, { title, ...extra });
 
 router.get('/', (req, res) => {
-  const unread = db.prepare('SELECT * FROM announcements WHERE active=1 AND (? IS NULL OR created_at > ?) ORDER BY created_at DESC, id DESC')
+  const unread = db
+    .prepare('SELECT * FROM announcements WHERE active=1 AND (? IS NULL OR created_at > ?) ORDER BY created_at DESC, id DESC')
     .all(res.locals.bu.ann_seen_at, res.locals.bu.ann_seen_at);
   db.prepare("UPDATE dealer_users SET ann_seen_at=datetime('now') WHERE id=?").run(res.locals.bu.id);
   res.locals.bell = 0;
@@ -78,15 +86,19 @@ router.post('/cikis', (req, res) => {
 });
 
 router.get('/firma-degistir', (req, res) => {
-  const firms = db.prepare(
-    'SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name').all(res.locals.bu.id);
+  const firms = db
+    .prepare('SELECT f.* FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name')
+    .all(res.locals.bu.id);
   page(res, 'firms', 'Firma Değiştir', { firms });
 });
 router.post('/firma-degistir', (req, res) => {
-  const f = db.prepare(
-    'SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
+  const f = db
+    .prepare('SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
     .get(res.locals.bu.id, +req.body.firm_id);
-  if (f) { req.session.dealer.firmId = f.id; req.saveSession(); }
+  if (f) {
+    req.session.dealer.firmId = f.id;
+    req.saveSession();
+  }
   res.redirect('/bayi');
 });
 
@@ -107,10 +119,11 @@ router.get('/siparis-olustur', (req, res) => {
 });
 router.post('/siparis-olustur', (req, res) => {
   const b = req.body;
-  const ids = [].concat(b.product_id || []), qtys = [].concat(b.qty || []);
+  const ids = [].concat(b.product_id || []),
+    qtys = [].concat(b.qty || []);
   const old = {
     lines: ids.map((id, i) => [+id || '', String(qtys[i] ?? '').trim()]),
-    note: String(b.note || '').slice(0, 1000),
+    note: String(b.note || '').slice(0, 1000)
   };
   const back = m => {
     res.locals.flash = { type: 'danger', msg: m };
@@ -129,22 +142,33 @@ router.post('/siparis-olustur', (req, res) => {
   const no = String(nextNo('orders', 'request_no'));
   tx(() => {
     // Talep oluşturmak tutarı etkilemez; "Siparişe Dönüştürüldü" olunca borca işlenir ve stok düşer.
-    const oid = db.prepare(`INSERT INTO orders(firm_id,request_date,request_no,delivery_date,delivery_type,status,note) VALUES(?,date('now'),?,NULL,'İleri Vadeli Teslim','Beklemede',?)`)
+    const oid = db
+      .prepare(
+        `INSERT INTO orders(firm_id,request_date,request_no,delivery_date,delivery_type,status,note) VALUES(?,date('now'),?,NULL,'İleri Vadeli Teslim','Beklemede',?)`
+      )
       .run(res.locals.bf.id, no, old.note || null).lastInsertRowid;
     const ins = db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.name, l.qty, l.p.price));
   });
-  flash(req, 'success', `${no} numaralı sipariş talebiniz oluşturuldu. Oluşturma sırasında tutar ve stok etkilenmez; talebinizin "Siparişe Dönüştürüldü" durumuna geçirilmesi beklenir.`);
+  flash(
+    req,
+    'success',
+    `${no} numaralı sipariş talebiniz oluşturuldu. Oluşturma sırasında tutar ve stok etkilenmez; talebinizin "Siparişe Dönüştürüldü" durumuna geçirilmesi beklenir.`
+  );
   res.redirect('/bayi/siparisler');
 });
 
 router.get('/stoklar', (req, res) => {
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(
+      `
     SELECT p.id, p.name, p.code, p.category, p.price, COALESCE(fs.qty,0) AS qty
     FROM products p
     LEFT JOIN firm_stock fs ON fs.product_id=p.id AND fs.firm_id=?
     WHERE p.kind='arac' AND p.active=1 AND COALESCE(fs.qty,0) > 0
-    ORDER BY p.category, p.name`).all(res.locals.bf.id);
+    ORDER BY p.category, p.name`
+    )
+    .all(res.locals.bf.id);
   page(res, 'stoklar', 'Stoklarım', { rows });
 });
 
@@ -152,8 +176,11 @@ router.get('/hesap-ozeti', (req, res) => {
   page(res, 'account', 'Hesap Özeti', { a: accountSummary(res.locals.bf.id, 'ana'), heading: 'Hesap Özeti', showCards: true });
 });
 router.get('/yedek-parca-ekstre', (req, res) => {
-  page(res, 'account', 'Yedek Parça Hesap Ekstresi',
-    { a: accountSummary(res.locals.bf.id, 'parca'), heading: 'Yedek Parça Hesap Ekstresi', showCards: false });
+  page(res, 'account', 'Yedek Parça Hesap Ekstresi', {
+    a: accountSummary(res.locals.bf.id, 'parca'),
+    heading: 'Yedek Parça Hesap Ekstresi',
+    showCards: false
+  });
 });
 
 router.get('/odeme', (req, res) => {
@@ -171,7 +198,10 @@ router.post('/odeme/ode', async (req, res) => {
   }
   try {
     const r = await pay.beginCard(ctx, b);
-    if (r.error) { flash(req, 'danger', r.error); return res.redirect('/bayi/odeme'); }
+    if (r.error) {
+      flash(req, 'danger', r.error);
+      return res.redirect('/bayi/odeme');
+    }
     res.redirect(r.redirect);
   } catch (e) {
     flash(req, 'danger', 'Ödeme başlatılamadı: ' + e.message);
@@ -187,7 +217,9 @@ router.post('/odeme/talimat', (req, res) => {
 router.get('/duyurular', (req, res) => {
   const list = db.prepare('SELECT * FROM announcements WHERE active=1 ORDER BY created_at DESC, id DESC').all();
   const seen = res.locals.bu.ann_seen_at;
-  list.forEach(a => { a.isNew = !seen || a.created_at > seen; });
+  list.forEach(a => {
+    a.isNew = !seen || a.created_at > seen;
+  });
   db.prepare("UPDATE dealer_users SET ann_seen_at=datetime('now') WHERE id=?").run(res.locals.bu.id);
   res.locals.bell = 0;
   page(res, 'announcements', 'Duyurular', { list });
@@ -200,8 +232,11 @@ router.get('/fiyat-listesi', (req, res) => {
 
 router.get('/garanti', (req, res) => {
   const q = String(req.query.q || '').trim();
-  const rows = q ? db.prepare("SELECT * FROM warranty_records WHERE firm_id=? AND serial_no LIKE ? ORDER BY sale_date DESC")
-    .all(res.locals.bf.id, `%${q}%`) : [];
+  const rows = q
+    ? db
+        .prepare('SELECT * FROM warranty_records WHERE firm_id=? AND serial_no LIKE ? ORDER BY sale_date DESC')
+        .all(res.locals.bf.id, `%${q}%`)
+    : [];
   page(res, 'warranty', 'Garanti Kayıtları', { rows, q });
 });
 
@@ -215,13 +250,14 @@ router.get('/yedek-parca/yeni', (req, res) => {
 });
 router.post('/yedek-parca/yeni', async (req, res) => {
   const b = req.body;
-  const ids = [].concat(b.part_id || []), qtys = [].concat(b.qty || []);
+  const ids = [].concat(b.part_id || []),
+    qtys = [].concat(b.qty || []);
   const old = {
     lines: ids.map((id, i) => [+id || '', String(qtys[i] ?? '').trim()]),
     note: String(b.note || '').slice(0, 1000),
     pay_method: b.pay_method || 'kart',
     payer_name: String(b.payer_name || '').slice(0, 120),
-    installment_id: b.installment_id || '',
+    installment_id: b.installment_id || ''
   };
   const renderNew = () => {
     const parts = db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
@@ -231,7 +267,10 @@ router.post('/yedek-parca/yeni', async (req, res) => {
     const credit = bal < 0 ? Math.round(-bal * 100) / 100 : 0;
     page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, models, old, credit });
   };
-  const back = m => { res.locals.flash = { type: 'danger', msg: m }; renderNew(); };
+  const back = m => {
+    res.locals.flash = { type: 'danger', msg: m };
+    renderNew();
+  };
   const lines = [];
   ids.forEach((id, i) => {
     const qty = Math.floor(+qtys[i]);
@@ -248,7 +287,9 @@ router.post('/yedek-parca/yeni', async (req, res) => {
   const payable = Math.round((total - applied) * 100) / 100;
   const method = { kart: 'Kredi Kartı', nakit: 'Nakit', havale: 'Havale / EFT' }[b.pay_method];
   if (!method) return back('Ödeme yöntemini seçin.');
-  const payer = String(b.payer_name || '').trim().slice(0, 120);
+  const payer = String(b.payer_name || '')
+    .trim()
+    .slice(0, 120);
   if (payable > 0 && b.pay_method === 'havale' && !payer) return back('Havale / EFT için gönderen hesap ad soyad bilgisini giriniz.');
   const fullyCovered = payable <= 0;
 
@@ -259,10 +300,22 @@ router.post('/yedek-parca/yeni', async (req, res) => {
     let r;
     try {
       r = await createSpareCardOrder({
-        userId: res.locals.bu.id, firmId: res.locals.bf.id, source: 'bayi', origin: publicOrigin(req),
-        no, note: String(b.note || '').slice(0, 1000), payer, applied, method, lines, payable, installmentId: b.installment_id
+        userId: res.locals.bu.id,
+        firmId: res.locals.bf.id,
+        source: 'bayi',
+        origin: publicOrigin(req),
+        no,
+        note: String(b.note || '').slice(0, 1000),
+        payer,
+        applied,
+        method,
+        lines,
+        payable,
+        installmentId: b.installment_id
       });
-    } catch (e) { return back('Ödeme başlatılamadı: ' + e.message); }
+    } catch (e) {
+      return back('Ödeme başlatılamadı: ' + e.message);
+    }
     if (r.error) return back(r.error);
     const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı.` : '';
     flash(req, 'success', `${no} numaralı siparişiniz kaydedildi. Ödeme için güvenli ödeme sayfasına yönlendiriliyorsunuz.` + creditMsg);
@@ -274,13 +327,28 @@ router.post('/yedek-parca/yeni', async (req, res) => {
     no = String(nextNo('spare_orders', 'no'));
     // Tamamen bakiyeden karşılanan sipariş anında onaylanır; nakit/havale yönetici onayı bekler.
     const status = fullyCovered ? STATUS.CONVERTED : STATUS.PENDING;
-    const oid = db.prepare("INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?)")
-      .run(res.locals.bf.id, res.locals.bu.id, no, status, String(b.note || '').slice(0, 1000), fullyCovered ? 'Bakiye (Alacak)' : method, payer || null, applied).lastInsertRowid;
+    const oid = db
+      .prepare(
+        "INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,pay_method,payer_name,balance_applied) VALUES(?,?,?,?,?,date('now'),?,?,?)"
+      )
+      .run(
+        res.locals.bf.id,
+        res.locals.bu.id,
+        no,
+        status,
+        String(b.note || '').slice(0, 1000),
+        fullyCovered ? 'Bakiye (Alacak)' : method,
+        payer || null,
+        applied
+      ).lastInsertRowid;
     const ins = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
     lines.forEach(l => ins.run(oid, l.p.code, l.p.name, l.qty, l.p.price));
     syncOrderDebit('spare_orders', 'spare_order_items', oid, 'parca');
   });
-  const creditMsg = applied > 0 ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}` : '';
+  const creditMsg =
+    applied > 0
+      ? ` Bakiyenizden ${fmtMoney(applied)} ₺ alacak kullanıldı${payable > 0 ? `, kalan ${fmtMoney(payable)} ₺ ödendi.` : ' olup siparişiniz tamamen bakiyenizden karşılandı.'}`
+      : '';
   const msg = fullyCovered
     ? `${no} numaralı siparişiniz onaylandı.`
     : `${no} numaralı siparişiniz ${method} ödeme yöntemiyle kaydedildi. Yönetici onayından sonra hesabınıza işlenecektir.`;
@@ -290,16 +358,18 @@ router.post('/yedek-parca/yeni', async (req, res) => {
 
 router.post('/stok-bildirim', (req, res) => {
   const pid = +req.body.product_id;
-  const p = pid && db.prepare("SELECT id FROM products WHERE id=? AND active=1").get(pid);
-  if (p) db.prepare('INSERT OR IGNORE INTO stock_notify(product_id,firm_id,user_id) VALUES(?,?,?)')
-    .run(pid, res.locals.bf.id, res.locals.bu.id);
+  const p = pid && db.prepare('SELECT id FROM products WHERE id=? AND active=1').get(pid);
+  if (p)
+    db.prepare('INSERT OR IGNORE INTO stock_notify(product_id,firm_id,user_id) VALUES(?,?,?)').run(pid, res.locals.bf.id, res.locals.bu.id);
   res.json({ ok: !!p });
 });
 
 router.get('/yedek-parca-siparisleri', (req, res) => {
   const orders = db.prepare('SELECT * FROM spare_orders WHERE firm_id=? AND deleted_at IS NULL ORDER BY id DESC').all(res.locals.bf.id);
   const ids = orders.map(o => o.id);
-  const items = ids.length ? db.prepare(`SELECT * FROM spare_order_items WHERE order_id IN (${ids.map(() => '?').join(',')})`).all(...ids) : [];
+  const items = ids.length
+    ? db.prepare(`SELECT * FROM spare_order_items WHERE order_id IN (${ids.map(() => '?').join(',')})`).all(...ids)
+    : [];
   const byOrder = {};
   for (const it of items) (byOrder[it.order_id] = byOrder[it.order_id] || []).push(it);
   orders.forEach(o => {

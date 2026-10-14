@@ -1,0 +1,14 @@
+node_modules
+demo-data
+data
+logs
+backups
+public/uploads
+public/preview
+tasarim
+.git
+.gitignore
+*.log
+.env
+_boot*.log
+_pid.txt

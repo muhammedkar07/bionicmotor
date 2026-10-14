@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    image: bionic-b2b
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      # Zorunlu: canlıda güçlü bir yönetici parolası verin
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD tanimlayin}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
+      TRUST_PROXY: "1"
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      # Paratika (test bilgileri gelene kadar simülasyon için SIMULATE=1)
+      PARATIKA_ENV: ${PARATIKA_ENV:-test}
+      PARATIKA_MERCHANT: ${PARATIKA_MERCHANT:-}
+      PARATIKA_MERCHANT_USER: ${PARATIKA_MERCHANT_USER:-}
+      PARATIKA_MERCHANT_PASSWORD: ${PARATIKA_MERCHANT_PASSWORD:-}
+      PARATIKA_SIMULATE: ${PARATIKA_SIMULATE:-0}
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

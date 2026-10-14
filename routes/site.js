@@ -3,24 +3,35 @@ const { db } = require('../db');
 const { flash, throttle, publicOrigin } = require('../lib/core');
 const { clean } = require('../lib/sanitize');
 
-const clip = (v, n) => String(v || '').trim().slice(0, n);
+const clip = (v, n) =>
+  String(v || '')
+    .trim()
+    .slice(0, n);
 const render = (res, view, title, active, extra = {}) => res.render(view, { title, active, ...extra });
 
 // Arama motorları: robots.txt + sitemap.xml
 router.get('/robots.txt', (req, res) => {
-  res.type('text/plain').send(
-    'User-agent: *\nAllow: /\n' +
-    'Disallow: /admin\nDisallow: /bayi\nDisallow: /servis\nDisallow: /odeme\n' +
-    'Sitemap: ' + publicOrigin(req) + '/sitemap.xml\n'
-  );
+  res
+    .type('text/plain')
+    .send(
+      'User-agent: *\nAllow: /\n' +
+        'Disallow: /admin\nDisallow: /bayi\nDisallow: /servis\nDisallow: /odeme\n' +
+        'Sitemap: ' +
+        publicOrigin(req) +
+        '/sitemap.xml\n'
+    );
 });
 
 router.get('/sitemap.xml', (req, res) => {
   const origin = publicOrigin(req);
   const staticPaths = ['/', '/modeller', '/satis-ve-servis', '/destek', '/iletisim', '/bayilik-basvurusu', '/perakende-fiyat-listesi'];
-  const pages = db.prepare('SELECT slug FROM pages').all().map(p => '/sayfa/' + p.slug);
+  const pages = db
+    .prepare('SELECT slug FROM pages')
+    .all()
+    .map(p => '/sayfa/' + p.slug);
   const urls = staticPaths.concat(pages);
-  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  const xml =
+    '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     urls.map(u => '  <url><loc>' + origin + u + '</loc></url>').join('\n') +
     '\n</urlset>';
@@ -61,7 +72,9 @@ router.post('/iletisim', (req, res) => {
     return res.redirect('/iletisim');
   }
   const b = req.body;
-  const name = clip(b.name, 120), email = clip(b.email, 160), msg = clip(b.message, 3000);
+  const name = clip(b.name, 120),
+    email = clip(b.email, 160),
+    msg = clip(b.message, 3000);
   if (!name || !msg || !/^\S+@\S+\.\S+$/.test(email)) {
     flash(req, 'danger', 'Lütfen ad soyad, geçerli e-posta ve mesaj alanlarını doldurun.');
     return res.redirect('/iletisim');
@@ -80,13 +93,19 @@ router.post('/bayilik-basvurusu', (req, res) => {
     return res.redirect('/bayilik-basvurusu');
   }
   const b = req.body;
-  const name = clip(b.name, 120), phone = clip(b.phone, 40);
+  const name = clip(b.name, 120),
+    phone = clip(b.phone, 40);
   if (!name || !clip(b.city, 60) || phone.replace(/\D/g, '').length < 10) {
     flash(req, 'danger', 'Ad soyad, il ve geçerli bir telefon numarası zorunludur.');
     return res.redirect('/bayilik-basvurusu');
   }
-  db.prepare('INSERT INTO applications(name,city,district,phone,note) VALUES(?,?,?,?,?)')
-    .run(name, clip(b.city, 60), clip(b.district, 60), phone, clip(b.note, 2000));
+  db.prepare('INSERT INTO applications(name,city,district,phone,note) VALUES(?,?,?,?,?)').run(
+    name,
+    clip(b.city, 60),
+    clip(b.district, 60),
+    phone,
+    clip(b.note, 2000)
+  );
   t.hit();
   flash(req, 'success', 'Başvurunuz alındı. Sizinle iletişime geçeceğiz.');
   res.redirect('/bayilik-basvurusu');

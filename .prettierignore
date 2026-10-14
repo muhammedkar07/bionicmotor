@@ -1,0 +1,9 @@
+node_modules
+public/uploads
+public/preview
+demo-data
+data
+logs
+backups
+package-lock.json
+public/js/iller.js

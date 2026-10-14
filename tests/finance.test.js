@@ -12,7 +12,9 @@ const { accountSummary } = require('../lib/account');
 test('sipariş dönüşünce stok düşer, cariye borç yazılır', () => {
   const name = 'AracA' + Date.now();
   const firm = db.prepare('INSERT INTO firms(code,name) VALUES(?,?)').run('901.01.001', 'F1').lastInsertRowid;
-  const pid = db.prepare("INSERT INTO products(kind,code,name,category,price,stock) VALUES('arac','C1',?,'K',1000,5)").run(name).lastInsertRowid;
+  const pid = db
+    .prepare("INSERT INTO products(kind,code,name,category,price,stock) VALUES('arac','C1',?,'K',1000,5)")
+    .run(name).lastInsertRowid;
   const oid = db.prepare('INSERT INTO orders(firm_id,request_no,status) VALUES(?,?,?)').run(firm, '1001', STATUS.CONVERTED).lastInsertRowid;
   db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)').run(oid, name, 2, 1000);
 
@@ -21,13 +23,19 @@ test('sipariş dönüşünce stok düşer, cariye borç yazılır', () => {
 
   assert.strictEqual(accountSummary(firm, 'ana').balance, 2000, 'cariye 2000 borç yazılmalı');
   assert.strictEqual(db.prepare('SELECT stock FROM products WHERE id=?').get(pid).stock, 3, 'stok 5-2=3 olmalı');
-  assert.strictEqual(db.prepare('SELECT qty FROM firm_stock WHERE firm_id=? AND product_id=?').get(firm, pid).qty, 2, 'bayi stoğu 2 olmalı');
+  assert.strictEqual(
+    db.prepare('SELECT qty FROM firm_stock WHERE firm_id=? AND product_id=?').get(firm, pid).qty,
+    2,
+    'bayi stoğu 2 olmalı'
+  );
 });
 
 test('stok yetersizse dönüştürme reddedilir ve stok değişmez', () => {
   const name = 'AracB' + Date.now();
   const firm = db.prepare('INSERT INTO firms(code,name) VALUES(?,?)').run('901.01.002', 'F2').lastInsertRowid;
-  const pid = db.prepare("INSERT INTO products(kind,code,name,category,price,stock) VALUES('arac','C2',?,'K',1000,1)").run(name).lastInsertRowid;
+  const pid = db
+    .prepare("INSERT INTO products(kind,code,name,category,price,stock) VALUES('arac','C2',?,'K',1000,1)")
+    .run(name).lastInsertRowid;
   const oid = db.prepare('INSERT INTO orders(firm_id,request_no,status) VALUES(?,?,?)').run(firm, '1002', STATUS.CONVERTED).lastInsertRowid;
   db.prepare('INSERT INTO order_items(order_id,product_name,qty,unit_price) VALUES(?,?,?,?)').run(oid, name, 5, 1000);
 
@@ -37,9 +45,17 @@ test('stok yetersizse dönüştürme reddedilir ve stok değişmez', () => {
 
 test('storno: cari hareket fiziksel silinmez, bakiye dışına çıkar', () => {
   const firm = db.prepare('INSERT INTO firms(code,name,devir) VALUES(?,?,?)').run('901.01.003', 'F3', 1000).lastInsertRowid;
-  const mid = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',date('now'),'X','Sipariş','borc',500)").run(firm).lastInsertRowid;
+  const mid = db
+    .prepare(
+      "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',date('now'),'X','Sipariş','borc',500)"
+    )
+    .run(firm).lastInsertRowid;
   assert.strictEqual(accountSummary(firm, 'ana').balance, 1500);
   db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=?").run(mid);
   assert.strictEqual(accountSummary(firm, 'ana').balance, 1000, 'storno edilen hareket bakiyeyi etkilememeli');
-  assert.strictEqual(db.prepare('SELECT COUNT(c) c FROM (SELECT 1 c FROM account_movements WHERE id=?)').get(mid).c, 1, 'kayıt fiziksel olarak durmalı');
+  assert.strictEqual(
+    db.prepare('SELECT COUNT(c) c FROM (SELECT 1 c FROM account_movements WHERE id=?)').get(mid).c,
+    1,
+    'kayıt fiziksel olarak durmalı'
+  );
 });

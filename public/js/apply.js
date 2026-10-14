@@ -1,5 +1,7 @@
 (function () {
-  const il = document.getElementById('il'), dl = document.getElementById('ilceler'), ilce = document.getElementById('ilce');
+  const il = document.getElementById('il'),
+    dl = document.getElementById('ilceler'),
+    ilce = document.getElementById('ilce');
   if (!il || !dl || !ilce) return;
   if (window.ILLER) window.ILLER.forEach(n => il.add(new Option(n, n)));
   il.addEventListener('change', () => {

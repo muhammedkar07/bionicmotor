@@ -14,7 +14,7 @@ const STATUS = {
   APPROVED: 'Onaylandı',
   COLLECTED: 'Tahsil Edildi',
   POS_PENDING: 'Sanal POS Bekliyor',
-  TALIMAT: 'Talimat Oluşturuldu',
+  TALIMAT: 'Talimat Oluşturuldu'
 };
 
 // Veritabanı klasörü DATA_DIR ortam değişkeniyle yapılandırılabilir. Render/Railway gibi
@@ -43,7 +43,9 @@ db.exec('PRAGMA busy_timeout = 5000;');
       }
       return s;
     };
-  } catch { /* yazılamıyorsa (read-only) dokunma */ }
+  } catch {
+    /* yazılamıyorsa (read-only) dokunma */
+  }
 })();
 
 db.exec(`
@@ -130,14 +132,29 @@ const get = (key, def = '') => {
   return r ? r.value : def;
 };
 const set = (key, value) =>
-  db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
+  db
+    .prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
     .run(key, String(value ?? ''));
-const allSettings = () => Object.fromEntries(db.prepare('SELECT key,value FROM settings').all().map(r => [r.key, r.value]));
+const allSettings = () =>
+  Object.fromEntries(
+    db
+      .prepare('SELECT key,value FROM settings')
+      .all()
+      .map(r => [r.key, r.value])
+  );
 const addCol = (table, col, def) => {
-  if (!db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+  if (
+    !db
+      .prepare(`PRAGMA table_info(${table})`)
+      .all()
+      .some(c => c.name === col)
+  )
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
 };
 db.exec('CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE)');
-db.exec("INSERT OR IGNORE INTO categories(name) SELECT DISTINCT TRIM(category) FROM products WHERE category IS NOT NULL AND TRIM(category)<>''");
+db.exec(
+  "INSERT OR IGNORE INTO categories(name) SELECT DISTINCT TRIM(category) FROM products WHERE category IS NOT NULL AND TRIM(category)<>''"
+);
 addCol('account_movements', 'receipt', 'TEXT');
 addCol('orders', 'delivery_date', 'TEXT');
 addCol('orders', 'movement_id', 'INTEGER');
@@ -165,7 +182,7 @@ addCol('warranty_records', 'setup_fee', 'REAL NOT NULL DEFAULT 0');
 addCol('warranty_records', 'setup_movement_id', 'INTEGER');
 addCol('spare_orders', 'balance_applied', 'REAL NOT NULL DEFAULT 0');
 addCol('spare_order_items', 'balance_used', 'REAL NOT NULL DEFAULT 0');
-db.exec("UPDATE spare_orders SET request_date=date(created_at) WHERE request_date IS NULL");
+db.exec('UPDATE spare_orders SET request_date=date(created_at) WHERE request_date IS NULL');
 addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
 addCol('products', 'model_id', 'INTEGER');
 addCol('products', 'max_qty', 'REAL');
@@ -212,7 +229,9 @@ CREATE INDEX IF NOT EXISTS idx_models_active ON models(active, sort);`);
 addCol('admins', 'is_super', 'INTEGER NOT NULL DEFAULT 0');
 addCol('admins', 'permissions', 'TEXT');
 // Hiç süper yönetici yoksa en eski yönetici süper yapılır (panele kilitlenmeyi önler)
-db.prepare("UPDATE admins SET is_super=1 WHERE id=(SELECT MIN(id) FROM admins) AND NOT EXISTS (SELECT 1 FROM admins WHERE is_super=1)").run();
+db.prepare(
+  'UPDATE admins SET is_super=1 WHERE id=(SELECT MIN(id) FROM admins) AND NOT EXISTS (SELECT 1 FROM admins WHERE is_super=1)'
+).run();
 db.exec(`CREATE TABLE IF NOT EXISTS stock_notify (
   product_id INTEGER NOT NULL,
   firm_id INTEGER NOT NULL,
@@ -247,14 +266,18 @@ db.prepare("DELETE FROM settings WHERE key='otv_rate'").run();
 
 // Varsayılan logo artık paket içinde kalıcı public/img klasöründedir
 // (public/uploads git'ten hariç tutulduğu için eski değer bozuk kalırdı).
-if (get('logo_image') && get('logo_image').startsWith('/static/uploads/') &&
-    !fs.existsSync(path.join(uploadsDir, path.basename(get('logo_image'))))) {
+if (
+  get('logo_image') &&
+  get('logo_image').startsWith('/static/uploads/') &&
+  !fs.existsSync(path.join(uploadsDir, path.basename(get('logo_image'))))
+) {
   set('logo_image', '/static/img/bionic-logo.png');
 }
 
 // Sıradaki otomatik numara (yalnızca rakamlardan oluşan değerler dikkate alınır)
 const nextNo = (table, col) =>
-  (db.prepare(`SELECT MAX(CAST(${col} AS INTEGER)) m FROM ${table} WHERE ${col} GLOB '[0-9]*' AND ${col} NOT GLOB '*[^0-9]*'`).get().m || 0) + 1;
+  (db.prepare(`SELECT MAX(CAST(${col} AS INTEGER)) m FROM ${table} WHERE ${col} GLOB '[0-9]*' AND ${col} NOT GLOB '*[^0-9]*'`).get().m ||
+    0) + 1;
 const nextFirmCode = () => {
   const m = db.prepare("SELECT MAX(CAST(SUBSTR(code,8) AS INTEGER)) m FROM firms WHERE code GLOB '120.01.[0-9]*'").get().m || 0;
   return '120.01.' + String(m + 1).padStart(3, '0');
@@ -266,7 +289,6 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
   if (!o) return null;
   const hasPay = table === 'spare_orders';
   // Beklemede/İptal dışındaki durumlar "onaylanmış" sayılır.
-  const cancelled = [STATUS.CANCELLED, STATUS.CANCELLED_DATED].includes(o.status);
   const active = ![STATUS.PENDING, STATUS.CANCELLED, STATUS.CANCELLED_DATED].includes(o.status);
   if (!active) {
     // Cari hareketler fiziksel silinmez; storno için deleted_at işaretlenir.
@@ -276,11 +298,15 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
     db.prepare(`UPDATE ${table} SET movement_id=NULL${hasPay ? ',pay_movement_id=NULL' : ''} WHERE rowid=?`).run(id);
     return null;
   }
-  const total = db.prepare(`SELECT COALESCE(SUM(qty*unit_price*(1 - IFNULL(discount_pct,0)/100)),0) t FROM ${itemsTable} WHERE order_id=?`).get(id).t;
+  const total = db
+    .prepare(`SELECT COALESCE(SUM(qty*unit_price*(1 - IFNULL(discount_pct,0)/100)),0) t FROM ${itemsTable} WHERE order_id=?`)
+    .get(id).t;
   const no = o.request_no || o.no;
   const date = new Date().toISOString().slice(0, 10);
-  const ins = (docNo, docType, kind, amt = total) => db.prepare('INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,?,?,?,?,?,0)')
-    .run(o.firm_id, ledger, date, docNo, docType, kind, amt).lastInsertRowid;
+  const ins = (docNo, docType, kind, amt = total) =>
+    db
+      .prepare('INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,?,?,?,?,?,0)')
+      .run(o.firm_id, ledger, date, docNo, docType, kind, amt).lastInsertRowid;
   if (o.movement_id) {
     db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(total, o.movement_id);
   } else if (total > 0) {
@@ -290,7 +316,8 @@ function syncOrderDebit(table, itemsTable, id, ledger) {
   // Onaylanan siparişin ödemesi alacak olarak işlenir. Kart ödemesi (payment_id)
   // tutarı sabit kalır; nakit/havale ise sipariş onaylandığında alacak yazılır.
   if (hasPay) {
-    let payAmount = null, payType = null;
+    let payAmount = null,
+      payType = null;
     const applied = Math.max(0, +o.balance_applied || 0);
     if (o.payment_id) {
       const pay = db.prepare('SELECT amount,status FROM payments WHERE id=? AND deleted_at IS NULL').get(o.payment_id);
@@ -349,8 +376,9 @@ function syncOrderStock(orderId) {
     const p = db.prepare('SELECT id FROM products WHERE name=? AND active=1').get(name);
     if (!p) continue;
     db.prepare('UPDATE products SET stock=COALESCE(stock,0)-? WHERE id=?').run(qty, p.id);
-    db.prepare('INSERT INTO firm_stock(firm_id,product_id,qty) VALUES(?,?,?) ON CONFLICT(firm_id,product_id) DO UPDATE SET qty=qty+excluded.qty')
-      .run(o.firm_id, p.id, qty);
+    db.prepare(
+      'INSERT INTO firm_stock(firm_id,product_id,qty) VALUES(?,?,?) ON CONFLICT(firm_id,product_id) DO UPDATE SET qty=qty+excluded.qty'
+    ).run(o.firm_id, p.id, qty);
     apply.run(orderId, p.id, qty, o.firm_id);
   }
 }
@@ -368,8 +396,7 @@ addCol('payments', 'movement_id', 'INTEGER');
 function cariAmount(p) {
   if (p.amount_tl != null) return Math.round((+p.amount_tl || 0) * 100) / 100;
   const amt = +p.amount || 0;
-  const rate = p.currency === 'USD' ? parseFloat(get('usd_rate'))
-    : p.currency === 'EUR' ? parseFloat(get('eur_rate')) : 1;
+  const rate = p.currency === 'USD' ? parseFloat(get('usd_rate')) : p.currency === 'EUR' ? parseFloat(get('eur_rate')) : 1;
   return Math.round(amt * (rate > 0 ? rate : 1) * 100) / 100;
 }
 // Online ödeme "Tahsil Edildi" olunca firmanın ana carisine alacak olarak işlenir.
@@ -395,42 +422,85 @@ function syncPaymentCredit(paymentId) {
     db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(amt, p.movement_id);
   } else {
     const docType = p.kind === 'odeme' ? 'Kredi Kartı Fişi' : 'Nakit';
-    const mid = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,date('now'),?,?,?,?,0)")
+    const mid = db
+      .prepare(
+        "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,date('now'),?,?,?,?,0)"
+      )
       .run(p.firm_id, 'ana', 'POS-' + p.id, docType, 'alacak', amt).lastInsertRowid;
     db.prepare('UPDATE payments SET movement_id=? WHERE id=?').run(mid, paymentId);
   }
 }
 function revertPaymentCredit(paymentId) {
   const p = db.prepare('SELECT movement_id FROM payments WHERE id=?').get(paymentId);
-  if (p && p.movement_id) db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(p.movement_id);
+  if (p && p.movement_id)
+    db.prepare("UPDATE account_movements SET deleted_at=datetime('now') WHERE id=? AND deleted_at IS NULL").run(p.movement_id);
 }
 const nextUserCode = firmId => {
   const prefix = String(firmId).padStart(3, '0');
-  const m = db.prepare("SELECT MAX(CAST(SUBSTR(code,4) AS INTEGER)) m FROM dealer_users WHERE code GLOB ? AND LENGTH(code)=5").get(prefix + '[0-9][0-9]').m || 0;
-  let n = m + 1, code;
-  do { code = prefix + String(n++).padStart(2, '0'); } while (db.prepare('SELECT 1 FROM dealer_users WHERE code=?').get(code));
+  const m =
+    db
+      .prepare('SELECT MAX(CAST(SUBSTR(code,4) AS INTEGER)) m FROM dealer_users WHERE code GLOB ? AND LENGTH(code)=5')
+      .get(prefix + '[0-9][0-9]').m || 0;
+  let n = m + 1,
+    code;
+  do {
+    code = prefix + String(n++).padStart(2, '0');
+  } while (db.prepare('SELECT 1 FROM dealer_users WHERE code=?').get(code));
   return code;
 };
 
 const tx = fn => {
   db.exec('BEGIN');
-  try { const r = fn(); db.exec('COMMIT'); return r; }
-  catch (e) { db.exec('ROLLBACK'); throw e; }
+  try {
+    const r = fn();
+    db.exec('COMMIT');
+    return r;
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 };
 
 // Yönetici işlemlerinin denetim izi. İşlemi engellememesi için hatalar yutulur.
 function logAudit(admin, action, entity, entityId, detail) {
   try {
-    const who = admin && (admin.name || admin.username) || null;
-    db.prepare('INSERT INTO audit_log(admin_id,admin_name,action,entity,entity_id,detail) VALUES(?,?,?,?,?,?)')
-      .run(admin && admin.id || null, who, action, entity, entityId || null,
-        detail == null ? null : (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 4000));
-  } catch { /* denetim kaydı başarısız olsa da asıl işlem sürer */ }
+    const who = (admin && (admin.name || admin.username)) || null;
+    db.prepare('INSERT INTO audit_log(admin_id,admin_name,action,entity,entity_id,detail) VALUES(?,?,?,?,?,?)').run(
+      (admin && admin.id) || null,
+      who,
+      action,
+      entity,
+      entityId || null,
+      detail == null ? null : (typeof detail === 'string' ? detail : JSON.stringify(detail)).slice(0, 4000)
+    );
+  } catch {
+    /* denetim kaydı başarısız olsa da asıl işlem sürer */
+  }
 }
 
 // Onaylanmış/tahsil edilmiş fakat cari hesaba işlenmemiş eski ödemeleri yansıt (idempotent).
-for (const r of db.prepare('SELECT id FROM payments WHERE movement_id IS NULL AND deleted_at IS NULL AND status IN (?,?)').all(STATUS.APPROVED, STATUS.COLLECTED)) {
-  try { syncPaymentCredit(r.id); } catch {}
+for (const r of db
+  .prepare('SELECT id FROM payments WHERE movement_id IS NULL AND deleted_at IS NULL AND status IN (?,?)')
+  .all(STATUS.APPROVED, STATUS.COLLECTED)) {
+  try {
+    syncPaymentCredit(r.id);
+  } catch {}
 }
 
-module.exports = { db, get, set, allSettings, tx, logAudit, nextNo, nextFirmCode, nextUserCode, STATUS, syncOrderDebit, syncOrderStock, revertOrderStock, syncPaymentCredit, revertPaymentCredit };
+module.exports = {
+  db,
+  get,
+  set,
+  allSettings,
+  tx,
+  logAudit,
+  nextNo,
+  nextFirmCode,
+  nextUserCode,
+  STATUS,
+  syncOrderDebit,
+  syncOrderStock,
+  revertOrderStock,
+  syncPaymentCredit,
+  revertPaymentCredit
+};

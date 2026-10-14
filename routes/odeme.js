@@ -16,15 +16,26 @@ const payUser = req => {
 router.get('/giris', (req, res) => res.redirect('/odeme'));
 
 router.post('/giris', (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 160);
+  const email = String(req.body.email || '')
+    .trim()
+    .toLowerCase()
+    .slice(0, 160);
   const pass = String(req.body.password || '').slice(0, 200);
   const t = throttle('odeme:' + req.ip + ':' + email);
-  if (t.blocked) { flash(req, 'danger', 'Çok fazla hatalı deneme. Daha sonra tekrar deneyin.'); return res.redirect('/odeme'); }
+  if (t.blocked) {
+    flash(req, 'danger', 'Çok fazla hatalı deneme. Daha sonra tekrar deneyin.');
+    return res.redirect('/odeme');
+  }
   const u = db.prepare('SELECT * FROM dealer_users WHERE lower(email)=? AND active=1').get(email);
   const ok = bcrypt.compareSync(pass, u ? u.password_hash : DUMMY) && u;
-  const firm = ok && db.prepare(
-    'SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.id').get(u.id);
-  if (!ok || !firm) { t.hit(); flash(req, 'danger', 'E-posta veya şifre hatalı.'); return res.redirect('/odeme'); }
+  const firm =
+    ok &&
+    db.prepare('SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.id').get(u.id);
+  if (!ok || !firm) {
+    t.hit();
+    flash(req, 'danger', 'E-posta veya şifre hatalı.');
+    return res.redirect('/odeme');
+  }
   t.reset();
   regenerate(req, res, 'pay');
   req.session.pay = { userId: u.id, firmId: firm.id };
@@ -32,16 +43,22 @@ router.post('/giris', (req, res) => {
   res.redirect('/odeme');
 });
 
-router.post('/cikis', (req, res) => { regenerate(req, res, 'pay'); res.redirect('/odeme'); });
+router.post('/cikis', (req, res) => {
+  regenerate(req, res, 'pay');
+  res.redirect('/odeme');
+});
 
 // Aktif firma seçimi (kullanıcının birden çok firması varsa ödeme doğru carisine işlenir).
 router.post('/firma-degistir', (req, res) => {
   const u = payUser(req);
   if (!u) return res.redirect('/odeme');
-  const f = db.prepare(
-    'SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
+  const f = db
+    .prepare('SELECT f.id FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.id=? AND f.active=1')
     .get(u.id, +req.body.firm_id);
-  if (f) { req.session.pay.firmId = f.id; req.saveSession(); }
+  if (f) {
+    req.session.pay.firmId = f.id;
+    req.saveSession();
+  }
   res.redirect('/odeme');
 });
 
@@ -56,8 +73,14 @@ async function paratikaResult(req, res) {
   const back = (p, type, msg) => {
     if (req.session) flash(req, type, msg);
     const target = spare
-      ? (p && p.source === 'servis' ? '/servis/yedek-parca-siparisleri' : '/bayi/yedek-parca-siparisleri')
-      : (p && p.source === 'bayi' ? '/bayi/odeme' : p && p.source === 'servis' ? '/servis/odeme' : '/odeme');
+      ? p && p.source === 'servis'
+        ? '/servis/yedek-parca-siparisleri'
+        : '/bayi/yedek-parca-siparisleri'
+      : p && p.source === 'bayi'
+        ? '/bayi/odeme'
+        : p && p.source === 'servis'
+          ? '/servis/odeme'
+          : '/odeme';
     res.redirect(target);
   };
   if (!payment) return back(null, 'danger', 'Ödeme kaydı bulunamadı.');
@@ -68,8 +91,9 @@ async function paratikaResult(req, res) {
     tx(() => {
       const fresh = db.prepare('SELECT status FROM payments WHERE id=?').get(payment.id);
       if (fresh && fresh.status === STATUS.COLLECTED) return; // yarış durumunda çift işleme engeli
-      db.prepare("UPDATE payments SET status=?, provider_ref=COALESCE(?,provider_ref), paid_at=COALESCE(paid_at,datetime('now')) WHERE id=?")
-        .run(STATUS.COLLECTED, v.ref || null, payment.id);
+      db.prepare(
+        "UPDATE payments SET status=?, provider_ref=COALESCE(?,provider_ref), paid_at=COALESCE(paid_at,datetime('now')) WHERE id=?"
+      ).run(STATUS.COLLECTED, v.ref || null, payment.id);
       // Kartla ödenen yedek parça siparişi artık ödendiği için siparişe dönüştürülür;
       // syncPaymentCredit -> syncOrderDebit borcu ve alacağı birlikte işler.
       if (spare) db.prepare('UPDATE spare_orders SET status=? WHERE id=? AND status=?').run(STATUS.CONVERTED, spare.id, STATUS.PENDING);
@@ -87,8 +111,9 @@ router.get('/', (req, res) => {
   const u = payUser(req);
   if (!u) return res.render('odeme/login', { title: 'Üye Girişi', pu: null });
   res.locals.pu = u;
-  const firms = db.prepare(
-    'SELECT f.id, f.name FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name').all(u.id);
+  const firms = db
+    .prepare('SELECT f.id, f.name FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name')
+    .all(u.id);
   const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
   res.render('odeme/pay', { title: 'Ödeme Ekranı', inst, firms, firmId: req.session.pay.firmId });
 });
@@ -112,7 +137,10 @@ router.post('/ode', async (req, res) => {
   }
   try {
     const r = await pay.beginCard(payCtx(req, res), b);
-    if (r.error) { flash(req, 'danger', r.error); return res.redirect('/odeme'); }
+    if (r.error) {
+      flash(req, 'danger', r.error);
+      return res.redirect('/odeme');
+    }
     res.redirect(r.redirect);
   } catch (e) {
     flash(req, 'danger', 'Ödeme başlatılamadı: ' + e.message);

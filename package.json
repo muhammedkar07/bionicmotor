@@ -14,7 +14,11 @@
     "tunnel:run": "cloudflared tunnel run bionic-demo",
     "seed": "node scripts/seed.js",
     "backup": "node scripts/backup.js",
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.js\"",
+    "format:check": "prettier --check \"**/*.js\"",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": ">=24"
@@ -27,5 +31,11 @@
     "multer": "^1.4.5-lts.1",
     "sanitize-html": "^2.18.0",
     "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "eslint": "^9.39.5",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
   }
 }

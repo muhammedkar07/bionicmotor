@@ -2,10 +2,17 @@ const { db } = require('../db');
 
 const addCol = (t, c, d) => {
   try {
-    if (!db.prepare(`PRAGMA table_info(${t})`).all().some(x => x.name === c)) {
+    if (
+      !db
+        .prepare(`PRAGMA table_info(${t})`)
+        .all()
+        .some(x => x.name === c)
+    ) {
       db.exec(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`);
     }
-  } catch (e) { console.log('addCol', t, c, e.message); }
+  } catch (e) {
+    console.log('addCol', t, c, e.message);
+  }
 };
 
 addCol('warranty_records', 'invoice_no', 'TEXT');

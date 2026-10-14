@@ -22,10 +22,19 @@ test.before(async () => {
   await new Promise(r => server.once('listening', r));
   base = 'http://127.0.0.1:' + server.address().port;
 });
-test.after(() => { server && server.close(); });
+test.after(() => {
+  server && server.close();
+});
 
-const sidOf = res => { const sc = res.headers.get('set-cookie') || ''; const m = sc.match(/sid=([^;]+)/); return m ? 'sid=' + m[1] : ''; };
-const csrfOf = html => { const m = html.match(/name="_csrf" value="([^"]+)"/); return m ? m[1] : ''; };
+const sidOf = res => {
+  const sc = res.headers.get('set-cookie') || '';
+  const m = sc.match(/sid=([^;]+)/);
+  return m ? 'sid=' + m[1] : '';
+};
+const csrfOf = html => {
+  const m = html.match(/name="_csrf" value="([^"]+)"/);
+  return m ? m[1] : '';
+};
 
 async function getPage(url, cookie) {
   const res = await fetch(base + url, { redirect: 'manual', headers: cookie ? { cookie } : {} });
@@ -43,7 +52,12 @@ test('yanlış parola ile giriş reddedilir', async () => {
   const g = await getPage('/admin/giris');
   assert.strictEqual(g.res.status, 200);
   const body = new URLSearchParams({ username: 'admin', password: 'yanlis-parola', _csrf: csrfOf(g.html) });
-  const res = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body });
+  const res = await fetch(base + '/admin/giris', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body
+  });
   assert.strictEqual(res.status, 302);
   assert.match(res.headers.get('location') || '', /\/admin\/giris/);
 });
@@ -51,14 +65,24 @@ test('yanlış parola ile giriş reddedilir', async () => {
 test('CSRF token olmadan giriş reddedilir', async () => {
   const g = await getPage('/admin/giris');
   const body = new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy' });
-  const res = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body });
+  const res = await fetch(base + '/admin/giris', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body
+  });
   assert.strictEqual(res.status, 403);
 });
 
 test('doğru parola ile giriş yapılır ve panele erişilir', async () => {
   const g = await getPage('/admin/giris');
   const body = new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) });
-  const res = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body });
+  const res = await fetch(base + '/admin/giris', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body
+  });
   assert.strictEqual(res.status, 302);
   const newCookie = sidOf(res);
   assert.ok(newCookie, 'giriş sonrası yeni oturum çerezi beklenir');
@@ -68,7 +92,12 @@ test('doğru parola ile giriş yapılır ve panele erişilir', async () => {
 
 test('menü sırası kaydedilir ve panelde uygulanır', async () => {
   const g = await getPage('/admin/giris');
-  const login = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) }) });
+  const login = await fetch(base + '/admin/giris', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) })
+  });
   const cookie = sidOf(login);
   const panel = await getPage('/admin', cookie);
   const iFirms0 = panel.html.indexOf('data-menu-id="r:firms"');
@@ -77,7 +106,8 @@ test('menü sırası kaydedilir ve panelde uygulanır', async () => {
 
   const order = ['/admin', 'r:slides', 'r:models', 'sys:sifre', 'r:firms', 'r:users'];
   const save = await fetch(base + '/admin/menu-sirala', {
-    method: 'POST', redirect: 'manual',
+    method: 'POST',
+    redirect: 'manual',
     headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ _csrf: csrfOf(panel.html), data: JSON.stringify({ order }) })
   });
@@ -93,7 +123,12 @@ test('menü sırası kaydedilir ve panelde uygulanır', async () => {
 
 test('sistem testi tüm kontrolleri geçer', async () => {
   const g = await getPage('/admin/giris');
-  const login = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) }) });
+  const login = await fetch(base + '/admin/giris', {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) })
+  });
   const cookie = sidOf(login);
   const res = await fetch(base + '/admin/test/api', { headers: { cookie } });
   assert.strictEqual(res.status, 200);

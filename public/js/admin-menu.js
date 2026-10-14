@@ -28,14 +28,18 @@
     didDrag = true;
     it.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    try { e.dataTransfer.setData('text/plain', 'm'); } catch (_) {}
+    try {
+      e.dataTransfer.setData('text/plain', 'm');
+    } catch (_) {}
   });
 
   nav.addEventListener('dragend', () => {
     if (dragged) dragged.classList.remove('dragging');
     dragged = null;
     nav.querySelectorAll('.drop-on').forEach(el => el.classList.remove('drop-on'));
-    setTimeout(() => { didDrag = false; }, 60);
+    setTimeout(() => {
+      didDrag = false;
+    }, 60);
   });
 
   nav.addEventListener('dragover', e => {
@@ -58,13 +62,21 @@
   });
 
   // Sürükleme sonrası kazara linke tıklanmasını engelle.
-  nav.addEventListener('click', e => {
-    if (didDrag && e.target.closest('a[data-menu-id]')) e.preventDefault();
-  }, true);
+  nav.addEventListener(
+    'click',
+    e => {
+      if (didDrag && e.target.closest('a[data-menu-id]')) e.preventDefault();
+    },
+    true
+  );
 
   let toast;
   function showToast(msg, ok) {
-    if (!toast) { toast = document.createElement('div'); toast.className = 'menu-toast'; document.body.appendChild(toast); }
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.className = 'menu-toast';
+      document.body.appendChild(toast);
+    }
     toast.textContent = msg;
     toast.style.background = ok ? '#1f7a3f' : '#b42318';
     toast.classList.add('show');
@@ -74,7 +86,12 @@
 
   function save() {
     const body = new URLSearchParams({ _csrf: CSRF, data: JSON.stringify({ order: items().map(a => a.dataset.menuId) }) });
-    fetch('/admin/menu-sirala', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body, credentials: 'same-origin' })
+    fetch('/admin/menu-sirala', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      credentials: 'same-origin'
+    })
       .then(r => r.json())
       .then(j => showToast(j && j.ok ? 'Menü sırası kaydedildi' : 'Kaydedilemedi', !!(j && j.ok)))
       .catch(() => showToast('Kaydedilemedi', false));
