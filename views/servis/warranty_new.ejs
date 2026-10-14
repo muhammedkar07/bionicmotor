@@ -17,7 +17,7 @@
     <div><button class="btn btn-success">Garanti Kaydını Oluştur</button></div>
   </form>
 </div>
-<script>
+<script nonce="<%= nonce %>">
   (() => {
     const sd=document.getElementById('sale_date'), ro=document.getElementById('warranty_end_ro');
     const calc=()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(sd.value); if(!m){ro.value='';return;} const d=new Date(Date.UTC(+m[1]+2,+m[2]-1,+m[3])); const iso=d.toISOString().slice(0,10); ro.value=iso.slice(8,10)+'/'+iso.slice(5,7)+'/'+iso.slice(0,4);};

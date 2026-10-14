@@ -30,7 +30,7 @@
     <a class="btn" href="/admin/admin-users">İptal</a>
   </div>
 </form>
-<script>
+<script nonce="<%= nonce %>">
   (function () {
     var st = document.getElementById('superToggle'), pb = document.getElementById('permBox');
     if (st && pb) st.addEventListener('change', function () { pb.style.display = st.checked ? 'none' : ''; });

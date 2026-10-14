@@ -31,7 +31,7 @@
     <div class="fbtn"><button class="btn btn-success" type="button" data-close="bankModal">Kapat</button></div>
   </div>
 </div>
-<script>
+<script nonce="<%= nonce %>">
   const _ann=document.getElementById("annModal"),_bnk=document.getElementById("bankModal");
   function showBank(){ if(_bnk){ _bnk.hidden=false; _bnk.addEventListener("click",e=>{if(e.target===_bnk)_bnk.hidden=true},{once:true}); } }
   if(_ann){ const ob=new MutationObserver(()=>{ if(_ann.hidden){ ob.disconnect(); showBank(); }}); ob.observe(_ann,{attributes:true,attributeFilter:["hidden"]}); } else { showBank(); }

@@ -23,7 +23,7 @@
   <meta name="twitter:title" content="<%= title %> | <%= siteName %>">
   <meta name="twitter:description" content="<%= metaDesc %>">
   <meta name="twitter:image" content="<%= ogImage %>">
-  <script type="application/ld+json">
+  <script type="application/ld+json" nonce="<%= nonce %>">
   <%- JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: siteName, url: origin, logo: ogImage, telephone: s.phone || undefined, email: s.email || undefined, address: { '@type': 'PostalAddress', streetAddress: s.address || undefined, addressLocality: s.branch || undefined } }).replace(/</g, '\\u003c') %>
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">

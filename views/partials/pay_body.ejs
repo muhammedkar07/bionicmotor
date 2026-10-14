@@ -56,7 +56,7 @@
   <button class="btn-green" type="submit">HAVALE / EFT BİLDİRİMİ GÖNDER <span>›</span></button>
 </div>
 </form>
-<script>
+<script nonce="<%= nonce %>">
   const INST = <%- j(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

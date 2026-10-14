@@ -73,10 +73,11 @@ app.use((req, res, next) => {
   if (isPanel) res.setHeader('Cache-Control', 'no-store, private');
   const isSecure = process.env.COOKIE_SECURE === '1' || req.secure;
   if (isSecure) res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains; preload');
-  const publicCsp =
-    "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
-  const panelCsp =
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'";
+  // İstek başına rastgele nonce: satır içi <script> blokları yalnızca bu nonce ile çalışır.
+  const nonce = crypto.randomBytes(16).toString('base64');
+  res.locals.nonce = nonce;
+  const publicCsp = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'`;
+  const panelCsp = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'`;
   res.setHeader('Content-Security-Policy', isPanel ? panelCsp : publicCsp);
   next();
 });
@@ -178,6 +179,5 @@ function start(port) {
   return server;
 }
 
-module.exports = app;
-module.exports.start = start;
+module.exports = Object.assign(app, { start });
 if (require.main === module) start(process.env.PORT || 3000);

@@ -32,7 +32,7 @@
     <div class="fbtn"><button type="button" class="btn" id="m-close">Kapat</button></div>
   </div>
 </div>
-<script>
+<script nonce="<%= nonce %>">
 (()=>{const m=document.getElementById('woModal');const set=(id,v)=>document.getElementById(id).textContent=(v===''||v==null||v===undefined)?'-':v;document.querySelectorAll('.js-detay').forEach(b=>{b.onclick=()=>{const d=b.dataset;set('m-no',d.no);set('m-tarih',d.tarih);set('m-sase',d.sase);set('m-model',d.model);set('m-km',d.km);set('m-tur',(d.tur&&d.tur!=='')?d.tur:'Belirlenecek');set('m-durum',d.durum);set('m-aciklama',d.aciklama);set('m-not',d.not);document.getElementById('m-gorsel').innerHTML=d.gorsel?'<a class="lnk" target="_blank" href="'+d.gorsel+'">Görüntüle</a>':'-';m.hidden=false;};});document.getElementById('m-close').onclick=()=>m.hidden=true;m.addEventListener('click',e=>{if(e.target===m)m.hidden=true;});})();
 </script>
 <%- include('../partials/servis_foot') %>

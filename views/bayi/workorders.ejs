@@ -34,7 +34,7 @@
     <div class="fbtn"><button type="button" class="btn" id="m-close">Kapat</button></div>
   </div>
 </div>
-<script>
+<script nonce="<%= nonce %>">
 (() => {
   const modal = document.getElementById('woModal');
   const set = (id, val) => { document.getElementById(id).textContent = (val === '' || val === null || val === undefined) ? '-' : val; };

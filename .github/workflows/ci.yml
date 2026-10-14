@@ -16,6 +16,8 @@ jobs:
       - run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Tip kontrolü (checkJs)
+        run: npm run typecheck
       - name: Testler
         run: npm test
       - name: Biçim kontrolü

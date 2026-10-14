@@ -24,7 +24,7 @@
                value="<%= selFirm ? selFirm.name : (q || '') %>">
         <ul class="flist" id="fList" hidden></ul>
       </div>
-      <script>
+      <script nonce="<%= nonce %>">
       (() => {
         const FIRMS = <%- j(firmList) %>;
         const form = document.querySelector('form.search');

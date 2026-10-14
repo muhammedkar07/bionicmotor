@@ -385,6 +385,7 @@ const RES = {
   }
 };
 
+/** @type {Array<[string, Array<[string, string, (string|undefined)?]>]>} */
 const SETTINGS = [
   [
     'Marka',

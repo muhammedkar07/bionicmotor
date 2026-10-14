@@ -74,7 +74,7 @@
     <% if (hasLT) { %><td class="lt" data-lt></td><% } %>
     <td><button type="button" class="btn btn-sm btn-danger rm">×</button></td></tr></template>
   <% if (!catalog.length) { %><p class="muted">Seçilebilir ürün yok. Önce "Ürünler / Fiyat Listesi" sayfasından ürün ekleyin.</p><% } %>
-  <script>
+  <script nonce="<%= nonce %>">
     const tb = document.querySelector('#kids tbody');
     const HAS_LT = <%= hasLT ? 'true' : 'false' %>;
     const fmtTL = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
@@ -112,7 +112,7 @@
     </table>
     <small class="muted">Toplamlar yalnızca önizleme içindir; kaydedilmez.</small>
   </div>
-  <script>
+  <script nonce="<%= nonce %>">
   (() => {
     const tb = document.querySelector('#kids tbody');
     if (!tb) return;
@@ -142,7 +142,7 @@
   <% } %>
   <div class="fbtn"><button class="btn btn-primary">Kaydet</button> <a class="btn" href="/admin/r/<%= res.key %>">Vazgeç</a></div>
 </form>
-<script>
+<script nonce="<%= nonce %>">
 (() => {
   const ms = document.getElementById('msel');
   if (ms) {
@@ -186,7 +186,7 @@
 })();
 </script>
 <% if (res.key === 'movements') { %>
-<script>
+<script nonce="<%= nonce %>">
 (() => {
   const sel = document.getElementById('f_doc_type');
   if (!sel) return;
@@ -203,7 +203,7 @@
 </script>
 <% } %>
 <% if (res.key === 'products') { %>
-<script>
+<script nonce="<%= nonce %>">
 (() => {
   const kind = document.getElementById('f_kind'), box = document.querySelector('[data-field="model_id"]');
   if (!kind || !box) return;
@@ -214,7 +214,7 @@
 </script>
 <% } %>
 <% if (res.key === 'warranty') { %>
-<script>
+<script nonce="<%= nonce %>">
 (() => {
   const sd = document.getElementById('f_sale_date');
   const box = document.querySelector('[data-field="warranty_end"] .ro');
