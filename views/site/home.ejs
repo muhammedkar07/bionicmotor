@@ -68,6 +68,7 @@
           <% if (sl.new_price) { %><b style="font-size:22px"><%= sl.new_price %></b><% } %>
         </div>
         <% } %>
+        <% if (sl.end_date) { %><p class="muted" style="margin-top:10px;font-size:12.5px">Son geçerlilik: <b><%= date(sl.end_date) %></b></p><% } %>
       </div>
     </a>
     <% }) %>

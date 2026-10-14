@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS slides (
   bg TEXT, link TEXT, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS campaigns (
   id INTEGER PRIMARY KEY, image TEXT, title TEXT NOT NULL, subtitle TEXT, old_price TEXT, new_price TEXT,
-  link TEXT, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
+  link TEXT, start_date TEXT, end_date TEXT, sort INTEGER DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')));
 CREATE TABLE IF NOT EXISTS faqs (
   id INTEGER PRIMARY KEY, question TEXT NOT NULL, answer TEXT, sort INTEGER DEFAULT 0,
@@ -186,6 +186,8 @@ addCol('warranty_records', 'setup_fee', 'INTEGER NOT NULL DEFAULT 0');
 addCol('warranty_records', 'setup_movement_id', 'INTEGER');
 addCol('spare_orders', 'balance_applied', 'INTEGER NOT NULL DEFAULT 0');
 addCol('spare_order_items', 'balance_used', 'INTEGER NOT NULL DEFAULT 0');
+addCol('campaigns', 'start_date', 'TEXT');
+addCol('campaigns', 'end_date', 'TEXT');
 db.exec('UPDATE spare_orders SET request_date=date(created_at) WHERE request_date IS NULL');
 addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
 addCol('products', 'model_id', 'INTEGER');

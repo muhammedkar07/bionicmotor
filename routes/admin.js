@@ -309,15 +309,22 @@ const RES = {
     title: 'Kampanyalar',
     table: 'campaigns',
     group: 'Web Sitesi',
-    list: ['sort', 'title', 'old_price', 'new_price', 'active'],
+    list: ['sort', 'title', 'old_price', 'new_price', 'start_date', 'end_date', 'active'],
     order: 'sort, id',
     fields: [
-      I('image', 'Görsel (isteğe bağlı)'),
+      { name: 'model_id', label: 'Modelden Doldur (isteğe bağlı)', type: 'campaignModel' },
+      I('image', 'Görsel (model seçince otomatik gelir; kendi görselinizi yüklemek için dosya seçin)'),
+      { name: 'image_path', label: '', type: 'hidden' },
       T('title', 'Başlık', { required: true }),
       T('subtitle', 'Alt Yazı'),
       T('old_price', 'Eski Fiyat (ör. 178.200₺)'),
       T('new_price', 'Yeni Fiyat (ör. 111.500 TL)'),
       T('link', 'Bağlantı (ör. /modeller)'),
+      D('start_date', 'Başlangıç Tarihi', { nullable: true }),
+      D('end_date', 'Bitiş Tarihi (geçerlilik sonu)', {
+        nullable: true,
+        help: 'Bu tarih geçince kampanya anasayfadan otomatik kalkar ve kaydı silinir.'
+      }),
       N('sort', 'Sıra', { def: 0 }),
       C('active')
     ]
@@ -765,7 +772,15 @@ function loadForm(req, res, id) {
     .all()
     .map(x => x.name);
   const tax = { kdv: numAny(get('kdv_rate')) || 20 };
-  return { row, refs, multi, kids, catalog, categories, models, tax, today: new Date().toISOString().slice(0, 10) };
+  const campaignModels =
+    r.table === 'campaigns'
+      ? db
+          .prepare(
+            'SELECT id,name,category,cc,power,gearbox,description,image,price FROM models WHERE active=1 ORDER BY name COLLATE NOCASE'
+          )
+          .all()
+      : [];
+  return { row, refs, multi, kids, catalog, categories, models, campaignModels, tax, today: new Date().toISOString().slice(0, 10) };
 }
 
 router.get('/r/:res/new', (req, res, next) => {
@@ -811,7 +826,7 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
       .filter(Boolean);
     if (r.table === 'dealer_users' && !firmIds.length) throw new Error('En az bir firma seçmelisiniz.');
     for (const f of r.fields) {
-      if (f.type === 'readonly' || f.type === 'multi') continue;
+      if (f.type === 'readonly' || f.type === 'multi' || f.type === 'campaignModel' || f.type === 'hidden') continue;
       if (r.table === 'warranty_records' && f.name === 'warranty_end') continue;
       if (f.type === 'auto') {
         if (!id)
@@ -861,6 +876,8 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
     // riskine karşı vadesi gelen çek otomatik tahsil sayılmaz; tahsil edildiğinde yön
     // yönetici tarafından "alacak" olarak değiştirilir.
     if (r.table === 'account_movements' && data.doc_type === 'Çek/Senet' && !data.kind) data.kind = 'bilgi';
+    // Kampanya: model seçildiyse ve yeni dosya yüklenmediyse modelin görselini kullan.
+    if (r.table === 'campaigns' && !data.image && b.image_path) data.image = String(b.image_path).slice(0, 300);
     const cols = Object.keys(data);
     tx(() => {
       let rowid = id;

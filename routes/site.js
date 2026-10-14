@@ -40,7 +40,11 @@ router.get('/sitemap.xml', (req, res) => {
 
 router.get('/', (req, res) => {
   const slides = db.prepare('SELECT * FROM slides WHERE active=1 ORDER BY sort,id').all();
-  const campaigns = db.prepare('SELECT * FROM campaigns WHERE active=1 ORDER BY sort,id').all();
+  const campaigns = db
+    .prepare(
+      "SELECT * FROM campaigns WHERE active=1 AND (start_date IS NULL OR start_date='' OR start_date<=date('now')) AND (end_date IS NULL OR end_date='' OR end_date>=date('now')) ORDER BY sort,id"
+    )
+    .all();
   const models = db.prepare('SELECT * FROM models WHERE active=1 ORDER BY sort,id LIMIT 6').all();
   render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models, campaigns });
 });

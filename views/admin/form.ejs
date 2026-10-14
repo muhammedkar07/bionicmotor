@@ -26,6 +26,8 @@
           <% } else { %><span class="pre"><%= v %></span><% } %></div></div>
     <% } else if (f.type === 'checkbox') { %>
       <div class="fg"><label class="ck"><input type="checkbox" name="<%= f.name %>" value="1" <%= (row ? v : f.def) ? 'checked' : '' %>> <%= f.label %></label></div>
+    <% } else if (f.type === 'hidden') { %>
+      <input type="hidden" name="<%= f.name %>" value="<%= v %>">
     <% } else { %>
       <div class="fg" data-field="<%= f.name %>"><label for="f_<%= f.name %>"><%= f.label %><%= f.required ? ' *' : '' %></label>
         <% if (f.type === 'textarea') { %><textarea id="f_<%= f.name %>" name="<%= f.name %>" rows="<%= f.rows || 4 %>"><%= v %></textarea>
@@ -43,6 +45,7 @@
           <small class="muted" id="catmsg">Eklenen kategoriler listede kalır, her seferinde yeniden yazmanız gerekmez.</small>
         <% } else if (f.type === 'file') { %><% if (v) { %><div><a href="<%= v %>" target="_blank">Mevcut dekontu görüntüle</a></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*,application/pdf">
         <% } else if (f.type === 'image') { %><% if (v) { %><div><img src="<%= v %>" style="max-height:80px" alt=""></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*">
+        <% } else if (f.type === 'campaignModel') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">— Model seçin (bilgileri otomatik doldurur) —</option><% (campaignModels || []).forEach(mo => { %><option value="<%= mo.id %>" data-name="<%= mo.name %>" data-subtitle="<%= [mo.category, mo.cc, mo.power, mo.gearbox].filter(Boolean).join(' · ') %>" data-price="<%= money(mo.price) %> ₺" data-image="<%= mo.image || '' %>" data-desc="<%= String(mo.description || '').replace(/"/g, '&quot;') %>"><%= mo.name %><%= mo.cc ? ' · ' + mo.cc : '' %></option><% }) %></select>
         <% } else if (f.type === 'number') { %><input type="number" step="any" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= isMoney(f.name) && v !== '' && v != null ? v / 100 : v %>">
         <% } else if (f.type === 'date') { %><input type="date" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= v %>">
         <% } else if (f.type === 'password') { %><input type="password" id="f_<%= f.name %>" name="<%= f.name %>" minlength="14" autocomplete="new-password">
@@ -210,6 +213,26 @@
   const toggle = () => { box.hidden = kind.value !== 'parca'; };
   kind.addEventListener('change', toggle);
   toggle();
+})();
+</script>
+<% } %>
+<% if (res.key === 'campaigns') { %>
+<script nonce="<%= nonce %>">
+(() => {
+  const sel = document.getElementById('f_model_id');
+  if (!sel) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  sel.addEventListener('change', () => {
+    const o = sel.selectedOptions[0];
+    if (!o || !o.value) return;
+    set('f_title', o.dataset.name || '');
+    set('f_subtitle', o.dataset.subtitle || '');
+    set('f_new_price', o.dataset.price || '');
+    const link = document.getElementById('f_link');
+    if (link && !link.value) link.value = '/modeller';
+    const ip = document.querySelector('input[name="image_path"]');
+    if (ip) ip.value = o.dataset.image || '';
+  });
 })();
 </script>
 <% } %>
