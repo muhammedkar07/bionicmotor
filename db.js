@@ -159,6 +159,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,
   action TEXT NOT NULL, entity TEXT NOT NULL, entity_id INTEGER, detail TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')));`);
+// Giriş denemesi sayacı (bellek yerine veritabanında): yeniden başlatmada sıfırlanmaz.
+db.exec(`CREATE TABLE IF NOT EXISTS login_attempts (key TEXT NOT NULL, at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_key ON login_attempts(key);`);
 // Admin yetkilendirme: süper yönetici bayrağı ve sayfa izinleri (JSON: {res:[],sys:[]})
 addCol('admins', 'is_super', 'INTEGER NOT NULL DEFAULT 0');
 addCol('admins', 'permissions', 'TEXT');
