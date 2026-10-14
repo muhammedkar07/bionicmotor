@@ -6,14 +6,15 @@
   <title><%= title %> | Servis Portalı</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/portal.css?v=<%= v %>">
+  <script src="/static/js/panel.js?v=<%= v %>" defer></script>
 </head>
 <body class="portal">
 <nav class="pnav">
   <a class="pbrand" href="/servis"><%- include('logo') %></a>
-  <button class="pnav-toggle" onclick="document.querySelector('.pnav').classList.toggle('open')">☰</button>
+  <button class="pnav-toggle" type="button" aria-label="Menü">☰</button>
   <ul class="plinks">
     <li><a href="/servis">Anasayfa</a></li>
-    <li class="dd"><a href="#" class="dd-t" onclick="this.parentNode.classList.toggle('open');return false">Satış Sonrası İşlemleri <span class="caret"></span></a>
+    <li class="dd"><a href="#" class="dd-t">Satış Sonrası İşlemleri <span class="caret"></span></a>
       <div class="dd-m">
         <a href="/servis/garanti">Garanti Kayıtları</a>
         <a href="/servis/garanti/yeni">Yeni Ürün Garanti Kaydı</a>

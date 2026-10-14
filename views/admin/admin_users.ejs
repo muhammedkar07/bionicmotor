@@ -15,7 +15,7 @@
       <td class="act">
         <a class="btn btn-sm" href="/admin/admin-users/<%= a.id %>">Düzenle</a>
         <% if (a.id !== admin.id) { %>
-        <form method="post" action="/admin/admin-users/<%= a.id %>/delete" class="inline" onsubmit="return confirm('Bu admin silinsin mi?')">
+        <form method="post" action="/admin/admin-users/<%= a.id %>/delete" class="inline" data-confirm="Bu admin silinsin mi?">
           <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form>
         <% } %>
       </td>

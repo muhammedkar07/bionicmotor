@@ -12,7 +12,7 @@
   <div class="wobox">
     <h3>🔔 Yeni Duyurular</h3>
     <% unread.forEach(a => { %><div class="ann"><b class="newtag">YENİ</b> <small class="muted"><%= dt(a.created_at) %></small><p class="pre"><%= a.text %></p></div><% }) %>
-    <div class="fbtn"><button class="btn btn-success" onclick="document.getElementById('annModal').hidden=true">Kapat</button></div>
+    <div class="fbtn"><button class="btn btn-success" type="button" data-close="annModal">Kapat</button></div>
   </div>
 </div>
 <% } %>

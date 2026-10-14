@@ -129,7 +129,7 @@
   <% rows.forEach(r => { %>
     <tr><% cols.forEach(c => { %><td><%= cell(c, r[c.name], refs) %></td><% }) %>
       <td class="act"><a class="btn btn-sm" href="/admin/r/<%= res.key %>/<%= r._id %>">Düzenle</a>
-        <form method="post" action="/admin/r/<%= res.key %>/<%= r._id %>/delete" class="inline" onsubmit="return confirm('Bu kayıt silinsin mi?')">
+        <form method="post" action="/admin/r/<%= res.key %>/<%= r._id %>/delete" class="inline" data-confirm="Bu kayıt silinsin mi?">
           <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form></td></tr>
   <% }) %>
   <% if (!rows.length) { %><tr><td colspan="<%= cols.length+1 %>" class="muted">Kayıt yok.</td></tr><% } %>

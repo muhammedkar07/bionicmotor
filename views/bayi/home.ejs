@@ -17,7 +17,7 @@
   <div class="wobox">
     <h3>🔔 Yeni Duyurular</h3>
     <% unread.forEach(a => { %><div class="ann"><b class="newtag">YENİ</b> <small class="muted"><%= dt(a.created_at) %></small><p class="pre"><%= a.text %></p></div><% }) %>
-    <div class="fbtn"><button class="btn btn-success" onclick="document.getElementById('annModal').hidden=true">Kapat</button></div>
+    <div class="fbtn"><button class="btn btn-success" type="button" data-close="annModal">Kapat</button></div>
   </div>
 </div>
 <% } %>
@@ -28,7 +28,7 @@
   <div class="wobox" style="max-width:680px">
     <h3>Banka Hesap Bilgileri</h3>
     <div style="text-align:center;margin:12px 0"><img src="<%= s.bank_info_image %>" style="max-width:100%;height:auto" alt="Banka hesap bilgileri"></div>
-    <div class="fbtn"><button class="btn btn-success" onclick="document.getElementById('bankModal').hidden=true">Kapat</button></div>
+    <div class="fbtn"><button class="btn btn-success" type="button" data-close="bankModal">Kapat</button></div>
   </div>
 </div>
 <script>
