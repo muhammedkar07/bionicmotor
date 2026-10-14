@@ -4,9 +4,9 @@ const { db, set, tx } = require('../db');
 function ensureSeed() {
   if (db.prepare('SELECT COUNT(*) c FROM admins').get().c > 0) return;
   tx(() => {
-    const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+    const adminPass = process.env.ADMIN_PASSWORD || 'admin123Ab!';
     db.prepare('INSERT INTO admins(username,name,password_hash,is_super) VALUES(?,?,?,1)')
-      .run('admin', 'Yönetici', bcrypt.hashSync(adminPass, 10));
+      .run('admin', 'Yönetici', bcrypt.hashSync(adminPass, 12));
 
     const S = {
       brand_1: 'Bionic ', brand_2: 'Motor', logo_image: '/static/img/bionic-logo.png',
@@ -74,7 +74,7 @@ function ensureSeed() {
     const firm = db.prepare('INSERT INTO firms(code,name,city,phone,email) VALUES(?,?,?,?,?)')
       .run('120.01.001', 'SİMMOTO', 'Aksaray', '0544 733 73 73', 'bayi@example.com').lastInsertRowid;
     const user = db.prepare('INSERT INTO dealer_users(code,email,name,password_hash) VALUES(?,?,?,?)')
-      .run('25895', 'demo@bayi.local', 'DEMO BAYİ', bcrypt.hashSync('demo1234', 10)).lastInsertRowid;
+      .run('25895', 'demo@bayi.local', 'DEMO BAYİ', bcrypt.hashSync('demo1234Ab!', 12)).lastInsertRowid;
     db.prepare('INSERT INTO user_firms(user_id,firm_id) VALUES(?,?)').run(user, firm);
 
     const ord = db.prepare('INSERT INTO orders(firm_id,request_date,request_no,delivery_type,status,movement_id) VALUES(?,?,?,?,?,-1)');
@@ -121,8 +121,8 @@ function ensureSeed() {
       .run(firm, 'IE2026000001', 'NLCSST125R0001234', 'SST125', '1200', 'Garanti', 'İlk bakım', 'Tamamlandı');
   });
   console.log('Veritabanı örnek verilerle oluşturuldu.');
-  console.log('Yönetici: admin / ' + (process.env.ADMIN_PASSWORD || 'admin123') + '  (canlıya almadan önce değiştirin!)');
-  console.log('Bayi: kullanıcı kodu 25895 / parola demo1234 (e-posta: demo@bayi.local)');
+  console.log('Yönetici: admin / ' + (process.env.ADMIN_PASSWORD || 'admin123Ab!') + '  (canlıya almadan önce değiştirin!)');
+  console.log('Bayi: kullanıcı kodu 25895 / parola demo1234Ab! (e-posta: demo@bayi.local)');
 }
 
 module.exports = { ensureSeed };

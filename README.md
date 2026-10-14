@@ -11,11 +11,11 @@ Node 24 + Express + EJS + yerleşik SQLite (`node:sqlite`). Harici veritabanı g
 | Panel | Adres | Giriş |
 |---|---|---|
 | Site | `/` | – |
-| Bayi paneli | `/bayi` | kullanıcı kodu `25895` / `demo1234` |
-| Online ödeme | `/odeme` | `demo@bayi.local` / `demo1234` |
-| Yönetim | `/admin` | `admin` / `admin123` |
+| Bayi paneli | `/bayi` | kullanıcı kodu `25895` / `demo1234Ab!` |
+| Online ödeme | `/odeme` | `demo@bayi.local` / `demo1234Ab!` |
+| Yönetim | `/admin` | `admin` / `admin123Ab!` |
 
-**Canlıya almadan önce** admin parolasını değiştirin (Admin → Parola Değiştir) ve demo bayi kullanıcısını silin/güncelleyin.
+**Canlıya almadan önce** parolaları güncelleyin. Yeni parola politikası: en az 14 karakter, bir büyük harf, bir küçük harf, bir rakam ve bir simge içermelidir. 
 
 ## Canlıya alma
 - Ortam değişkenleri: `PORT`, `ADMIN_PASSWORD` (ilk kurulum), `COOKIE_SECURE=1` (HTTPS arkasında), `TRUST_PROXY=1` (nginx/IIS arkasında).
