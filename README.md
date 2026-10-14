@@ -31,7 +31,22 @@ Node 24 + Express + EJS + yerleşik SQLite (`node:sqlite`). Harici veritabanı g
 - Kalıcı veri (önemli): Render/Railway gibi platformlarda dosya sistemi her deploy'da sıfırlanır. Kalıcı bir disk (volume) bağlayıp `DATA_DIR` ve `UPLOAD_DIR` değişkenlerini o yola verin (örn. `DATA_DIR=/var/data`, `UPLOAD_DIR=/var/data/uploads`). Aksi halde panelden girilen veriler deploy sonrası kaybolur.
 - Yedek: `npm run backup` ile tutarlı bir SQLite kopyası alınır (varsayılan `backups/` klasörü).
   Ayrıca `UPLOAD_DIR` (varsayılan `public/uploads/`) klasörünü de yedekleyin.
+- **Otomatik yedek:** Uygulama açılışta ve **günde bir** veritabanını `VACUUM INTO` ile yedekler
+  (`backups/`, en yeni `BACKUP_KEEP`=10 adet saklanır). `BACKUP_DIR`/`BACKUP_KEEP` ile ayarlanır.
 - Hatalar `logs/error.log` dosyasına da yazılır.
+
+## Güvenlik ve denetim izleri
+- **Güvenlik başlıkları:** CSP (satır içi script'ler için istek başına **nonce**; `unsafe-inline`
+  script'te kapalı), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
+  `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, HSTS (HTTPS'te).
+- **Oturum:** DB tabanlı, girişte yenilenir; girişler DB tabanlı hız sınırıyla korunur.
+- **CSRF:** Tüm POST'larda; Paratika dönüşü sunucudan sunucuya doğrulanır.
+- **Denetim izleri (`/admin/audit`):** Sistemde yapılan her işlem — yönetici/bayi/servis/ödeme
+  **girişleri (başarılı/başarısız)**, kayıt ekleme/güncelleme/**storno/silme**, sipariş ve yedek
+  parça siparişleri, ödemeler (oluşturma/tahsil/başarısız), ayar ve parola değişiklikleri,
+  admin kullanıcı işlemleri, iletişim/bayilik başvuruları — **aktör + IP** ile kaydedilir ve
+  panelde filtrelenip sayfalanarak görüntülenir. Finansal kayıtlar fiziksel silinmez (storno).
+
 
 ## Online ödeme (Paratika Web POS)
 Kart ödemeleri **barındırılan ödeme sayfası** ile alınır: kart bilgisi sitemize hiç gelmez,
