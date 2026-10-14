@@ -10,12 +10,10 @@ a{color:inherit;text-decoration:none}
 .side nav a:hover{background:#20232a}.side nav a.on{background:#e0252f;color:#fff}
 .grp{padding:14px 18px 4px;font-size:11px;text-transform:uppercase;color:#6c7380;letter-spacing:.08em}
 .bdg{background:#e0252f;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;line-height:18px}
-/* Sol menü sürükle-bırak sıralama */
-.mgroup .grp{cursor:grab;display:flex;align-items:center;gap:6px}
-.mgroup .grp .ghandle{opacity:.45;font-size:13px;letter-spacing:0}
+/* Sol menü sürükle-bırak sıralama (kategorisiz düz liste) */
 .side nav a[draggable="true"]{cursor:grab}
-.dragging{opacity:.45}
-.mgroup.drop-on{outline:1px dashed #e0252f;outline-offset:-2px;background:#191c22}
+.side nav a.dragging{opacity:.45}
+.side nav a.drop-on{outline:1px dashed #e0252f;outline-offset:-2px;background:#191c22}
 .menu-toast{position:fixed;right:18px;bottom:18px;background:#1f7a3f;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:9999}
 .menu-toast.show{opacity:1;transform:none}
 .content{flex:1;min-width:0}

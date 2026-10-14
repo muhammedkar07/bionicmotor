@@ -167,46 +167,50 @@ function parsePerms(p) {
   } catch (e) { return { res: [], sys: [] }; }
 }
 
-// Kayıtlı menü sırası (settings: admin_menu_order) -> { groups: [{ group, keys: [] }] }
-function parseMenuOrder() {
+// Kayıtlı menü sırası (settings: admin_menu_order) -> düz id listesi.
+// Eski "groups" biçimi de desteklenir (kaynak anahtarlarına dönüştürülür).
+function savedMenuOrder() {
   try {
     const o = JSON.parse(get('admin_menu_order') || '{}');
-    return o && typeof o === 'object' && Array.isArray(o.groups) ? o : { groups: [] };
-  } catch { return { groups: [] }; }
+    if (Array.isArray(o.order)) return o.order;
+    if (Array.isArray(o.groups)) { const out = []; for (const g of o.groups) for (const k of (g.keys || [])) out.push('r:' + k); return out; }
+    return [];
+  } catch { return []; }
 }
-// Menüyü oluşturur: kayıtlı sıraya göre gruplar ve öğeler; yeni eklenen öğe/gruplar kod
-// sırasına göre sona eklenir. (Sürükle-bırak sırası burada uygulanır.)
-function buildMenu(a) {
-  const items = Object.entries(RES)
-    .filter(([k]) => a.is_super || a.perms.res.includes(k))
-    .map(([k, r]) => ({ key: k, group: r.group, title: r.title }));
-  const byKey = new Map(items.map(it => [it.key, it]));
+// Menü: kategori yok, tüm öğeler tek düz liste ve her biri sürüklenebilir.
+// Kayıtlı sıraya göre dizilir; yeni eklenenler varsayılan sıranın sonuna eklenir.
+function buildMenu(a, req) {
+  const p = (req && req.path) || '';
+  const can = k => a.is_super || ((a.perms && a.perms.sys) || []).includes(k);
+  const entries = [{ id: '/admin', label: '▣ Panel', href: '/admin', active: p === '/' }];
+  for (const [k, r] of Object.entries(RES)) {
+    if (!(a.is_super || a.perms.res.includes(k))) continue;
+    entries.push({ id: 'r:' + k, label: r.title, href: '/admin/r/' + k, active: p === '/r/' + k, badge: k });
+  }
+  if (can('stok')) entries.push({ id: 'sys:stok', label: 'Araç Stok Takibi', href: '/admin/stok', active: p === '/stok' });
+  if (can('stok-parca')) entries.push({ id: 'sys:stok-parca', label: 'Yedek Parça Stok Takibi', href: '/admin/stok-parca', active: p === '/stok-parca' });
+  if (can('ayarlar')) entries.push({ id: 'sys:ayarlar', label: 'Site Ayarları', href: '/admin/ayarlar', active: p === '/ayarlar' });
+  if (a.is_super) entries.push({ id: 'sys:admin-users', label: 'Admin Kullanıcıları', href: '/admin/admin-users', active: p === '/admin-users' });
+  entries.push({ id: 'sys:sifre', label: 'Parola Değiştir', href: '/admin/sifre', active: p === '/sifre' });
+  entries.push({ id: 'ext:site', label: 'Siteyi Görüntüle ↗', href: '/', external: true, active: false });
+  entries.push({ id: 'ext:bayi', label: 'Bayi Paneli ↗', href: '/bayi', external: true, active: false });
+
+  const byId = new Map(entries.map(e => [e.id, e]));
   const used = new Set();
-  const out = [];
-  for (const g of parseMenuOrder().groups) {
-    const gi = [];
-    for (const k of (Array.isArray(g && g.keys) ? g.keys : [])) {
-      const it = byKey.get(k);
-      if (it && !used.has(k)) { used.add(k); gi.push({ key: it.key, title: it.title }); }
-    }
-    if (gi.length) out.push({ group: String((g && g.group) || 'Diğer').slice(0, 60), items: gi });
-  }
-  for (const it of items) {
-    if (used.has(it.key)) continue;
-    let g = out.find(x => x.group === it.group);
-    if (!g) { g = { group: it.group, items: [] }; out.push(g); }
-    g.items.push({ key: it.key, title: it.title });
-    used.add(it.key);
-  }
-  return out;
+  const ordered = [];
+  for (const id of savedMenuOrder()) { const e = byId.get(id); if (e && !used.has(id)) { used.add(id); ordered.push(e); } }
+  for (const e of entries) if (!used.has(e.id)) ordered.push(e);
+  return ordered;
 }
+const FIXED_MENU_IDS = new Set(['/admin', 'sys:stok', 'sys:stok-parca', 'sys:ayarlar', 'sys:admin-users', 'sys:sifre', 'ext:site', 'ext:bayi']);
+const validMenuId = id => typeof id === 'string' && (FIXED_MENU_IDS.has(id) || (id.startsWith('r:') && !!RES[id.slice(2)]));
 
 router.use((req, res, next) => {
   const a = req.session.admin && db.prepare('SELECT id,username,name,is_super,permissions FROM admins WHERE id=?').get(req.session.admin.id);
   if (!a) return res.redirect('/admin/giris');
   a.perms = parsePerms(a.permissions);
   res.locals.admin = a;
-  res.locals.menu = buildMenu(a);
+  res.locals.menu = buildMenu(a, req);
   res.locals.res = null;
   res.locals.path = req.path;
   res.locals.badges = {
@@ -523,13 +527,9 @@ router.post('/menu-sirala', (req, res) => {
   if (!res.locals.admin.is_super) return res.status(403).json({ error: 'Yetkisiz' });
   let data = {};
   try { data = JSON.parse(req.body.data || '{}'); } catch { return res.status(400).json({ error: 'Geçersiz veri' }); }
-  const groups = [];
-  for (const g of (Array.isArray(data.groups) ? data.groups : [])) {
-    const keys = (Array.isArray(g && g.keys) ? g.keys : []).filter(k => typeof k === 'string' && RES[k]);
-    if (keys.length) groups.push({ group: String((g && g.group) || 'Diğer').slice(0, 60), keys });
-  }
-  set('admin_menu_order', JSON.stringify({ groups }));
-  logAudit(res.locals.admin, 'update', 'admin_menu_order', null, { groups: groups.map(g => g.group) });
+  const order = (Array.isArray(data.order) ? data.order : []).filter(validMenuId);
+  set('admin_menu_order', JSON.stringify({ order }));
+  logAudit(res.locals.admin, 'update', 'admin_menu_order', null, { adet: order.length });
   res.json({ ok: true });
 });
 

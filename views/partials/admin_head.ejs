@@ -10,26 +10,11 @@
 <aside class="side">
   <a class="sbrand" href="/admin"><%- include('logo') %><small>Yönetim Paneli</small></a>
   <nav<% if (admin.is_super) { %> data-menu-drag="1"<% } %>>
-    <a href="/admin" class="<%= path==='/'?'on':'' %>">▣ Panel</a>
     <% const canDrag = admin.is_super; %>
-    <% menu.forEach(g => { %>
-      <div class="mgroup" data-group="<%= g.group %>">
-        <% if (canDrag) { %><div class="grp" draggable="true" title="Grubu taşımak için sürükleyin"><span class="ghandle">⠿</span> <%= g.group %></div><% } else { %><div class="grp"><%= g.group %></div><% } %>
-        <% g.items.forEach(it => { %>
-          <a href="/admin/r/<%= it.key %>" data-key="<%= it.key %>"<%= canDrag ? ' draggable="true" title="Sırayı değiştirmek için sürükleyin"' : '' %> class="<%= res && res.key===it.key ? 'on' : '' %>"><%= it.title %>
-            <% if (badges[it.key] > 0) { %><span class="bdg"><%= badges[it.key] %></span><% } %></a>
-        <% }) %>
-      </div>
+    <% menu.forEach(it => { %>
+      <a href="<%= it.href %>" data-menu-id="<%= it.id %>"<% if (canDrag) { %> draggable="true" title="Sırayı değiştirmek için sürükleyin"<% } %><% if (it.external) { %> target="_blank"<% } %> class="<%= it.active ? 'on' : '' %>"><%= it.label %>
+        <% if (it.badge && badges[it.badge] > 0) { %><span class="bdg"><%= badges[it.badge] %></span><% } %></a>
     <% }) %>
-    <div class="grp">Sistem</div>
-    <% const sysP = (admin.perms && admin.perms.sys) || []; const can = k => admin.is_super || sysP.includes(k); %>
-    <% if (can('stok')) { %><a href="/admin/stok" class="<%= path==='/stok'?'on':'' %>">Araç Stok Takibi</a><% } %>
-    <% if (can('stok-parca')) { %><a href="/admin/stok-parca" class="<%= path==='/stok-parca'?'on':'' %>">Yedek Parça Stok Takibi</a><% } %>
-    <% if (can('ayarlar')) { %><a href="/admin/ayarlar" class="<%= path==='/ayarlar'?'on':'' %>">Site Ayarları</a><% } %>
-    <% if (admin.is_super) { %><a href="/admin/admin-users" class="<%= path==='/admin-users'?'on':'' %>">Admin Kullanıcıları</a><% } %>
-    <a href="/admin/sifre" class="<%= path==='/sifre'?'on':'' %>">Parola Değiştir</a>
-    <a href="/" target="_blank">Siteyi Görüntüle ↗</a>
-    <a href="/bayi" target="_blank">Bayi Paneli ↗</a>
   </nav>
 </aside>
 <div class="content">

@@ -69,24 +69,22 @@ test('menü sırası kaydedilir ve panelde uygulanır', async () => {
   const login = await fetch(base + '/admin/giris', { method: 'POST', redirect: 'manual', headers: { cookie: g.cookie, 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: 'admin', password: 'TestAdmin1234!xy', _csrf: csrfOf(g.html) }) });
   const cookie = sidOf(login);
   const panel = await getPage('/admin', cookie);
-  const before = panel.html.indexOf('data-group="Web Sitesi"');
-  const beforeBayi = panel.html.indexOf('data-group="Bayi Yönetimi"');
-  assert.ok(before > beforeBayi, 'başlangıçta Bayi Yönetimi önce gelmeli');
+  const iFirms0 = panel.html.indexOf('data-menu-id="r:firms"');
+  const iSlides0 = panel.html.indexOf('data-menu-id="r:slides"');
+  assert.ok(iFirms0 > -1 && iSlides0 > -1 && iFirms0 < iSlides0, 'başlangıçta r:firms önce gelmeli');
 
-  const data = JSON.stringify({ groups: [
-    { group: 'Web Sitesi', keys: ['slides', 'models', 'faqs', 'points', 'pages'] },
-    { group: 'Bayi Yönetimi', keys: ['firms', 'users', 'orders', 'movements', 'announcements', 'products'] }
-  ] });
+  const order = ['/admin', 'r:slides', 'r:models', 'sys:sifre', 'r:firms', 'r:users'];
   const save = await fetch(base + '/admin/menu-sirala', {
     method: 'POST', redirect: 'manual',
     headers: { cookie, 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ _csrf: csrfOf(panel.html), data })
+    body: new URLSearchParams({ _csrf: csrfOf(panel.html), data: JSON.stringify({ order }) })
   });
   assert.strictEqual(save.status, 200);
   assert.deepStrictEqual(await save.json(), { ok: true });
 
   const after = await getPage('/admin', cookie);
-  const iWeb = after.html.indexOf('data-group="Web Sitesi"');
-  const iBayi = after.html.indexOf('data-group="Bayi Yönetimi"');
-  assert.ok(iWeb > -1 && iBayi > -1 && iWeb < iBayi, 'kaydedilen sıraya göre Web Sitesi önce gelmeli');
+  const iSlides = after.html.indexOf('data-menu-id="r:slides"');
+  const iFirms = after.html.indexOf('data-menu-id="r:firms"');
+  assert.ok(iSlides > -1 && iFirms > -1 && iSlides < iFirms, 'kaydedilen sıraya göre r:slides önce gelmeli');
+  assert.ok(after.html.indexOf('data-menu-id="/admin"') < iSlides, 'Panel ilk sırada kalmalı');
 });
