@@ -90,7 +90,10 @@ app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
   res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
   const isPanel = /^\/(admin|bayi|servis|odeme)(\/|$)/.test(req.path);
-  if (isPanel) res.setHeader('Cache-Control', 'no-store, private');
+  // HTML sayfaları ASLA önbellekten sunulmaz; aksi halde tarayıcı eski (ör. eski CSP'li) sayfayı
+  // gösterip Paratika yönlendirmesini engelleyebilir. Statik varlıklar kendi başlıklarını alır.
+  const isStatic = /^\/(static|uploads)(\/|$)/.test(req.path);
+  if (!isStatic) res.setHeader('Cache-Control', isPanel ? 'no-store, private' : 'no-cache');
   const isSecure = process.env.COOKIE_SECURE === '1' || req.secure;
   if (isSecure) res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains; preload');
   // İstek başına rastgele nonce: satır içi <script> blokları yalnızca bu nonce ile çalışır.
