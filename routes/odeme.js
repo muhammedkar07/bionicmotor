@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const { db, tx, syncPaymentCredit, STATUS, logAudit } = require('../db');
+const { db, STATUS, logAudit } = require('../db');
 const { flash, throttle, regenerate, publicOrigin } = require('../lib/core');
 const pay = require('../lib/pay');
 const paratika = require('../lib/paratika');
@@ -73,7 +73,6 @@ async function paratikaResult(req, res) {
   const b = Object.assign({}, req.query, req.body);
   const orderId = b.o || b.orderId || b.ORDER_ID || b.order_id || b.orderid || b.merchantPaymentId || b.MERCHANTPAYMENTID;
   const payment = orderId ? db.prepare('SELECT * FROM payments WHERE provider_order=?').get(String(orderId)) : null;
-  const spare = payment ? db.prepare('SELECT id FROM spare_orders WHERE payment_id=? AND deleted_at IS NULL').get(payment.id) : null;
   const back = (p, type, msg) => {
     if (req.session) flash(req, type, msg);
     // Ödeme sonrası: bayi/servis panelindeyse HESAP HAREKETLERİNE, değilse ANA SAYFAYA yönlendir.
@@ -87,17 +86,7 @@ async function paratikaResult(req, res) {
 
   const v = await paratika.query({ orderId: payment.provider_order });
   if (v.ok) {
-    tx(() => {
-      const fresh = db.prepare('SELECT status FROM payments WHERE id=?').get(payment.id);
-      if (fresh && fresh.status === STATUS.COLLECTED) return; // yarış durumunda çift işleme engeli
-      db.prepare(
-        "UPDATE payments SET status=?, provider_ref=COALESCE(?,provider_ref), paid_at=COALESCE(paid_at,datetime('now')) WHERE id=?"
-      ).run(STATUS.COLLECTED, v.ref || null, payment.id);
-      // Kartla ödenen yedek parça siparişi artık ödendiği için siparişe dönüştürülür;
-      // syncPaymentCredit -> syncOrderDebit borcu ve alacağı birlikte işler.
-      if (spare) db.prepare('UPDATE spare_orders SET status=? WHERE id=? AND status=?').run(STATUS.CONVERTED, spare.id, STATUS.PENDING);
-      syncPaymentCredit(payment.id);
-    });
+    pay.collectPayment(payment.id, v.ref); // idempotent: cariye alacak işler
     logAudit(
       { type: payment.source === 'servis' ? 'servis' : payment.source === 'bayi' ? 'bayi' : 'odeme', id: payment.user_id, name: null },
       'payment_collected',

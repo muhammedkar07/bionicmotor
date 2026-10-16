@@ -15,6 +15,7 @@
     "seed": "node scripts/seed.js",
     "seed:models": "node scripts/seed-models.js",
     "pack": "node scripts/pack.js",
+    "reconcile": "node scripts/reconcile.js",
     "backup": "node scripts/backup.js",
     "backup:verify": "node scripts/backup-verify.js",
     "restore": "node scripts/restore.js",
