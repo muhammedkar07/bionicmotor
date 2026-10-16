@@ -144,13 +144,23 @@ Paratika'nın **asıl/tam** API dokümanı: `https://entegrasyon.paratika.com.tr
 Test ortamında aynı bilgiler `ERR10020 – Geçersiz kullanıcı bilgileri` döndürüyor →
 dokümanın da dediği gibi **"Canlı ve Entegrasyon ortamları için ayrı API kullanıcısı"** gerekir.
 
-### 3D doğrulama OTP ister — test şifresi
+### 3D adımı = Modirum ACS SİMÜLATÖRÜ → "Yes"e bas!
 
-- 3D akışı: `sale3d` → `est3Dgate` (Asseco) → **ACS (Modirum test)** → SMS/OTP → sonuç.
-- Dokümanın test kartları tablosunda **"3D Güvenli Şifre" = `123456`** olarak veriliyor.
-- API ile (tarayıcısız) tüm standart test kartları denendi: **tümü `ACS (OTP) gerekli`** döndü;
-  birkaç TROY/yabancı kart ise `Üye iş yerinin yabancı banka kartları ile işlem yapma yetkisi yoktur` verdi.
-  Yani ödeme **3D'de OTP girilmeden tamamlanmaz** (test ortamında `123456`).
+Entegrasyon/test ortamında 3D, **Modirum test ACS simülatörüne** gider
+(`https://3ds-acs.test.modirum.com/...`). Sayfa aynen şunu der:
+
+> "This screen allows you to simulate the different responses ACS can give to an
+> authentication request. Please choose a response from the options below."
+
+Butonlar: **`Yes`** (doğrulandı), `Attempt`, `No`, `Rejected`, `Unavailable`.
+
+**Çözüm: 3D ekranında `Yes` butonuna bas.** Bundan sonra satış **AP (Onaylandı)** döner:
+`responseCode=00`, `pgTranReturnCode=00`, `pgTranApprCode=<onay kodu>`.
+(Bu adım atlanırsa işlem `IP`=işlemde takılı kalır veya `ERR10154`/`FA` olur.)
+
+- Dokümandaki **"3D Güvenli Şifre = `123456`"** başka senaryolar için; bu simülatörde
+  kullanıcı doğrudan "Yes"e basar.
+- Canlı ortamda bu ekran yerine **banka ACS'si + gerçek SMS OTP** gelir.
 
 ### Doğrulanan hata/response kodları
 
