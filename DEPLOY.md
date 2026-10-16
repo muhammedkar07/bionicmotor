@@ -99,9 +99,29 @@ pm2 restart bionic
 ```
 
 ## 9) Yedekleme
-- Uygulama **saatlik** otomatik yedek alır (`BACKUP_DIR`), şifreler ve (ayarlıysa) off-site yükler.
+- Uygulama **saatlik** otomatik yedek alır (`BACKUP_DIR`): **veritabanı + yüklenen görseller**, AES‑256‑GCM ile **şifreli**, rotasyonlu.
 - Elle: `npm run backup` · Doğrula: `npm run backup:verify` · Geri yükle: `npm run restore`
-- Yedeklenmesi gereken tek klasör: **`DATA_DIR`** (`/var/lib/bionic/data`).
+- **Tam taşıma paketi** (kod + veri + .env): `node --env-file=.env scripts/pack.js`
+
+### Off-site (Cloudflare R2) kurulumu
+```bash
+# 1) rclone (en güncel sürüm — eski apt sürümü R2 ile sorun çıkarır)
+curl -fsSL https://rclone.org/install.sh | sudo bash
+
+# 2) R2 remote (Cloudflare R2 → API Token: Access Key + Secret)
+rclone config create r2 s3 provider Cloudflare \
+  access_key_id  <ACCESS_KEY_ID> \
+  secret_access_key <SECRET_ACCESS_KEY> \
+  endpoint https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+
+# 3) .env içine ekle (--s3-no-check-bucket ŞART; aksi halde rclone bucket'ı oluşturmaya çalışıp 403 alır)
+# BACKUP_UPLOAD_CMD=rclone copy "{file}" r2:bionic-backups/ --s3-no-check-bucket
+
+pm2 restart bionic
+```
+Doğrulama: `node --env-file=.env scripts/backup.js` sonrası `rclone ls r2:bionic-backups --s3-no-check-bucket`.
+
+Yedeklenmesi gereken tek klasör: **`DATA_DIR`** (`/var/lib/bionic/data`).
 
 ## 10) Canlıya geçiş kontrol listesi
 - [ ] `PARATIKA_ENV=prod` ve **canlı (VPOS) API kullanıcısı** girildi (entegrasyon kullanıcısı canlıda geçmez).
