@@ -6,6 +6,8 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
+# Temiz başlangıç veritabanı sürümlenir (npm run reset bunu kullanır).
+!data/baseline.db
 public/uploads/*
 !public/uploads/.gitkeep
 demo-data/
