@@ -1,13 +1,15 @@
-const path = require('path');
-const fs = require('fs');
-const { db } = require('../db');
+// Manuel yedek: lib/backup motorunu kullanır (bütünlük kontrolü + rotasyon + şifreleme + off-site).
+// Kullanım: npm run backup
+const { runBackup } = require('../lib/backup');
 
-// SQLite'in VACUUM INTO komutu ile tutarlı (WAL dahil) bir yedek kopyası üretir.
-// Kullanım: npm run backup  ya da  node scripts/backup.js <hedef.db>
-const dir = path.join(__dirname, '..', 'backups');
-fs.mkdirSync(dir, { recursive: true });
-const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-const out = path.resolve(process.argv[2] || path.join(dir, `app-${stamp}.db`));
-
-db.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);
-console.log('Yedek alındı: ' + out);
+const r = runBackup();
+if (r.ok) {
+  console.log('Yedek alındı: ' + r.file);
+  console.log('  boyut: ' + r.bytes + ' bayt · tablo: ' + r.tables + ' · silinen eski: ' + (r.removed || 0));
+  if (r.encrypted) console.log('  şifreli kopya: ' + r.encrypted);
+  if (r.upload && r.upload.skipped) console.log('  off-site: kapalı (BACKUP_UPLOAD_CMD)');
+  else if (r.upload && r.upload.ok) console.log('  off-site: yüklendi');
+} else {
+  console.error('Yedek BAŞARISIZ: ' + r.error);
+  process.exit(1);
+}

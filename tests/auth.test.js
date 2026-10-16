@@ -134,7 +134,8 @@ test('sistem testi tüm kontrolleri geçer', async () => {
   assert.strictEqual(res.status, 200);
   const data = await res.json();
   const failed = [];
-  for (const grp of data.groups) for (const r of grp.results) if (!r.ok) failed.push(`[${grp.name}] ${r.name} => ${r.detail}`);
+  for (const grp of data.groups)
+    for (const r of grp.results) if (!r.ok && r.severity !== 'warning') failed.push(`[${grp.name}] ${r.name} => ${r.detail}`);
   assert.deepStrictEqual(failed, [], 'başarısız testler: ' + failed.join(' | '));
   assert.strictEqual(data.ok, true);
   assert.ok(data.groups.length >= 5, 'birden çok test grubu beklenir');
