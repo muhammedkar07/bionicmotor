@@ -207,6 +207,8 @@ addCol('payments', 'paid_at', 'TEXT');
 addCol('payments', 'source', 'TEXT');
 // Ödeme anındaki TL karşılığı (döviz kurları sonradan değişse bile cariye doğru tutar işlenir).
 addCol('payments', 'amount_tl', 'INTEGER');
+// Dijital katalog sayfasına yüklenen PDF belgesi (tıklanınca indirilir).
+addCol('pages', 'catalog_pdf', 'TEXT');
 db.exec('CREATE INDEX IF NOT EXISTS idx_payments_provider_order ON payments(provider_order)');
 db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,

@@ -1,7 +1,19 @@
 const router = require('express').Router();
+const path = require('path');
+const fs = require('fs');
 const { db, logAudit } = require('../db');
 const { flash, throttle, publicOrigin } = require('../lib/core');
 const { clean } = require('../lib/sanitize');
+const { UPLOAD_DIR } = require('../lib/upload');
+
+// "dijital-katalog" sayfasına PDF yüklenmişse doğrudan indirir. İndirildiyse true döner.
+function sendCatalog(res, p) {
+  if (!p || !p.catalog_pdf) return false;
+  const full = path.join(UPLOAD_DIR, path.basename(String(p.catalog_pdf)));
+  if (!fs.existsSync(full)) return false;
+  res.download(full, 'bionic-katalog.pdf');
+  return true;
+}
 
 const clip = (v, n) =>
   String(v || '')
@@ -122,10 +134,21 @@ router.post('/bayilik-basvurusu', (req, res) => {
 router.get('/sayfa/:slug', (req, res, next) => {
   const p = db.prepare('SELECT * FROM pages WHERE slug=?').get(req.params.slug);
   if (!p) return next();
+  // Dijital katalog: PDF yüklüyse sayfa yerine doğrudan indir.
+  if (p.slug === 'dijital-katalog' && sendCatalog(res, p)) return;
   render(res, 'site/page', p.title, p.slug, { page: { ...p, body: clean(p.body) } });
 });
 router.get('/kurumsal', (req, res) => res.redirect('/sayfa/kurumsal'));
-router.get('/dijital-katalog', (req, res) => res.redirect('/sayfa/dijital-katalog'));
-router.get('/medya', (req, res) => res.redirect('/sayfa/medya'));
+router.get('/dijital-katalog', (req, res) => {
+  const p = db.prepare('SELECT * FROM pages WHERE slug=?').get('dijital-katalog');
+  if (sendCatalog(res, p)) return;
+  res.redirect('/sayfa/dijital-katalog');
+});
+router.get('/medya', (req, res) => {
+  const models = db
+    .prepare("SELECT name, category, image FROM models WHERE active=1 AND image IS NOT NULL AND image<>'' ORDER BY sort,id")
+    .all();
+  render(res, 'site/media', 'Medya', 'media', { models });
+});
 
 module.exports = router;

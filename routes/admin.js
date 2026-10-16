@@ -381,7 +381,8 @@ const RES = {
     fields: [
       T('slug', 'Adres (slug)', { required: true, slug: true }),
       T('title', 'Başlık', { required: true }),
-      A('body', 'İçerik (HTML)', { rows: 14 })
+      A('body', 'İçerik (HTML)', { rows: 14 }),
+      { name: 'catalog_pdf', label: 'Katalog Belgesi (PDF)', type: 'file', help: 'Yalnızca "dijital-katalog" sayfasında görünür. Yüklenen PDF, katalog bağlantısına tıklanınca otomatik indirilir.' }
     ]
   },
   messages: {

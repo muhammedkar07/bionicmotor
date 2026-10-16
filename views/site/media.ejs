@@ -1,0 +1,22 @@
+<%- include('../partials/site_head') %>
+<section class="wrap section">
+  <h2 class="title-red">MEDYA</h2>
+  <p class="muted" style="margin:-8px 0 22px">Bionic Motor modellerine ait görseller. Büyük hâlini görmek için görsele tıklayın.</p>
+  <% if (!models.length) { %><p class="muted">Henüz görsel eklenmemiş.</p><% } %>
+  <div class="mgallery">
+    <% models.forEach(m => { %>
+      <a class="mitem" href="<%= m.image %>" target="_blank" rel="noopener">
+        <img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async">
+        <span><%= m.name %></span>
+      </a>
+    <% }) %>
+  </div>
+</section>
+<style>
+  .mgallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+  .mitem{display:block;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:.25s;text-decoration:none}
+  .mitem:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--line-2)}
+  .mitem img{width:100%;height:180px;object-fit:contain;background:linear-gradient(160deg,var(--surface-2),var(--bg));display:block}
+  .mitem span{display:block;padding:10px 14px;font-weight:700;font-size:14px;color:var(--ink);text-align:center}
+</style>
+<%- include('../partials/site_foot') %>

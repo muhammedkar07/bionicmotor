@@ -43,7 +43,7 @@
             <button type="button" class="btn" id="addcat">+ Yeni Kategori Ekle</button>
           </div>
           <small class="muted" id="catmsg">Eklenen kategoriler listede kalır, her seferinde yeniden yazmanız gerekmez.</small>
-        <% } else if (f.type === 'file') { %><% if (v) { %><div><a href="<%= v %>" target="_blank">Mevcut dekontu görüntüle</a></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*,application/pdf">
+        <% } else if (f.type === 'file') { %><% if (v) { %><div><a href="<%= v %>" target="_blank">Mevcut belgeyi görüntüle</a></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*,application/pdf">
         <% } else if (f.type === 'image') { %><% if (v) { %><div><img src="<%= v %>" style="max-height:80px" alt=""></div><% } %><input type="file" id="f_<%= f.name %>" name="<%= f.name %>" accept="image/*">
         <% } else if (f.type === 'campaignModel') { %><select id="f_<%= f.name %>" name="<%= f.name %>"><option value="">— Model seçin (bilgileri otomatik doldurur) —</option><% (campaignModels || []).forEach(mo => { %><option value="<%= mo.id %>" data-name="<%= mo.name %>" data-subtitle="<%= [mo.category, mo.cc, mo.power, mo.gearbox].filter(Boolean).join(' · ') %>" data-price="<%= money(mo.price) %> ₺" data-image="<%= mo.image || '' %>" data-desc="<%= String(mo.description || '').replace(/"/g, '&quot;') %>"><%= mo.name %><%= mo.cc ? ' · ' + mo.cc : '' %></option><% }) %></select>
         <% } else if (f.type === 'number') { %><input type="number" step="any" id="f_<%= f.name %>" name="<%= f.name %>" value="<%= isMoney(f.name) && v !== '' && v != null ? v / 100 : v %>">
@@ -233,6 +233,19 @@
     const ip = document.querySelector('input[name="image_path"]');
     if (ip) ip.value = o.dataset.image || '';
   });
+})();
+</script>
+<% } %>
+<% if (res.key === 'pages') { %>
+<script nonce="<%= nonce %>">
+(() => {
+  const slug = document.getElementById('f_slug');
+  const box = document.querySelector('[data-field="catalog_pdf"]');
+  if (!slug || !box) return;
+  const toggle = () => { box.hidden = String(slug.value || '').trim() !== 'dijital-katalog'; };
+  slug.addEventListener('input', toggle);
+  slug.addEventListener('change', toggle);
+  toggle();
 })();
 </script>
 <% } %>
