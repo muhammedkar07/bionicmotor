@@ -39,7 +39,7 @@
     if (!box) return;
     const img = document.getElementById('mlbImg');
     const cap = document.getElementById('mlbCap');
-    const items = <%- j(models.map(m => ({ img: m.image, name: m.name }))) %>;
+    const items = <%- j(models.map(m => ({ img: (base || '') + m.image, name: m.name }))) %>;
     if (!items.length) return;
     let cur = 0;
     const show = i => {
