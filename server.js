@@ -24,11 +24,32 @@ function logError(...args) {
 require('./scripts/seed').ensureSeed();
 
 const app = express();
+
+// Alt yol (subpath) desteği. Ör. BASE_PATH=/bionic → uygulama https://site/bionic/ altında çalışır.
+// HTML bağlantıları, sunucu yönlendirmeleri ve ödeme dönüş adresi bu öneki kullanır.
+// Boş bırakılırsa (varsayılan) uygulama kökte çalışır ve hiçbir şey değişmez.
+const BASE = (process.env.BASE_PATH || '').trim().replace(/\/+$/, '');
+
 app.disable('x-powered-by');
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 // Üretimde görünümler önbelleğe alınır (EJS her istekte derlemesin).
 app.set('view cache', process.env.NODE_ENV === 'production');
+
+// BASE_PATH doluysa, EJS çıktısındaki köke-göreli bağlantıları (href/src/action ve satır içi
+// fetch/location) alt yol önekiyle yeniden yazar. Böylece tüm sayfalar /bionic/... üretir.
+if (BASE) {
+  const ejs = require('ejs');
+  const ejsExpr = ejs.__express;
+  const rewrite = html =>
+    html
+      .replace(/\b(href|src|action)=(["'])\/(?!\/)/g, '$1=$2' + BASE + '/')
+      .replace(/\b(fetch|location\.assign|location\.replace)\((["'])\/(?!\/)/g, '$1($2' + BASE + '/')
+      .replace(/\blocation(\.href)?=(["'])\/(?!\/)/g, 'location$1=$2' + BASE + '/');
+  app.engine('ejs', (file, opts, cb) =>
+    ejsExpr(file, opts, (err, str) => (err ? cb(err) : cb(null, rewrite(str))))
+  );
+}
 if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
 // Varlık sürümü: css/js içeriği değişmediği sürece sabit kalır (tarayıcı önbelleği korunur).
 function assetVersion() {
@@ -140,7 +161,22 @@ app.use((req, res, next) => {
   res.locals.dt = core.fmtDateTime;
   res.locals.v = ASSET_V;
   res.locals.path = req.path;
-  res.locals.origin = process.env.PUBLIC_URL || req.protocol + '://' + req.get('host');
+  res.locals.base = BASE;
+  res.locals.origin = process.env.PUBLIC_URL || req.protocol + '://' + req.get('host') + BASE;
+  // Sunucu taraflı yönlendirmeleri de alt yol öneki ile üret.
+  if (BASE) {
+    const _redirect = res.redirect.bind(res);
+    res.redirect = function (a, b) {
+      let status = 302;
+      let url = a;
+      if (typeof a !== 'string') {
+        status = a;
+        url = b;
+      }
+      if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//')) url = BASE + url;
+      return _redirect(status, url);
+    };
+  }
   res.locals.files = req.files || [];
   // Güvenli JSON seri  üretici (script bağlamı için < vektörünü \u003c olarak kaçar)
   res.locals.j = obj => {
@@ -173,10 +209,20 @@ app.use((err, req, res, next) => {
 process.on('uncaughtException', logError);
 process.on('unhandledRejection', logError);
 
+// BASE_PATH doluysa uygulamayı bu önek altında sunacak dış uygulama (aksi halde app'in kendisi).
+const rootApp = BASE
+  ? (() => {
+      const o = express();
+      o.disable('x-powered-by');
+      o.use(BASE, app);
+      return o;
+    })()
+  : app;
+
 // Sunucuyu başlatır; zarif kapanış (SIGTERM/SIGINT) ve otomatik bakım işlerini kurar.
 function start(port) {
   port = port || process.env.PORT || 3000;
-  const server = app.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}`));
+  const server = rootApp.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}${BASE}`));
 
   let closing = false;
   const shutdown = sig => {
@@ -202,5 +248,5 @@ function start(port) {
   return server;
 }
 
-module.exports = Object.assign(app, { start });
+module.exports = Object.assign(rootApp, { start });
 if (require.main === module) start(process.env.PORT || 3000);

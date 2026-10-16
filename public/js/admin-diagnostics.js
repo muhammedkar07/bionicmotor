@@ -19,7 +19,7 @@
     top.style.color = '#333';
     top.textContent = 'Testler çalışıyor…';
     results.innerHTML = '';
-    fetch('/admin/test/api', { credentials: 'same-origin' })
+    fetch((window.__BASE__ || '') + '/admin/test/api', { credentials: 'same-origin' })
       .then(function (r) {
         return r.json();
       })
@@ -134,7 +134,7 @@
   function repair() {
     if (repairBox)
       repairBox.innerHTML = '<div class="alert" style="background:#eef1f6;border-color:#d8dce3;color:#333">Onarım çalışıyor…</div>';
-    fetch('/admin/test/onar', {
+    fetch((window.__BASE__ || '') + '/admin/test/onar', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },

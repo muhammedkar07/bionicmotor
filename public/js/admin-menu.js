@@ -86,7 +86,7 @@
 
   function save() {
     const body = new URLSearchParams({ _csrf: CSRF, data: JSON.stringify({ order: items().map(a => a.dataset.menuId) }) });
-    fetch('/admin/menu-sirala', {
+    fetch((window.__BASE__ || '') + '/admin/menu-sirala', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body,
