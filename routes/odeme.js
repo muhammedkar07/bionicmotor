@@ -76,15 +76,10 @@ async function paratikaResult(req, res) {
   const spare = payment ? db.prepare('SELECT id FROM spare_orders WHERE payment_id=? AND deleted_at IS NULL').get(payment.id) : null;
   const back = (p, type, msg) => {
     if (req.session) flash(req, type, msg);
-    const target = spare
-      ? p && p.source === 'servis'
-        ? '/servis/yedek-parca-siparisleri'
-        : '/bayi/yedek-parca-siparisleri'
-      : p && p.source === 'bayi'
-        ? '/bayi/odeme'
-        : p && p.source === 'servis'
-          ? '/servis/odeme'
-          : '/odeme';
+    // Ödeme sonrası: bayi/servis panelindeyse HESAP HAREKETLERİNE, değilse ANA SAYFAYA yönlendir.
+    // (Kullanıcı /odeme/paratika/sonuc adresinde kalmaz.)
+    const src = p && p.source;
+    const target = src === 'bayi' ? '/bayi/hesap-ozeti' : src === 'servis' ? '/servis/hesap-ozeti' : '/';
     res.redirect(target);
   };
   if (!payment) return back(null, 'danger', 'Ödeme kaydı bulunamadı.');
