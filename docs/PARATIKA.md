@@ -127,3 +127,47 @@ PARATIKA_MERCHANT_PASSWORD=...
 PARATIKA_ENV=test            # canlı için prod
 PARATIKA_SIMULATE=0          # 1 = ağsız simülasyon (yalnızca geliştirme)
 ```
+
+## Tam API v2 dokümanı (kritik)
+
+Paratika'nın **asıl/tam** API dokümanı: `https://entegrasyon.paratika.com.tr/paratika/api/v2/doc`
+(entegrasyon rehberinden çok daha detaylı: Direct POST 2D/3D, 3D Kimlik Doğrulama, OTP, hata kodları, test kartları.)
+
+### İki AYRI ortam (ve ayrı API kullanıcıları)
+
+| Ortam | API adresi |
+| --- | --- |
+| **Test Ortamı** | `https://test.paratika.com.tr/paratika/api/v2` |
+| **Entegrasyon Ortamı** | `https://entegrasyon.paratika.com.tr/paratika/api/v2` |
+
+`10006273` numaralı işyerinin API kullanıcısı **yalnızca Entegrasyon ortamında** geçerli.
+Test ortamında aynı bilgiler `ERR10020 – Geçersiz kullanıcı bilgileri` döndürüyor →
+dokümanın da dediği gibi **"Canlı ve Entegrasyon ortamları için ayrı API kullanıcısı"** gerekir.
+
+### 3D doğrulama OTP ister — test şifresi
+
+- 3D akışı: `sale3d` → `est3Dgate` (Asseco) → **ACS (Modirum test)** → SMS/OTP → sonuç.
+- Dokümanın test kartları tablosunda **"3D Güvenli Şifre" = `123456`** olarak veriliyor.
+- API ile (tarayıcısız) tüm standart test kartları denendi: **tümü `ACS (OTP) gerekli`** döndü;
+  birkaç TROY/yabancı kart ise `Üye iş yerinin yabancı banka kartları ile işlem yapma yetkisi yoktur` verdi.
+  Yani ödeme **3D'de OTP girilmeden tamamlanmaz** (test ortamında `123456`).
+
+### Doğrulanan hata/response kodları
+
+| Kod | Anlam |
+| --- | --- |
+| `00` | Onaylı |
+| `98` | Genel Hata |
+| `99` | Reddedildi (banka/vPOS kaynaklı) |
+| `ERR10020` | Geçersiz kullanıcı bilgileri |
+| `ERR10046` | Kart geçerlilik tarihi geçersiz |
+| `ERR10154` | İşlem 3D kısıtlamasıyla başarısız |
+| `ERR10207` | OTP kodu bulunamadı |
+
+3D kimlik doğrulama örnek cevabı: `{ sessionToken, auth3DToken, responseCode: "00", mdStatus: 1, mdErrorMsg: "Authenticated" }`.
+
+### Notlar
+- Test ortamında "yabancı banka kartı" hatası: işyerinin vPOS havuzunda o BIN yok demektir.
+- İşyerindeki test vPOS'lar: Halkbank, İşbank, TEB, Akbank, Denizbank, Finansbank, Vakıfbank, Ziraat (+Maximobil).
+  (Garanti YOK — Garanti test kartları bu işyerinde çalışmaz.)
+
