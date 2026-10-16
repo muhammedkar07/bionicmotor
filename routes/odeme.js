@@ -71,7 +71,7 @@ router.post('/firma-degistir', (req, res) => {
 // Tüm paneller (bayi/servis/odeme) için TEK callback adresi kullanılır.
 async function paratikaResult(req, res) {
   const b = Object.assign({}, req.query, req.body);
-  const orderId = b.o || b.orderId || b.ORDER_ID || b.order_id || b.orderid;
+  const orderId = b.o || b.orderId || b.ORDER_ID || b.order_id || b.orderid || b.merchantPaymentId || b.MERCHANTPAYMENTID;
   const payment = orderId ? db.prepare('SELECT * FROM payments WHERE provider_order=?').get(String(orderId)) : null;
   const spare = payment ? db.prepare('SELECT id FROM spare_orders WHERE payment_id=? AND deleted_at IS NULL').get(payment.id) : null;
   const back = (p, type, msg) => {
@@ -113,6 +113,11 @@ async function paratikaResult(req, res) {
     );
     return back(payment, 'success', 'Ödemeniz başarıyla alındı ve hesabınıza işlendi.');
   }
+  if (v.pending) {
+    // Sonuç henüz kesinleşmedi: iptal etme, kullanıcıya bilgi ver (durum POS_PENDING kalır).
+    logAudit({ type: 'sistem', name: 'paratika' }, 'payment_pending', 'payments', payment.id, null, req.ip);
+    return back(payment, 'warning', 'Ödeme sonucu henüz kesinleşmedi. Kısa süre sonra tekrar kontrol edin.');
+  }
   db.prepare('UPDATE payments SET status=? WHERE id=? AND status=?').run('İptal', payment.id, STATUS.POS_PENDING);
   logAudit({ type: 'sistem', name: 'paratika' }, 'payment_failed', 'payments', payment.id, { error: v.error || null }, req.ip);
   return back(payment, 'danger', 'Ödeme tamamlanamadı: ' + (v.error || 'bilinmeyen hata'));
@@ -138,7 +143,13 @@ router.use((req, res, next) => {
   next();
 });
 
-const payCtx = (req, res) => ({ userId: res.locals.pu.id, firmId: req.session.pay.firmId, source: 'odeme', origin: publicOrigin(req) });
+const payCtx = (req, res) => ({
+  userId: res.locals.pu.id,
+  firmId: req.session.pay.firmId,
+  source: 'odeme',
+  origin: publicOrigin(req),
+  ip: req.ip
+});
 
 router.post('/ode', async (req, res) => {
   const b = req.body;
