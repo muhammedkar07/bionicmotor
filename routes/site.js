@@ -97,8 +97,12 @@ router.post('/iletisim', (req, res) => {
     flash(req, 'danger', 'Lütfen ad soyad, geçerli e-posta ve mesaj alanlarını doldurun.');
     return res.redirect('/iletisim');
   }
+  if (!b.kvkk) {
+    flash(req, 'danger', 'Lütfen KVKK Aydınlatma Metni’ni okuyup onaylayın.');
+    return res.redirect('/iletisim');
+  }
   db.prepare('INSERT INTO messages(name,email,phone,message) VALUES(?,?,?,?)').run(name, email, clip(b.phone, 40), msg);
-  logAudit({ type: 'ziyaretci', name }, 'create', 'messages', null, { email }, req.ip);
+  logAudit({ type: 'ziyaretci', name }, 'create', 'messages', null, { email, pazarlama: b.marketing ? 1 : 0 }, req.ip);
   t.hit();
   flash(req, 'success', 'Mesajınız alındı. En kısa sürede dönüş yapılacaktır.');
   res.redirect('/iletisim');
@@ -118,6 +122,10 @@ router.post('/bayilik-basvurusu', (req, res) => {
     flash(req, 'danger', 'Ad soyad, il ve geçerli bir telefon numarası zorunludur.');
     return res.redirect('/bayilik-basvurusu');
   }
+  if (!b.kvkk) {
+    flash(req, 'danger', 'Lütfen KVKK Aydınlatma Metni’ni okuyup onaylayın.');
+    return res.redirect('/bayilik-basvurusu');
+  }
   db.prepare('INSERT INTO applications(name,city,district,phone,note) VALUES(?,?,?,?,?)').run(
     name,
     clip(b.city, 60),
@@ -125,7 +133,7 @@ router.post('/bayilik-basvurusu', (req, res) => {
     phone,
     clip(b.note, 2000)
   );
-  logAudit({ type: 'ziyaretci', name }, 'create', 'applications', null, { city: clip(b.city, 60), phone }, req.ip);
+  logAudit({ type: 'ziyaretci', name }, 'create', 'applications', null, { city: clip(b.city, 60), phone, pazarlama: b.marketing ? 1 : 0 }, req.ip);
   t.hit();
   flash(req, 'success', 'Başvurunuz alındı. Sizinle iletişime geçeceğiz.');
   res.redirect('/bayilik-basvurusu');

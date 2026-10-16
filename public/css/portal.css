@@ -115,3 +115,6 @@ hr{border:0;border-top:1px solid #dee2e6;margin:30px 0 40px}
 .shop-empty{color:#6c757d;font-size:14px}
 .cart-total{display:flex;justify-content:space-between;font-weight:700;margin:12px 0;font-size:16px}
 @media(max-width:820px){.shop{grid-template-columns:1fr}.shop-cart{position:static}}
+.ckx{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:#555;margin:10px 0;cursor:pointer}
+.ckx input{margin:2px 0 0;flex:none}
+.ckx a{color:inherit;text-decoration:underline}

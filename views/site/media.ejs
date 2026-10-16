@@ -1,22 +1,65 @@
 <%- include('../partials/site_head') %>
 <section class="wrap section">
   <h2 class="title-red">MEDYA</h2>
-  <p class="muted" style="margin:-8px 0 22px">Bionic Motor modellerine ait görseller. Büyük hâlini görmek için görsele tıklayın.</p>
+  <p class="muted" style="margin:-8px 0 22px">Bionic Motor modellerine ait görseller. Büyütmek için görsele tıklayın.</p>
   <% if (!models.length) { %><p class="muted">Henüz görsel eklenmemiş.</p><% } %>
   <div class="mgallery">
-    <% models.forEach(m => { %>
-      <a class="mitem" href="<%= m.image %>" target="_blank" rel="noopener">
+    <% models.forEach((m, i) => { %>
+      <button type="button" class="mitem" data-i="<%= i %>">
         <img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async">
         <span><%= m.name %></span>
-      </a>
+      </button>
     <% }) %>
   </div>
 </section>
+
+<div class="mlb" id="mlb" hidden>
+  <button type="button" class="mlb-x" id="mlbX" aria-label="Kapat (Esc)">×</button>
+  <img id="mlbImg" src="" alt="">
+  <div class="mlb-cap" id="mlbCap"></div>
+</div>
+
 <style>
   .mgallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
-  .mitem{display:block;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:.25s;text-decoration:none}
+  .mitem{display:block;width:100%;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:.25s;cursor:zoom-in;font:inherit;text-align:center}
   .mitem:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--line-2)}
   .mitem img{width:100%;height:180px;object-fit:contain;background:linear-gradient(160deg,var(--surface-2),var(--bg));display:block}
-  .mitem span{display:block;padding:10px 14px;font-weight:700;font-size:14px;color:var(--ink);text-align:center}
+  .mitem span{display:block;padding:10px 14px;font-weight:700;font-size:14px;color:var(--ink)}
+  .mlb{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:300;padding:30px}
+  .mlb img{max-width:92vw;max-height:82vh;object-fit:contain;background:#fff;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .mlb-cap{position:absolute;left:0;right:0;bottom:20px;text-align:center;color:#fff;font-weight:700}
+  .mlb-x{position:absolute;top:16px;right:18px;width:46px;height:46px;border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:28px;line-height:1;cursor:pointer}
+  .mlb-x:hover{background:rgba(255,255,255,.34)}
 </style>
+
+<script nonce="<%= nonce %>">
+  (() => {
+    const box = document.getElementById('mlb');
+    if (!box) return;
+    const img = document.getElementById('mlbImg');
+    const cap = document.getElementById('mlbCap');
+    const items = <%- j(models.map(m => ({ img: m.image, name: m.name }))) %>;
+    if (!items.length) return;
+    let cur = 0;
+    const show = i => {
+      cur = (i + items.length) % items.length;
+      img.src = items[cur].img;
+      img.alt = items[cur].name;
+      cap.textContent = items[cur].name;
+    };
+    const open = i => { show(i); box.hidden = false; document.body.style.overflow = 'hidden'; };
+    const close = () => { box.hidden = true; document.body.style.overflow = ''; img.src = ''; };
+    document.querySelectorAll('.mitem').forEach(b => b.addEventListener('click', () => open(+b.dataset.i)));
+    document.getElementById('mlbX').addEventListener('click', close);
+    // Görselin dışına (sağa/sola/boşluğa) tıklayınca kapanır.
+    box.addEventListener('click', e => { if (e.target === box) close(); });
+    // Klavye: Esc kapatır, sol/sağ okları gezinir.
+    document.addEventListener('keydown', e => {
+      if (box.hidden) return;
+      if (e.key === 'Escape') close();
+      else if (e.key === 'ArrowLeft') show(cur - 1);
+      else if (e.key === 'ArrowRight') show(cur + 1);
+    });
+  })();
+</script>
 <%- include('../partials/site_foot') %>

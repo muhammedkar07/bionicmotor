@@ -17,6 +17,7 @@
     "seed:faqs": "node scripts/seed-faqs.js",
     "seed:about": "node scripts/seed-about.js",
     "seed:pages": "node scripts/seed-pages.js",
+    "seed:kvkk": "node scripts/seed-kvkk.js",
     "pack": "node scripts/pack.js",
     "reconcile": "node scripts/reconcile.js",
     "reset:data": "node scripts/reset-data.js",

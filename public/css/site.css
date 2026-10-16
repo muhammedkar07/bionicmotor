@@ -212,6 +212,9 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
 .skip{position:absolute;left:-9999px;top:0;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:0 0 10px 0;z-index:100}
 .skip:focus{left:0}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--red);outline-offset:2px;border-radius:4px}
+.ckx{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--muted);margin:10px 0;cursor:pointer}
+.ckx input{margin:2px 0 0;flex:none}
+.ckx a{color:inherit;text-decoration:underline}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
 }
