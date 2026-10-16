@@ -6,6 +6,7 @@ const compression = require('compression');
 const { allSettings, db } = require('./db');
 const core = require('./lib/core');
 const { UPLOAD_DIR } = require('./lib/upload');
+const paratika = require('./lib/paratika');
 
 // Hatalar hem konsola hem de logs/error.log dosyasına yazılır.
 const LOG_DIR = path.join(__dirname, 'logs');
@@ -61,6 +62,22 @@ function assetVersion() {
 }
 const ASSET_V = assetVersion();
 
+// CSP form-action izin listesi — ödeme formu kendine POST eder, sunucu 302 ile Paratika'nın
+// barındırılan ödeme sayfasına yönlendirir. form-action 'self' tek başına bu yönlendirmeyi
+// ENGELLER (tarayıcı net::ERR_ABORTED verir), bu yüzden Paratika adresleri eklenmelidir.
+const PAY_FORM_ACTION = (() => {
+  const set = new Set(['https://entegrasyon.paratika.com.tr', 'https://vpos.paratika.com.tr']);
+  try {
+    const c = paratika.cfg();
+    for (const u of [c.apiBase, c.hppUrl]) {
+      if (u) set.add(new URL(String(u).replace('{token}', 'x')).origin);
+    }
+  } catch {
+    /* varsayılanlar yeterli */
+  }
+  return [...set].join(' ');
+})();
+
 // Yanıt sıkıştırma (gzip/brotli) — metin varlıklarında büyük kazanç.
 app.use(compression());
 
@@ -79,8 +96,8 @@ app.use((req, res, next) => {
   // İstek başına rastgele nonce: satır içi <script> blokları yalnızca bu nonce ile çalışır.
   const nonce = crypto.randomBytes(16).toString('base64');
   res.locals.nonce = nonce;
-  const publicCsp = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'`;
-  const panelCsp = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'`;
+  const publicCsp = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self' ${PAY_FORM_ACTION}; base-uri 'self'; frame-ancestors 'self'; object-src 'none'`;
+  const panelCsp = `default-src 'self'; script-src 'self' 'nonce-${nonce}'; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self'; form-action 'self' ${PAY_FORM_ACTION}; base-uri 'self'; frame-ancestors 'self'; object-src 'none'`;
   res.setHeader('Content-Security-Policy', isPanel ? panelCsp : publicCsp);
   next();
 });
