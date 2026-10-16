@@ -20,18 +20,24 @@ async function reconcile({ log = console.log } = {}) {
     .all(STATUS.POS_PENDING);
   const res = { checked: rows.length, collected: 0, pending: 0, failed: 0 };
   for (const p of rows) {
-    const v = await paratika.query({ orderId: p.provider_order });
-    if (v.ok) {
-      if (collectPayment(p.id, v.ref)) {
-        res.collected++;
-        logAudit({ type: 'sistem', name: 'mutabakat' }, 'payment_collected', 'payments', p.id, { provider_order: p.provider_order, via: 'reconcile' }, null);
-        log('  ✅ #' + p.id + ' tahsil edildi (' + p.provider_order + ')');
+    try {
+      const v = await paratika.query({ orderId: p.provider_order });
+      if (v.ok) {
+        if (collectPayment(p.id, v.ref)) {
+          res.collected++;
+          logAudit({ type: 'sistem', name: 'mutabakat' }, 'payment_collected', 'payments', p.id, { provider_order: p.provider_order, via: 'reconcile' }, null);
+          log('  ✅ #' + p.id + ' tahsil edildi (' + p.provider_order + ')');
+        }
+      } else if (v.pending) {
+        res.pending++;
+      } else {
+        res.failed++;
+        log('  ❌ #' + p.id + ' onaylanmadı: ' + (v.error || 'bilinmiyor'));
       }
-    } else if (v.pending) {
-      res.pending++;
-    } else {
+    } catch (e) {
+      // Tek bir ödeme hata verse bile döngü devam eder (firma silinmiş vb.).
       res.failed++;
-      log('  ❌ #' + p.id + ' onaylanmadı: ' + (v.error || 'bilinmiyor'));
+      log('  ⚠ #' + p.id + ' işlenemedi: ' + e.message);
     }
   }
   return res;
