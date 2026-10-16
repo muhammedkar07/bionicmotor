@@ -13,6 +13,10 @@
           <% if (m.power) { %><li><b>Güç</b> <%= m.power %></li><% } %>
           <% if (m.gearbox) { %><li><b>Şanzıman</b> <%= m.gearbox %></li><% } %>
         </ul>
+        <div class="mprice">
+          <span class="lbl">Perakende Fiyat</span>
+          <% if (m.price) { %><b><%= money(m.price) %> ₺</b><% } else { %><b class="ask">Fiyat için arayın</b><% } %>
+        </div>
       </div>
     </div>
     <% }) %>

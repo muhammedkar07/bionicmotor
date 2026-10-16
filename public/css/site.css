@@ -110,6 +110,10 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
 .model-card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.6}
 .specs{list-style:none;padding:0;margin:8px 0 0;font-size:13px}
 .specs li{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:5px 0}
+.mprice{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mprice .lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.mprice b{font-size:20px;color:var(--red)}
+.mprice b.ask{font-size:13.5px;color:var(--muted);font-weight:700}
 
 /* ---------- Split / features ---------- */
 .split{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center}
