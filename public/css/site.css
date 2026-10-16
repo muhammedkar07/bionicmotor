@@ -105,9 +105,9 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
 .model-card:hover{transform:translateY(-6px);box-shadow:var(--shadow);border-color:var(--line-2)}
 .model-img{height:220px;background:linear-gradient(160deg,var(--surface-2),var(--bg));display:flex;align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:24px}
 .model-img img{max-width:86%;max-height:170px;object-fit:contain}
-.model-body{padding:20px 22px 24px}
-.model-card h3{margin:0 0 3px;font-size:21px}
-.model-card p{margin:0;color:var(--muted);font-size:13.5px}
+.model-body{padding:22px 24px 26px}
+.model-card h3{margin:0 0 8px;font-size:21px;text-align:center}
+.model-card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.6}
 .specs{list-style:none;padding:0;margin:8px 0 0;font-size:13px}
 .specs li{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:5px 0}
 
