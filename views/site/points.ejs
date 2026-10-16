@@ -1,9 +1,81 @@
 <%- include('../partials/site_head') %>
 <section class="wrap section narrow">
   <h2 class="title-red">SATIŞ VE SERVİS NOKTALARI</h2>
-  <div class="table-wrap"><table class="tbl">
+
+  <div class="psfilter">
+    <div class="psf-tabs">
+      <button type="button" class="psf-tab on" data-f="all">Tümü</button>
+      <button type="button" class="psf-tab" data-f="bayi">Bayi</button>
+      <button type="button" class="psf-tab" data-f="servis">Servis</button>
+    </div>
+    <label class="psf-city">İl:
+      <select id="psfCity">
+        <option value="">Tüm İller</option>
+        <% cities.forEach(c => { %><option value="<%= c %>"><%= c %></option><% }) %>
+      </select>
+    </label>
+    <input id="psfQ" type="search" placeholder="Nokta ara (ad / il / adres)" autocomplete="off">
+  </div>
+
+  <div class="table-wrap"><table class="tbl" id="psTable">
     <thead><tr><th>Ad</th><th>Tür</th><th>İl</th><th>Adres</th><th>Telefon</th></tr></thead>
-    <tbody><% points.forEach(p => { %><tr><td><%= p.name %></td><td><%= p.type %></td><td><%= p.city %></td><td><%= p.address %></td><td><%= p.phone %></td></tr><% }) %></tbody>
+    <tbody>
+    <% points.forEach(p => {
+      const t = String(p.type || '');
+      const bayi = /bayi/i.test(t) ? '1' : '0';
+      const servis = /servis/i.test(t) ? '1' : '0'; %>
+      <tr data-bayi="<%= bayi %>" data-servis="<%= servis %>" data-city="<%= (p.city || '').trim() %>">
+        <td><%= p.name %></td><td><%= p.type %></td><td><%= p.city %></td><td><%= p.address %></td><td><%= p.phone %></td>
+      </tr>
+    <% }) %>
+    </tbody>
   </table></div>
+  <p id="psfEmpty" class="muted" hidden>Bu kriterlere uygun satış/servis noktası bulunamadı.</p>
+  <% if (!points.length) { %><p class="muted">Henüz satış/servis noktası eklenmemiş.</p><% } %>
 </section>
+
+<style>
+  .psfilter{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:0 0 16px}
+  .psf-tabs{display:inline-flex;border:1px solid #e2e2e2;border-radius:999px;overflow:hidden}
+  .psf-tab{background:#fff;border:0;padding:9px 18px;font-weight:700;color:#555;cursor:pointer}
+  .psf-tab.on{background:#c5202b;color:#fff}
+  .psf-city{font-weight:600;color:#444}
+  .psf-city select,#psfQ{padding:8px 10px;border:1px solid #ddd;border-radius:8px;font:inherit}
+  #psfQ{flex:1;min-width:200px}
+</style>
+
+<script nonce="<%= nonce %>">
+  (function () {
+    var table = document.getElementById('psTable');
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('.psf-tab'));
+    var city = document.getElementById('psfCity');
+    var q = document.getElementById('psfQ');
+    var empty = document.getElementById('psfEmpty');
+    var filter = 'all';
+    function apply() {
+      var rows = table.tBodies[0].rows, shown = 0, term = (q.value || '').toLowerCase().trim(), c = city.value;
+      for (var i = 0; i < rows.length; i++) {
+        var r = rows[i];
+        var okType = filter === 'all' || r.getAttribute('data-' + filter) === '1';
+        var okCity = !c || r.getAttribute('data-city') === c;
+        var okQ = !term || r.textContent.toLowerCase().indexOf(term) >= 0;
+        var show = okType && okCity && okQ;
+        r.style.display = show ? '' : 'none';
+        if (show) shown++;
+      }
+      empty.hidden = shown > 0 || rows.length === 0;
+    }
+    tabs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        tabs.forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        filter = b.getAttribute('data-f');
+        apply();
+      });
+    });
+    city.addEventListener('change', apply);
+    q.addEventListener('input', apply);
+    apply();
+  })();
+</script>
 <%- include('../partials/site_foot') %>
