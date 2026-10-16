@@ -24,7 +24,13 @@ console.log(b + '=== DEMO MODU ===');
 console.log(b + 'Yönetim:      /admin   ->  admin / ' + process.env.ADMIN_PASSWORD);
 console.log(b + 'Bayi paneli:  /bayi    ->  kullanıcı kodu 25895 / demo1234Ab!');
 console.log(b + 'Online ödeme: /odeme   ->  demo@bayi.local / demo1234Ab!');
-console.log(b + 'Kart ödemeleri Paratika SİMÜLASYON modunda çalışır.');
+console.log(
+  b +
+    'Kart ödemeleri Paratika ' +
+    (process.env.PARATIKA_SIMULATE === '1'
+      ? 'SİMÜLASYON modunda çalışır (ağ isteği yapılmaz).'
+      : 'GERÇEK modda çalışır (' + (process.env.PARATIKA_ENV || 'test') + ').')
+);
 console.log(b + 'Veri klasörü: ' + demoDir);
 console.log(b + 'Müşteriye link için (ayrı terminal): npm run tunnel');
 console.log('');
