@@ -13,6 +13,7 @@
     "tunnel:create": "cloudflared tunnel create bionic-demo",
     "tunnel:run": "cloudflared tunnel run bionic-demo",
     "seed": "node scripts/seed.js",
+    "seed:models": "node scripts/seed-models.js",
     "backup": "node scripts/backup.js",
     "backup:verify": "node scripts/backup-verify.js",
     "restore": "node scripts/restore.js",

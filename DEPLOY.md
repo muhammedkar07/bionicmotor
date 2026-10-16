@@ -94,6 +94,7 @@ sudo ufw enable
 cd /var/www/bionic
 git pull
 npm ci --omit=dev
+npm run seed:models     # modelleri yükler (idempotent; varsa atlar)
 pm2 restart bionic
 ```
 

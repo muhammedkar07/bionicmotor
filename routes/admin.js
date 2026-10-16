@@ -338,7 +338,7 @@ const RES = {
     fields: [
       T('name', 'Model Adı', { required: true }),
       T('category', 'Kategori'),
-      T('cc', 'Hacim'),
+      T('cc', 'Hız'),
       T('power', 'Güç'),
       T('gearbox', 'Şanzıman'),
       A('description', 'Açıklama'),
