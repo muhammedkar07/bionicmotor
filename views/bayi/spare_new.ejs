@@ -59,11 +59,7 @@
       </div>
 
       <div id="cardbox" class="box">
-        <p class="muted" style="margin-top:0">Kart bilgileriniz bu sitede <b>alınmaz</b>. “Öde ve Siparişi Gönder” dediğinizde Paratika’nın güvenli ödeme sayfasına yönlendirilirsiniz. Ödeme onaylandığında sipariş otomatik onaylanır ve hesabınıza işlenir.</p>
-        <table class="ptbl">
-          <thead><tr><th>Seç</th><th>Taksit</th><th class="r">Komisyon</th><th class="r">Taksit Tutarı</th><th class="r">Toplam</th></tr></thead>
-          <tbody id="itbody"></tbody>
-        </table>
+        <p class="muted" style="margin-top:0">Kart bilgileriniz bu sitede <b>alınmaz</b>. “Öde ve Siparişi Gönder” dediğinizde Paratika’nın güvenli ödeme sayfasına yönlendirilirsiniz. Taksit seçeneklerini Paratika sayfasında belirleyebilirsiniz. Ödeme onaylandığında sipariş otomatik onaylanır ve hesabınıza işlenir.</p>
       </div>
       <p class="muted" id="cashnote" hidden>Nakit veya Havale / EFT seçildiğinde sipariş yönetici onayı bekler.</p>
       <div id="havalebox" class="box" hidden>
@@ -76,7 +72,6 @@
   </form>
 </div>
 <script nonce="<%= nonce %>">
-  const INST = <%- j(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
   const PARTS = <%- j(parts.map(p => ({ id: p.id, name: p.name, code: p.code, price: (+p.price || 0) / 100, max: +p.max_qty || 0 }))) %>;
   const OLD = <%- j(old || {}) %>;
   const CREDIT = <%- j((Number(credit) || 0) / 100) %>;
@@ -87,14 +82,6 @@
   const part = id => PARTS.find(p => p.id === id);
   let cart = [], total = 0;
 
-  function renderInst() {
-    const checked = (document.querySelector('input[name=installment_id]:checked') || {}).value || (INST[0] && INST[0].id);
-    $('itbody').innerHTML = INST.map(i => {
-      const t = total + total * i.rate / 100;
-      return `<tr><td><input type="radio" name="installment_id" value="${i.id}" ${i.id == checked ? 'checked' : ''} style="display:inline;width:auto;margin:0"></td>` +
-        `<td>${esc(i.label)}</td><td class="r">%${fmt(i.rate)}</td><td class="r">${fmt(t / i.count)} ₺</td><td class="r">${fmt(t)} ₺</td></tr>`;
-    }).join('');
-  }
   function render() {
     const box = $('cartlines');
     total = 0;
@@ -120,7 +107,6 @@
       note.hidden = true; note.textContent = '';
     }
     $('balance').textContent = CREDIT > 0 ? ('Kullanılabilir alacak: ' + fmt(CREDIT) + ' ₺') : 'Alacak bakiyeniz yok.';
-    renderInst();
   }
   function add(id, qty) {
     const p = part(id); if (!p) return;
@@ -216,7 +202,6 @@
   setV('input[name=payer_name]', OLD.payer_name);
   (OLD.lines || []).filter(l => +l[0] > 0).forEach(l => add(+l[0], Math.max(1, Math.floor(+l[1]) || 1)));
   render();
-  if (OLD.installment_id) { const rr = document.querySelector('input[name=installment_id][value="' + OLD.installment_id + '"]'); if (rr) { rr.checked = true; renderInst(); } }
   method();
 </script>
 <%- include('../partials/bayi_foot') %>

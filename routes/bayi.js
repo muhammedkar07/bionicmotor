@@ -199,8 +199,7 @@ router.get('/yedek-parca-ekstre', (req, res) => {
 });
 
 router.get('/odeme', (req, res) => {
-  const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
-  page(res, 'odeme', 'Online Ödeme', { inst, base: '/bayi/odeme' });
+  page(res, 'odeme', 'Online Ödeme', { base: '/bayi/odeme' });
 });
 router.post('/odeme/ode', async (req, res) => {
   const b = req.body;
@@ -257,11 +256,10 @@ router.get('/garanti', (req, res) => {
 
 router.get('/yedek-parca/yeni', (req, res) => {
   const parts = db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
-  const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
   const models = db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();
   const bal = accountSummary(res.locals.bf.id, 'parca').balance;
   const credit = bal < 0 ? -bal : 0;
-  page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, models, old: null, credit });
+  page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, models, old: null, credit });
 });
 router.post('/yedek-parca/yeni', async (req, res) => {
   const b = req.body;
@@ -271,16 +269,14 @@ router.post('/yedek-parca/yeni', async (req, res) => {
     lines: ids.map((id, i) => [+id || '', String(qtys[i] ?? '').trim()]),
     note: String(b.note || '').slice(0, 1000),
     pay_method: b.pay_method || 'kart',
-    payer_name: String(b.payer_name || '').slice(0, 120),
-    installment_id: b.installment_id || ''
+    payer_name: String(b.payer_name || '').slice(0, 120)
   };
   const renderNew = () => {
     const parts = db.prepare("SELECT * FROM products WHERE kind='parca' AND active=1 ORDER BY category,name").all();
-    const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
     const models = db.prepare('SELECT id,name FROM models WHERE active=1 ORDER BY name COLLATE NOCASE').all();
     const bal = accountSummary(res.locals.bf.id, 'parca').balance;
     const credit = bal < 0 ? -bal : 0;
-    page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, inst, models, old, credit });
+    page(res, 'spare_new', 'Yedek Parça Sipariş Oluştur', { parts, models, old, credit });
   };
   const back = m => {
     res.locals.flash = { type: 'danger', msg: m };
@@ -326,8 +322,7 @@ router.post('/yedek-parca/yeni', async (req, res) => {
         applied,
         method,
         lines,
-        payable,
-        installmentId: b.installment_id
+        payable
       });
     } catch (e) {
       return back('Ödeme başlatılamadı: ' + e.message);

@@ -116,8 +116,7 @@ router.get('/', (req, res) => {
   const firms = db
     .prepare('SELECT f.id, f.name FROM firms f JOIN user_firms uf ON uf.firm_id=f.id WHERE uf.user_id=? AND f.active=1 ORDER BY f.name')
     .all(u.id);
-  const inst = db.prepare('SELECT * FROM installments WHERE active=1 ORDER BY count').all();
-  res.render('odeme/pay', { title: 'Ödeme Ekranı', inst, firms, firmId: req.session.pay.firmId });
+  res.render('odeme/pay', { title: 'Ödeme Ekranı', firms, firmId: req.session.pay.firmId });
 });
 
 router.use((req, res, next) => {

@@ -79,16 +79,14 @@ const balance = firmId => accountSummary(firmId, 'ana').balance;
 const lastPayment = () => db.prepare('SELECT * FROM payments ORDER BY id DESC LIMIT 1').get();
 
 // Kart ödemesi başlatır ve simüle callback'i takip eder. Sonuç: finalize edilmiş ödeme.
-async function payByCard(cookie, panel, amount, { currency = 'TL', installment_id = 1 } = {}) {
+async function payByCard(cookie, panel, amount) {
   const page = await get(panel + '/odeme', cookie);
   const res = await postForm(
     panel + '/odeme/ode',
     {
       method: 'kart',
       amount,
-      currency,
       description: 'test',
-      installment_id,
       _csrf: csrfOf(page.html)
     },
     cookie
@@ -127,30 +125,18 @@ test('bayi kart ödemesi tahsil edilir ve aktif firmanın carisine alacak işlen
   );
 });
 
-test('komisyon cariye yazılmaz (alacak = amount, total değil)', async () => {
+test('tek çekim: komisyon yok, cari ödenen tutar kadar azalır', async () => {
   const cookie = await loginBayi();
   const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
   const before = balance(firmId);
-  // 3 Taksit komisyonu %3.5 -> total 1035; cari yalnızca 1000 azalmalı.
-  const { cb } = await payByCard(cookie, '/bayi', '1000.00', { installment_id: 3 });
+  const { cb } = await payByCard(cookie, '/bayi', '1000.00');
   assert.strictEqual(cb.status, 302);
   const p = lastPayment();
   assert.strictEqual(p.amount, 100000);
-  assert.strictEqual(p.total, 103500);
-  assert.strictEqual(balance(firmId), before - 100000, 'cari yalnızca ödenen borç kadar azalmalı');
-});
-
-test('döviz ödemesi kurdan TL’ye çevrilerek işlenir', async () => {
-  const cookie = await loginBayi();
-  const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
-  const rate = parseFloat(db.prepare("SELECT value FROM settings WHERE key='usd_rate'").get().value);
-  const before = balance(firmId);
-  const { cb } = await payByCard(cookie, '/bayi', '100.00', { currency: 'USD' });
-  assert.strictEqual(cb.status, 302);
-  const p = lastPayment();
-  assert.strictEqual(p.currency, 'USD');
-  const expected = Math.round(10000 * rate);
-  assert.strictEqual(balance(firmId), before - expected, 'cari ' + expected + ' kuruş azalmalı');
+  assert.strictEqual(p.commission, 0);
+  assert.strictEqual(p.total, 100000, 'komisyon eklenmemeli (tek çekim)');
+  assert.strictEqual(p.currency, 'TL');
+  assert.strictEqual(balance(firmId), before - 100000, 'cari yalnızca ödenen tutar kadar azalmalı');
 });
 
 test('aynı callback iki kez gelirse çift kayıt olmaz (idempotent)', async () => {
@@ -236,7 +222,6 @@ test('kartla yedek parça siparişi: ödeme sonrası sipariş dönüşür, cari 
       part_id: String(part.id),
       qty: '2',
       pay_method: 'kart',
-      installment_id: '1',
       note: 'test'
     },
     cookie

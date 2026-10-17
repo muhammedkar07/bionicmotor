@@ -11,29 +11,12 @@
   <section>
     <h2><span class="cico"></span>Ödeme Ekranı</h2>
     <label>Ödeme Tutarı
-      <div class="amount"><span>💵</span><input id="amount" name="amount" inputmode="decimal" placeholder="Örn. 1.250,50" required>
-        <select name="currency" id="cur"><option>TL</option><option>USD</option><option>EUR</option></select></div></label>
+      <div class="amount"><span>💵</span><input id="amount" name="amount" inputmode="decimal" placeholder="Örn. 1.250,50" required><b class="cur">TL</b></div></label>
     <label>Ödeme Açıklaması<textarea id="desc" name="description" rows="6" placeholder="Açıklama giriniz" maxlength="500"></textarea></label>
   </section>
   <section>
     <h2><span class="cico"></span>Güvenli Ödeme</h2>
-    <p class="havale-uyari">Kart bilgileriniz bu sitede <b>alınmaz</b>. “ÖDEME YAP” dediğinizde Paratika’nın güvenli ödeme sayfasına yönlendirilirsiniz. Ödeme onaylandığında tutar <b>hesabınıza otomatik olarak</b> alacak işlenir.</p>
-  </section>
-  <section>
-    <h2><span class="cico"></span>Döviz Kurları</h2>
-    <div class="rates">
-      <div><span>EUR</span><span>: <%= String(s.eur_rate).replace('.', ',') %></span></div>
-      <div><span>USD</span><span>: <%= String(s.usd_rate).replace('.', ',') %></span></div>
-    </div>
-  </section>
-</div>
-<div class="pw grid3 low" id="cardlow">
-  <section class="span2" id="taksit">
-    <h2><span class="cico"></span>Taksit Tablosu</h2>
-    <table class="itbl">
-      <thead><tr><th>SEÇ</th><th>TAKSİT</th><th>KOMİSYON ORANI</th><th>TAKSİT TUTARI</th><th>TOPLAM TUTAR</th></tr></thead>
-      <tbody id="itbody"></tbody>
-    </table>
+    <p class="havale-uyari">Kart bilgileriniz bu sitede <b>alınmaz</b>. “ÖDEME YAP” dediğinizde Paratika’nın güvenli ödeme sayfasına yönlendirilirsiniz. <b>Taksit seçeneklerini</b> Paratika sayfasında belirleyebilirsiniz. Ödeme onaylandığında tutar <b>hesabınıza otomatik olarak</b> alacak işlenir.</p>
   </section>
   <section>
     <h2><span class="cico"></span>Ödeme Özeti</h2>
@@ -46,8 +29,7 @@
     <h2><span class="cico"></span>Havale / EFT Bilgileri</h2>
     <p class="havale-uyari">Havale / EFT işlemlerinde açıklama kısmına <b>bayi kodunuzu ve adınızı soyadınızı</b> yazmayı unutmayınız.</p>
     <label>Ödeme Tutarı
-      <div class="amount"><span>💵</span><input id="amount2" name="amount" inputmode="decimal" placeholder="Örn. 1.250,50" required disabled>
-        <select name="currency" id="cur2" disabled><option>TL</option><option>USD</option><option>EUR</option></select></div></label>
+      <div class="amount"><span>💵</span><input id="amount2" name="amount" inputmode="decimal" placeholder="Örn. 1.250,50" required disabled><b class="cur">TL</b></div></label>
     <label>Ödeme Açıklaması<textarea name="description" id="desc2" rows="4" placeholder="Açıklama giriniz" maxlength="500" disabled></textarea></label>
     <label>Gönderen Hesap Ad Soyad:<input name="payer_name" id="payer_name" maxlength="120" placeholder="Havale/EFT'yi gönderen hesabın ad soyadı" disabled></label>
   </section>
@@ -57,40 +39,15 @@
 </div>
 </form>
 <script nonce="<%= nonce %>">
-  const INST = <%- j(inst.map(i => ({ id: i.id, label: i.label, count: i.count, rate: i.rate }))) %>;
   const $ = id => document.getElementById(id);
-  const fmt = n => n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  // Sunucu tarafıyla (lib/money.js) tutarlı katı ayrıştırma: "1.250,50" veya "1250.50".
-  function parseAmount(v) {
-    let s = String(v || '').trim().replace(/\s/g, '');
-    if (!s) return 0;
-    let m = s.match(/^(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/);
-    if (m) return Number(m[1].replace(/\./g, '')) + Number(((m[2] || '') + '00').slice(0, 2)) / 100;
-    m = s.match(/^(\d+)(?:,(\d{1,2}))?$/);
-    if (m) return Number(m[1]) + Number(((m[2] || '') + '00').slice(0, 2)) / 100;
-    m = s.match(/^(\d+)(?:\.(\d{1,2}))?$/);
-    if (m) return Number(m[1]) + Number(((m[2] || '') + '00').slice(0, 2)) / 100;
-    return 0;
-  }
-  function renderInst() {
-    const a = parseAmount($('amount').value), cur = $('cur').value;
-    const checked = (document.querySelector('input[name=installment_id]:checked') || {}).value || INST[0]?.id;
-    $('itbody').innerHTML = INST.map(i => {
-      const total = a + a * i.rate / 100;
-      const el = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      return `<tr><td><input type="radio" name="installment_id" value="${i.id}" ${i.id == checked ? 'checked' : ''}></td>
-        <td>${el(i.label)}</td><td>%${fmt(i.rate)}</td><td>${fmt(total / i.count)} ${cur}</td><td>${fmt(total)} ${cur}</td></tr>`;
-    }).join('');
-  }
-  ['amount', 'cur'].forEach(i => $(i).addEventListener('input', renderInst));
   function applyMethod() {
     const havale = document.querySelector('input[name=method]:checked').value === 'havale';
-    $('cardgrid').hidden = havale; $('cardlow').hidden = havale; $('havalebox').hidden = !havale; $('havalebtn').hidden = !havale;
+    $('cardgrid').hidden = havale; $('havalebox').hidden = !havale; $('havalebtn').hidden = !havale;
     // Kapalı tarafın alanları devre dışı bırakılır; aksi halde aynı isimli alanlar çift gönderilir.
-    $('amount').disabled = havale; $('cur').disabled = havale; $('desc').disabled = havale;
-    $('amount2').disabled = !havale; $('cur2').disabled = !havale; $('desc2').disabled = !havale; $('payer_name').disabled = !havale;
+    $('amount').disabled = havale; $('desc').disabled = havale;
+    $('amount2').disabled = !havale; $('desc2').disabled = !havale; $('payer_name').disabled = !havale;
     $('amount2').required = havale; $('payer_name').required = havale; $('amount').required = !havale;
   }
   document.querySelectorAll('input[name=method]').forEach(r => r.onchange = applyMethod);
-  renderInst(); applyMethod();
+  applyMethod();
 </script>

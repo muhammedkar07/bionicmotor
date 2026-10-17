@@ -274,19 +274,6 @@ const RES = {
       S('status', 'Durum', ['Sanal POS Bekliyor', 'Talimat Oluşturuldu', 'Onaylandı', 'Tahsil Edildi', 'İptal'])
     ]
   },
-  installments: {
-    title: 'Taksit / Komisyon',
-    table: 'installments',
-    group: 'Online Ödeme',
-    list: ['label', 'count', 'rate', 'active'],
-    order: 'count',
-    fields: [
-      T('label', 'Etiket', { required: true }),
-      N('count', 'Taksit Sayısı', { required: true }),
-      N('rate', 'Komisyon Oranı (%)'),
-      C('active')
-    ]
-  },
   slides: {
     title: 'Ana Sayfa Slider',
     table: 'slides',
@@ -439,13 +426,6 @@ const SETTINGS = [
       ['instagram', 'Instagram'],
       ['youtube', 'YouTube'],
       ['eticaret_url', 'E-Ticaret Adresi']
-    ]
-  ],
-  [
-    'Online Ödeme',
-    [
-      ['eur_rate', 'EUR Kuru'],
-      ['usd_rate', 'USD Kuru']
     ]
   ],
   ['Vergi Oranı (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)']]],
