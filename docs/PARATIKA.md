@@ -4,7 +4,9 @@ Bu dosya, Paratika'nın resmi entegrasyon dokümanından ve **entegrasyon (test)
 canlı denemelerle** doğrulanan sözleşmeyi kaydeder. Doküman sitesi (`test.paratika.com.tr/docs` →
 `/paratika/api/v2/integration`) yalnızca tarayıcı User-Agent ile açılabiliyor.
 
-Üye işyeri (test): **10006273** — API kullanıcısı: `muhammedkar97@gmail.com`
+Üye işyeri (**canlı / VPOS**): **10013443** — API kullanıcısı: `h.sancar288@gmail.com`
+
+Üye işyeri (test/entegrasyon): **10006273** — API kullanıcısı: `muhammedkar97@gmail.com`
 
 ## Uç noktalar (yalnızca POST)
 
@@ -121,12 +123,37 @@ Test ortamında bu üye işyerine tanımlı sanal POS'lar: **Halkbank** ve **İ�
 ## Ortam değişkenleri
 
 ```
-PARATIKA_MERCHANT=10006273
-PARATIKA_MERCHANT_USER=muhammedkar97@gmail.com
+PARATIKA_MERCHANT=10013443
+PARATIKA_MERCHANT_USER=h.sancar288@gmail.com
 PARATIKA_MERCHANT_PASSWORD=...
-PARATIKA_ENV=test            # canlı için prod
+PARATIKA_ENV=prod            # canlı (VPOS) — test için 'test'
 PARATIKA_SIMULATE=0          # 1 = ağsız simülasyon (yalnızca geliştirme)
 ```
+
+## Canlıya (VPOS) geçiş — durum
+
+`PARATIKA_ENV=prod` yapıldığında `cfg()` uç adreslerini `vpos.paratika.com.tr`'ye çevirir.
+**Canlı kimlik bilgileri doğrulandı** (5 test):
+
+| Test | Sonuç |
+| --- | --- |
+| `QUERYINSTALLMENT` | `00` Approved (Halkbank vPOS listeleniyor) |
+| `QUERYMERCHANTCOMMISSION` | `00` Approved |
+| `SESSIONTOKEN` | `sessionToken` döndü (`00` Approved) |
+| Uygulama içi HPP yönlendirmesi | `302 → https://vpos.paratika.com.tr/payment/<token>` |
+| Sistem testi (Teşhis) sayfası | API adresi `https://vpos.paratika.com.tr/paratika/api/v2` |
+
+> ⚠️ **Kalan tek koşul: alan adı + SSL.** Banka 3D adımında `RETURNURL`'ün gerçek,
+> HTTPS'li ve kayıtlı bir adres olması beklenir. `bionicmotorsiklet.com` şu an eski
+> sunucuya (`45.151.250.117`) baktığı için dönüş adresi geçici olarak
+> `http://130.61.231.148/bionic` üzerinden üretilir (`PUBLIC_URL` boş → `publicOrigin(req)`).
+> Alan adı bu sunucuya (`130.61.231.148`) alındığında:
+> `certbot --nginx -d bionicmotorsiklet.com -d www.bionicmotorsiklet.com` → ardından
+> `.env` içinde `PUBLIC_URL=https://bionicmotorsiklet.com/bionic` ve `COOKIE_SECURE=1`.
+
+Mutabakat (reconcile) açılışta ve 15 dakikada bir, `Ödeme Bekliyor` durumundaki ödemeleri
+`QUERYTRANSACTION` ile sunucudan sunucuya doğrulayıp onaylananları caride alacağa işler;
+dönüş (callback) kaçsa bile **tahsilat kaybolmaz**.
 
 ## Tam API v2 dokümanı (kritik)
 

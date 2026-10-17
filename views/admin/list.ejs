@@ -118,7 +118,7 @@
 </div>
 <% if (typeof acct !== 'undefined' && acct) { %>
 <div class="cards4">
-  <div class="stat bg-green"><div>Önceki Dönemden Devir</div><b><%= money(acct.devir) %> ₺</b></div>
+  <div class="stat bg-green"><div><%= from || to ? 'Dönem Başı Bakiye' : 'Önceki Dönemden Devir' %></div><b><%= money(acct.opening != null ? acct.opening : acct.devir) %> ₺</b></div>
   <div class="stat bg-cyan"><div>Dönem İçi Satışlar</div><b><%= money(acct.sales) %> ₺</b></div>
   <div class="stat bg-yellow"><div>Vadesi Gelmemiş Çekler</div><b><%= money(acct.pendingChecks) %> ₺</b></div>
   <div class="stat bg-blue"><div>Kredi Kartı Ödemeleri</div><b><%= money(acct.card) %> ₺</b></div>

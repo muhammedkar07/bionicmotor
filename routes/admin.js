@@ -659,8 +659,12 @@ router.get('/r/:res', (req, res) => {
     });
   const q = String(req.query.q || '').trim();
   const firm = req.query.firm ? +req.query.firm : null;
-  // Tarih aralığı filtresi (yalnızca 'date' alanı olan listelerde; ör. Hesap Hareketleri).
-  const dateCol = r.fields.some(f => f.name === 'date') ? 'date' : null;
+  // Tarih aralığı filtresi (yalnızca tarih alanı olan listelerde).
+  // Ticari tarih alanları öncelikli; zaman damgasıyla tutulan kayıtlarda created_at kullanılır.
+  const DATE_FIELDS = ['date', 'sale_date', 'request_date', 'due_date'];
+  const dateCol =
+    DATE_FIELDS.find(n => r.fields.some(f => f.name === n)) ||
+    (['payments', 'messages', 'applications', 'orders', 'spareorders'].includes(r.table) ? 'created_at' : null);
   const from = String(req.query.from || '').slice(0, 10);
   const to = String(req.query.to || '').slice(0, 10);
   const textCols = r.fields.filter(f => ['text', 'textarea', 'readonly', 'auto'].includes(f.type) && !f.ref).map(f => f.name);
@@ -683,8 +687,8 @@ router.get('/r/:res', (req, res) => {
     where.push('(' + parts.join(' OR ') + ')');
   }
   if (firmWhere && firm) where.push(firmWhere);
-  if (dateCol && from) where.push(`${dateCol} >= @from`);
-  if (dateCol && to) where.push(`${dateCol} <= @to`);
+  if (dateCol && from) where.push(`date(${dateCol}) >= @from`);
+  if (dateCol && to) where.push(`date(${dateCol}) <= @to`);
   if (SOFT_DELETE.has(r.table)) where.push('deleted_at IS NULL');
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   // Parametreler yalnızca SQL içinde kullanıldıklarında eklenir (kullanılmayan named parametre hata verir)
@@ -703,10 +707,11 @@ router.get('/r/:res', (req, res) => {
   const firms = firmFilter ? db.prepare('SELECT id,name FROM firms ORDER BY name').all() : [];
   let acct, acctLabel;
   if (r.table === 'account_movements') {
-    acct = overallSummary(firm || null);
+    acct = overallSummary(firm || null, { from, to });
     acctLabel = firm
       ? 'Seçili bayi: ' + (db.prepare('SELECT name FROM firms WHERE id=?').get(firm) || {}).name
       : 'Tüm bayiler (' + acct.firms + ')';
+    if (from || to) acctLabel += ' · ' + (from || 'başlangıç') + ' – ' + (to || 'bugün') + ' aralığı';
   }
   res.render('admin/list', {
     title: r.title,
