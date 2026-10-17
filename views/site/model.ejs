@@ -1,0 +1,61 @@
+<%- include('../partials/site_head') %>
+<section class="wrap section">
+  <nav class="crumb"><a href="/">Ana Sayfa</a> <span>›</span> <a href="/modeller">Modeller</a> <span>›</span> <b><%= m.name %></b></nav>
+
+  <div class="mpage">
+    <div class="mpage-img">
+      <% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" decoding="async"><% } else { %><span><%= m.name %></span><% } %>
+    </div>
+    <div class="mpage-info">
+      <% if (m.category) { %><span class="mtag"><%= m.category %></span><% } %>
+      <h1><%= m.name %></h1>
+      <ul class="mpage-specs">
+        <% if (m.cc) { %><li><b>Hız</b><span><%= m.cc %></span></li><% } %>
+        <% if (m.power) { %><li><b>Güç</b><span><%= m.power %></span></li><% } %>
+        <% if (m.gearbox) { %><li><b>Şanzıman</b><span><%= m.gearbox %></span></li><% } %>
+      </ul>
+      <div class="mpage-price">
+        <span class="lbl">Tavsiye Edilen Perakende Fiyat</span>
+        <% if (m.price) { %><b><%= money(m.price) %> ₺</b><% } else { %><b class="ask">Fiyat için arayın</b><% } %>
+      </div>
+      <div class="mpage-cta">
+        <a class="btn btn-red" href="/satis-ve-servis">Yetkili Satış Noktaları</a>
+        <a class="btn btn-line" href="/iletisim">Bilgi / İletişim</a>
+      </div>
+    </div>
+  </div>
+
+  <% if (m.description) { %>
+  <div class="mpage-desc">
+    <h2 class="title-red">AÇIKLAMA</h2>
+    <p><%= m.description %></p>
+  </div>
+  <% } %>
+
+  <div class="mpage-back"><a class="btn btn-line" href="/modeller">‹ Tüm Modeller</a></div>
+</section>
+<style>
+  .crumb{font-size:13px;color:var(--muted);margin:0 0 16px}
+  .crumb a{color:var(--muted);text-decoration:none}
+  .crumb a:hover{color:var(--red)}
+  .crumb b{color:var(--ink)}
+  .mpage{display:grid;grid-template-columns:1.05fr .95fr;gap:38px;align-items:start}
+  .mpage-img{background:linear-gradient(160deg,var(--surface-2),var(--bg));border:1px solid var(--line);border-radius:var(--r);display:flex;align-items:center;justify-content:center;padding:26px;min-height:340px}
+  .mpage-img img{max-width:100%;max-height:420px;object-fit:contain}
+  .mpage-img span{font-weight:800;font-size:26px;color:var(--muted)}
+  .mtag{display:inline-block;background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .mpage-info h1{margin:12px 0 18px;font-size:34px}
+  .mpage-specs{list-style:none;padding:0;margin:0 0 20px}
+  .mpage-specs li{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:12px 2px;font-size:15px}
+  .mpage-specs li b{color:var(--muted);font-weight:600}
+  .mpage-price{border:1px dashed var(--line);border-radius:var(--r);padding:16px 18px;margin:0 0 20px}
+  .mpage-price .lbl{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .mpage-price b{font-size:30px;color:var(--red)}
+  .mpage-price b.ask{font-size:18px;color:var(--muted)}
+  .mpage-cta{display:flex;gap:12px;flex-wrap:wrap}
+  .mpage-desc{margin-top:38px}
+  .mpage-desc p{white-space:pre-line;color:var(--ink-2);line-height:1.85;font-size:15.5px}
+  .mpage-back{margin-top:28px}
+  @media(max-width:860px){.mpage{grid-template-columns:1fr;gap:24px}.mpage-info h1{font-size:27px}}
+</style>
+<%- include('../partials/site_foot') %>

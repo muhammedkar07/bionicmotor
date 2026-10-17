@@ -66,6 +66,13 @@ router.get('/modeller', (req, res) => {
   render(res, 'site/models', 'Modeller', 'models', { models });
 });
 
+router.get('/model/:id', (req, res, next) => {
+  const id = +String(req.params.id).match(/^\d+/);
+  const m = id ? db.prepare('SELECT * FROM models WHERE id=? AND active=1').get(id) : null;
+  if (!m) return next();
+  render(res, 'site/model', m.name, 'models', { m });
+});
+
 router.get('/satis-ve-servis', (req, res) => {
   const points = db.prepare('SELECT * FROM points WHERE active=1 ORDER BY city,name').all();
   const cities = [...new Set(points.map(p => (p.city || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr'));

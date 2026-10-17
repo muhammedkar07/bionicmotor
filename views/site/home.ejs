@@ -80,7 +80,7 @@
   <div class="h2"><h2>Modeller<span>imiz</span></h2><a href="/modeller">Tümünü gör ›</a></div>
   <div class="cards">
     <% models.slice(0, 6).forEach(m => { %>
-    <a class="model-card" href="/modeller">
+    <a class="model-card" href="/model/<%= m.id %>">
       <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async"><% } else { %><%- scooter %><% } %></div>
       <div class="model-body">
         <h3><%= m.name %></h3>
