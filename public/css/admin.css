@@ -22,6 +22,8 @@ main{padding:24px}
 h1{font-size:22px;margin:0 0 18px;font-weight:600}h2{font-size:17px;margin:26px 0 10px}
 .bar{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}.bar h1{margin:0;flex:1}
 .search{display:flex;gap:6px}.search input{padding:6px 10px;border:1px solid #cdd2d9;border-radius:4px}
+.search label.dfl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#6c757d;white-space:nowrap}
+.search label.dfl input{padding:6px 10px;border:1px solid #cdd2d9;border-radius:4px;min-width:124px}
 .btn{display:inline-block;border:1px solid #cdd2d9;background:#fff;color:#222;padding:7px 14px;border-radius:4px;cursor:pointer;font:inherit}
 .btn:hover{background:#f5f6f8}.btn-sm{padding:3px 10px;font-size:13px}
 .btn-primary{background:#e0252f;border-color:#e0252f;color:#fff}.btn-primary:hover{background:#c41d27}

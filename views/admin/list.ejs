@@ -19,8 +19,8 @@
       <div class="fcombo" id="fcombo">
         <input type="hidden" name="q" id="qVal" value="<%= selFirm ? '' : (q || '') %>">
         <input type="hidden" name="firm" id="firmId" value="<%= selFirm ? selFirm.id : '' %>">
-        <input type="text" id="srchInput" autocomplete="off" style="min-width:320px"
-               placeholder="Bayi seçin veya yazarak arayın..."
+        <input type="text" id="srchInput" autocomplete="off" style="min-width:268px"
+               placeholder="Bayi seçin veya arayın..."
                value="<%= selFirm ? selFirm.name : (q || '') %>">
         <ul class="flist" id="fList" hidden></ul>
       </div>
@@ -109,8 +109,8 @@
       <input name="q" value="<%= q || '' %>" placeholder="Ara...">
     <% } %>
     <% if (typeof dateFilter !== 'undefined' && dateFilter) { %>
-      <label style="font-size:12px;color:#6c757d;display:flex;flex-direction:column;gap:3px">Başlangıç<input type="date" name="from" value="<%= from || '' %>" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px"></label>
-      <label style="font-size:12px;color:#6c757d;display:flex;flex-direction:column;gap:3px">Bitiş<input type="date" name="to" value="<%= to || '' %>" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px"></label>
+      <label class="dfl">Başlangıç<input type="date" name="from" value="<%= from || '' %>"></label>
+      <label class="dfl">Bitiş<input type="date" name="to" value="<%= to || '' %>"></label>
     <% } %>
     <button class="btn btn-sm">Ara</button>
   </form>
