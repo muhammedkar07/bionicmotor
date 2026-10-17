@@ -108,6 +108,10 @@
     <% } else { %>
       <input name="q" value="<%= q || '' %>" placeholder="Ara...">
     <% } %>
+    <% if (typeof dateFilter !== 'undefined' && dateFilter) { %>
+      <label style="font-size:12px;color:#6c757d;display:flex;flex-direction:column;gap:3px">Başlangıç<input type="date" name="from" value="<%= from || '' %>" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px"></label>
+      <label style="font-size:12px;color:#6c757d;display:flex;flex-direction:column;gap:3px">Bitiş<input type="date" name="to" value="<%= to || '' %>" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px"></label>
+    <% } %>
     <button class="btn btn-sm">Ara</button>
   </form>
   <% if (!res.noCreate) { %><a class="btn btn-primary" href="/admin/r/<%= res.key %>/new">+ Yeni Ekle</a><% } %>

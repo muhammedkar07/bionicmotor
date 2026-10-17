@@ -659,6 +659,10 @@ router.get('/r/:res', (req, res) => {
     });
   const q = String(req.query.q || '').trim();
   const firm = req.query.firm ? +req.query.firm : null;
+  // Tarih aralığı filtresi (yalnızca 'date' alanı olan listelerde; ör. Hesap Hareketleri).
+  const dateCol = r.fields.some(f => f.name === 'date') ? 'date' : null;
+  const from = String(req.query.from || '').slice(0, 10);
+  const to = String(req.query.to || '').slice(0, 10);
   const textCols = r.fields.filter(f => ['text', 'textarea', 'readonly', 'auto'].includes(f.type) && !f.ref).map(f => f.name);
   // Bayi (firma) filtresi: firma ile ilişkisi olan tüm listelerde çalışır
   const firmField = r.fields.find(f => f.ref === 'firms');
@@ -679,12 +683,16 @@ router.get('/r/:res', (req, res) => {
     where.push('(' + parts.join(' OR ') + ')');
   }
   if (firmWhere && firm) where.push(firmWhere);
+  if (dateCol && from) where.push(`${dateCol} >= @from`);
+  if (dateCol && to) where.push(`${dateCol} <= @to`);
   if (SOFT_DELETE.has(r.table)) where.push('deleted_at IS NULL');
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
   // Parametreler yalnızca SQL içinde kullanıldıklarında eklenir (kullanılmayan named parametre hata verir)
   const params = {};
   if (q && textCols.length) params.q = `%${q}%`;
   if (firmWhere && firm) params.firm = firm;
+  if (dateCol && from) params.from = from;
+  if (dateCol && to) params.to = to;
   const total = db.prepare(`SELECT COUNT(*) n FROM ${r.table} ${whereSql}`).get(params).n;
   const PAGE = 100;
   const pages = Math.max(1, Math.ceil(total / PAGE));
@@ -710,6 +718,9 @@ router.get('/r/:res', (req, res) => {
     firm: firm || '',
     firms,
     firmFilter,
+    dateFilter: !!dateCol,
+    from,
+    to,
     acct,
     acctLabel,
     page,
