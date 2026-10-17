@@ -1,9 +1,16 @@
 <%- include('../partials/bayi_head') %>
 <div class="pc">
   <h1 class="h5"><%= heading %> (<%= bf.name %>)</h1>
+  <form method="get" class="dfilter">
+    <label>Başlangıç<input type="date" name="from" value="<%= from || '' %>"></label>
+    <label>Bitiş<input type="date" name="to" value="<%= to || '' %>"></label>
+    <button class="btn btn-sm btn-info" type="submit">Filtrele</button>
+    <% if (from || to) { %><a class="btn btn-sm" href="<%= selfPath %>">Temizle</a><% } %>
+  </form>
+  <% if (from || to) { %><p class="muted" style="margin:-6px 0 12px">Seçili dönem: <b><%= from || 'başlangıç' %></b> – <b><%= to || 'bugün' %></b></p><% } %>
   <% if (showCards) { %>
   <div class="cards4">
-    <div class="stat bg-green"><div>Önceki Dönemden Devir</div><b><%= money(a.devir) %> ₺</b></div>
+    <div class="stat bg-green"><div><%= from || to ? 'Dönem Başı Bakiye' : 'Önceki Dönemden Devir' %></div><b><%= money(a.opening) %> ₺</b></div>
     <div class="stat bg-cyan"><div>Dönem İçi Satışlar</div><b><%= money(a.sales) %> ₺</b></div>
     <div class="stat bg-yellow"><div>Vadesi Gelmemiş Çekler</div><b><%= money(a.pendingChecks) %> ₺</b></div>
     <div class="stat bg-blue"><div>Kredi Kartı Ödemeleri</div><b><%= money(a.card) %> ₺</b></div>

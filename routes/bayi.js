@@ -188,13 +188,27 @@ router.get('/stoklar', (req, res) => {
 });
 
 router.get('/hesap-ozeti', (req, res) => {
-  page(res, 'account', 'Hesap Özeti', { a: accountSummary(res.locals.bf.id, 'ana'), heading: 'Hesap Özeti', showCards: true });
+  const from = String(req.query.from || '').slice(0, 10);
+  const to = String(req.query.to || '').slice(0, 10);
+  page(res, 'account', 'Hesap Özeti', {
+    a: accountSummary(res.locals.bf.id, 'ana', { from, to }),
+    heading: 'Hesap Özeti',
+    showCards: true,
+    from,
+    to,
+    selfPath: req.path
+  });
 });
 router.get('/yedek-parca-ekstre', (req, res) => {
+  const from = String(req.query.from || '').slice(0, 10);
+  const to = String(req.query.to || '').slice(0, 10);
   page(res, 'account', 'Yedek Parça Hesap Ekstresi', {
-    a: accountSummary(res.locals.bf.id, 'parca'),
+    a: accountSummary(res.locals.bf.id, 'parca', { from, to }),
     heading: 'Yedek Parça Hesap Ekstresi',
-    showCards: false
+    showCards: false,
+    from,
+    to,
+    selfPath: req.path
   });
 });
 

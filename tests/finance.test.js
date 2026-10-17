@@ -43,6 +43,26 @@ test('stok yetersizse dönüştürme reddedilir ve stok değişmez', () => {
   assert.strictEqual(db.prepare('SELECT stock FROM products WHERE id=?').get(pid).stock, 1, 'red sonrası stok değişmemeli');
 });
 
+test('tarih filtresi: seçilen aralıktaki hareketler + dönem başı bakiye', () => {
+  const firm = db.prepare('INSERT INTO firms(code,name,devir) VALUES(?,?,?)').run('901.01.004', 'F4', 100000).lastInsertRowid;
+  const ins = db.prepare(
+    "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',?,?,?,?,?)"
+  );
+  ins.run(firm, '2025-01-10', 'A', 'Sipariş', 'borc', 50000); // aralık öncesi
+  ins.run(firm, '2025-03-05', 'B', 'Sipariş', 'borc', 30000); // aralık içi
+  ins.run(firm, '2025-03-20', 'C', 'Kredi Kartı Fişi', 'alacak', 20000); // aralık içi
+  ins.run(firm, '2025-04-01', 'D', 'Sipariş', 'borc', 10000); // aralık sonrası
+
+  assert.strictEqual(accountSummary(firm, 'ana').balance, 100000 + 50000 + 30000 - 20000 + 10000, 'filtresiz tüm bakiye');
+
+  const f = accountSummary(firm, 'ana', { from: '2025-03-01', to: '2025-03-31' });
+  assert.strictEqual(f.rows.length, 2, 'yalnızca mart hareketleri listelenmeli');
+  assert.strictEqual(f.opening, 150000, 'dönem başı = devir + aralık öncesi');
+  assert.strictEqual(f.sales, 30000, 'aralık içi satışlar');
+  assert.strictEqual(f.card, 20000, 'aralık içi kart ödemeleri');
+  assert.strictEqual(f.balance, 150000 + 30000 - 20000, 'aralık sonu bakiye');
+});
+
 test('storno: cari hareket fiziksel silinmez, bakiye dışına çıkar', () => {
   const firm = db.prepare('INSERT INTO firms(code,name,devir) VALUES(?,?,?)').run('901.01.003', 'F3', 100000).lastInsertRowid;
   const mid = db

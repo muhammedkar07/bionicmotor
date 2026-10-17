@@ -115,6 +115,9 @@ hr{border:0;border-top:1px solid #dee2e6;margin:30px 0 40px}
 .shop-empty{color:#6c757d;font-size:14px}
 .cart-total{display:flex;justify-content:space-between;font-weight:700;margin:12px 0;font-size:16px}
 @media(max-width:820px){.shop{grid-template-columns:1fr}.shop-cart{position:static}}
+.dfilter{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin:0 0 14px}
+.dfilter label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#6c757d;font-weight:600}
+.dfilter input{padding:7px 9px;border:1px solid #ddd;border-radius:8px;font:inherit}
 .ckx{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:#555;margin:10px 0;cursor:pointer}
 .ckx input{margin:2px 0 0;flex:none}
 .ckx a{color:inherit;text-decoration:underline}

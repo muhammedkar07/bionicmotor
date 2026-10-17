@@ -90,16 +90,31 @@ router.post('/cikis', (req, res) => {
 router.get('/hesap-ozeti', (req, res) => {
   const firm = req.session.servis.firmId;
   if (!firm) return res.redirect('/servis');
-  res.render('servis/account', { title: 'Hesap Özeti', heading: 'Hesap Özeti', a: accountSummary(firm, 'ana'), showCards: true });
+  const from = String(req.query.from || '').slice(0, 10);
+  const to = String(req.query.to || '').slice(0, 10);
+  res.render('servis/account', {
+    title: 'Hesap Özeti',
+    heading: 'Hesap Özeti',
+    a: accountSummary(firm, 'ana', { from, to }),
+    showCards: true,
+    from,
+    to,
+    selfPath: req.path
+  });
 });
 router.get('/yedek-parca-ekstre', (req, res) => {
   const firm = req.session.servis.firmId;
   if (!firm) return res.redirect('/servis');
+  const from = String(req.query.from || '').slice(0, 10);
+  const to = String(req.query.to || '').slice(0, 10);
   res.render('servis/account', {
     title: 'Yedek Parça Hesap Ekstresi',
     heading: 'Yedek Parça Hesap Ekstresi',
-    a: accountSummary(firm, 'parca'),
-    showCards: false
+    a: accountSummary(firm, 'parca', { from, to }),
+    showCards: false,
+    from,
+    to,
+    selfPath: req.path
   });
 });
 
