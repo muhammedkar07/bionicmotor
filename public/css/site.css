@@ -31,17 +31,17 @@ h1,h2,h3,.g{font-family:'Space Grotesk','Raleway',sans-serif;letter-spacing:-.02
 .topbar-in{display:flex;align-items:center;justify-content:flex-end;gap:22px;min-height:36px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
 .top-links{display:flex;gap:22px;flex-wrap:wrap}
 .top-links a:hover,.main-nav a:hover{color:var(--red)}
-.mainbar-in{display:flex;align-items:center;gap:24px;height:78px}
+.mainbar-in{display:flex;align-items:center;gap:24px;height:88px}
 .brand{display:flex;align-items:center}
 .logo{font-family:'Space Grotesk',Georgia,serif;font-style:italic;font-weight:700;font-size:30px;white-space:nowrap}
 .logo i{color:var(--ink);font-style:italic}
 .logo b{color:var(--red)}
 /* Logo görseli: kaynak logo gümüş/gri gradyan olduğu için açık zeminde soluk kalıyordu.
-   Tema rengine göre saf siyah/beyaza çevrilir ve hafif kontur (drop-shadow) ile kalınlaştırılır. */
-.logo-img{max-height:60px;display:block;filter:brightness(0) drop-shadow(.7px 0 0 #000) drop-shadow(-.7px 0 0 #000) drop-shadow(0 .7px 0 #000) drop-shadow(0 -.7px 0 #000)}
-[data-theme="dark"] .logo-img{filter:brightness(0) invert(1) drop-shadow(.7px 0 0 #fff) drop-shadow(-.7px 0 0 #fff) drop-shadow(0 .7px 0 #fff) drop-shadow(0 -.7px 0 #fff)}
+   Tema rengine göre saf siyah/beyaza çevrilir; ince kontur ile netlik korunur. */
+.logo-img{max-height:76px;display:block;filter:brightness(0) drop-shadow(.3px 0 0 #000) drop-shadow(-.3px 0 0 #000) drop-shadow(0 .3px 0 #000) drop-shadow(0 -.3px 0 #000)}
+[data-theme="dark"] .logo-img{filter:brightness(0) invert(1) drop-shadow(.3px 0 0 #fff) drop-shadow(-.3px 0 0 #fff) drop-shadow(0 .3px 0 #fff) drop-shadow(0 -.3px 0 #fff)}
 /* Alt bilgi zemini her iki temada koyu → logo her zaman beyaz */
-.site-footer .logo-img{filter:brightness(0) invert(1) drop-shadow(.7px 0 0 #fff) drop-shadow(-.7px 0 0 #fff) drop-shadow(0 .7px 0 #fff) drop-shadow(0 -.7px 0 #fff)}
+.site-footer .logo-img{max-height:64px;filter:brightness(0) invert(1) drop-shadow(.3px 0 0 #fff) drop-shadow(-.3px 0 0 #fff) drop-shadow(0 .3px 0 #fff) drop-shadow(0 -.3px 0 #fff)}
 .main-nav{flex:1;display:flex;justify-content:center;gap:26px;font-weight:600;font-size:13px;color:var(--ink-2)}
 .main-nav a{padding:6px 2px;position:relative}
 .main-nav a.on{color:var(--red)}
@@ -208,7 +208,7 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
   .main-nav{display:none;position:absolute;top:114px;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--line);flex-direction:column;padding:16px 24px;z-index:20}
   body.nav-open .main-nav{display:flex}
   .top-links,.contact .social{display:none}
-  .mainbar-in{gap:10px;height:66px}.logo{font-size:26px}
+  .mainbar-in{gap:10px;height:74px}.logo{font-size:26px}.logo-img{max-height:62px}
   .slide h1{font-size:48px}.price-new{font-size:40px}.slider{height:440px}
   .contact-grid{grid-template-columns:1fr}
 }
