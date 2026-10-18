@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const { db, STATUS, logAudit } = require('../db');
-const { flash, throttle, regenerate, publicOrigin } = require('../lib/core');
+const { flash, throttle, regenerate, publicOrigin, resumeSession } = require('../lib/core');
 const pay = require('../lib/pay');
 const paratika = require('../lib/paratika');
 
@@ -73,6 +73,10 @@ async function paratikaResult(req, res) {
   const b = Object.assign({}, req.query, req.body);
   const orderId = b.o || b.orderId || b.ORDER_ID || b.order_id || b.orderid || b.merchantPaymentId || b.MERCHANTPAYMENTID;
   const payment = orderId ? db.prepare('SELECT * FROM payments WHERE provider_order=?').get(String(orderId)) : null;
+  // Banka dönüşü çapraz-site POST olabildiği için tarayıcı çerezi göndermez ve panel oturumu
+  // "kaybolur" (kullanıcı giriş ekranına düşer). Dönüş adresindeki tek kullanımlık anahtarla,
+  // yalnızca BU ödemenin sahibi kullanıcı için oturum geri yüklenir.
+  if (payment && b.s) resumeSession(req, res, b.s, payment.user_id);
   const back = (p, type, msg) => {
     if (req.session) flash(req, type, msg);
     // Ödeme sonrası: bayi/servis panelindeyse HESAP HAREKETLERİNE, değilse ANA SAYFAYA yönlendir.
@@ -149,7 +153,8 @@ const payCtx = (req, res) => ({
   firmId: req.session.pay.firmId,
   source: 'odeme',
   origin: publicOrigin(req),
-  ip: req.ip
+  ip: req.ip,
+  sid: req.sid
 });
 
 router.post('/ode', async (req, res) => {

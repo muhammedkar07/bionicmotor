@@ -86,7 +86,6 @@ async function testPublic() {
     ['/dijital-katalog', 'Dijital katalog'],
     ['/iletisim', 'İletişim'],
     ['/bayilik-basvurusu', 'Bayilik başvurusu'],
-    ['/perakende-fiyat-listesi', 'Perakende fiyat listesi'],
     ['/sayfa/kurumsal', 'Kurumsal sayfa'],
     ['/sayfa/kisisel-bilgi-guvenligi', 'KVKK sayfası'],
     ['/robots.txt', 'robots.txt'],

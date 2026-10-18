@@ -217,7 +217,7 @@ router.get('/odeme', (req, res) => {
 });
 router.post('/odeme/ode', async (req, res) => {
   const b = req.body;
-  const ctx = { userId: res.locals.bu.id, firmId: res.locals.bf.id, source: 'bayi', origin: publicOrigin(req), ip: req.ip };
+  const ctx = { userId: res.locals.bu.id, firmId: res.locals.bf.id, source: 'bayi', origin: publicOrigin(req), ip: req.ip, sid: req.sid };
   const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
   if (method === 'havale') {
     const r = pay.havale(ctx, b);
@@ -330,6 +330,7 @@ router.post('/yedek-parca/yeni', async (req, res) => {
         source: 'bayi',
         origin: publicOrigin(req),
         ip: req.ip,
+        sid: req.sid,
         no,
         note: String(b.note || '').slice(0, 1000),
         payer,

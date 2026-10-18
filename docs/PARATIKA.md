@@ -152,8 +152,16 @@ PARATIKA_SIMULATE=0          # 1 = ağsız simülasyon (yalnızca geliştirme)
 
 ```
 PUBLIC_URL = https://bionicmotorsiklet.com
-RETURNURL  = https://bionicmotorsiklet.com/odeme/paratika/sonuc
+RETURNURL  = https://bionicmotorsiklet.com/odeme/paratika/sonuc?o=<sipariş-no>&s=<oturum-anahtarı>
 ```
+
+> **`s` (oturum anahtarı) nedir?** Banka/Paratika dönüşü tarayıcıya **çapraz-site POST** olarak
+> gelebildiği için `SameSite=Lax` çerez **gönderilmez**; bu yüzden ödeme biterken panel oturumu
+> "kaybolur" ve kullanıcı hesap hareketleri yerine **giriş ekranına düşerdi**.
+> Dönüş adresine eklenen rastgele anahtarla oturum geri yüklenir (`lib/core.resumeSession`).
+> **Güvenlik:** anahtar tek kullanımlıktır, kullanılınca eski kimlik geçersiz kılınır ve yalnızca
+> **o ödemenin sahibi kullanıcı** için kabul edilir (farklı kullanıcının anahtarı reddedilir —
+> `tests/resume.test.js` ile doğrulanır).
 
 ### ✅ Çözüldü (18.10.2026): tam yetkili API kullanıcısı + ilk canlı tahsilat
 

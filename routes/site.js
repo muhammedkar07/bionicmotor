@@ -36,7 +36,7 @@ router.get('/robots.txt', (req, res) => {
 
 router.get('/sitemap.xml', (req, res) => {
   const origin = publicOrigin(req);
-  const staticPaths = ['/', '/modeller', '/satis-ve-servis', '/destek', '/iletisim', '/bayilik-basvurusu', '/perakende-fiyat-listesi'];
+  const staticPaths = ['/', '/modeller', '/satis-ve-servis', '/destek', '/iletisim', '/bayilik-basvurusu'];
   const pages = db
     .prepare('SELECT slug FROM pages')
     .all()
@@ -82,11 +82,6 @@ router.get('/satis-ve-servis', (req, res) => {
 router.get('/destek', (req, res) => {
   const faqs = db.prepare('SELECT * FROM faqs WHERE active=1 ORDER BY sort,id').all();
   render(res, 'site/support', 'Destek', 'support', { faqs });
-});
-
-router.get('/perakende-fiyat-listesi', (req, res) => {
-  const models = db.prepare('SELECT * FROM models WHERE active=1 AND price>0 ORDER BY sort,id').all();
-  render(res, 'site/retail', 'Perakende Fiyat Listesi', 'retail', { models });
 });
 
 router.get('/iletisim', (req, res) => render(res, 'site/contact', 'İletişim', 'contact'));
