@@ -185,6 +185,26 @@ Canlı kimlik bilgileri **yalnızca sunucudaki `.env`** içinde tutulur; depoya 
 > ödemeyi **iptal etmez** (bekleyen kalır) ve mutabakat tekrar dener — denetim kaydı:
 > `payment_verify_denied`.
 
+### Süresi dolan (vazgeçilen) ödemeler
+
+Kullanıcı ödeme sayfasına gidip tutarı girer, Paratika'ya yönlendirilir ve **ödemeyi
+tamamlamadan sayfayı kapatırsa** kayıt "Sanal POS Bekliyor" olarak takılı kalmamalıdır.
+Mutabakat işi (dakikada bir çalışır) bu kayıtları **yalnızca Paratika'da işlem denemesi
+YOKSA** düşürür:
+
+| Durum | Davranış |
+| --- | --- |
+| Paratika'da **onaylı** satış var | Cariye **alacak** işlenir (callback kaçmış olsa bile) |
+| Hiç işlem denemesi yok (`PAYMENT_EXPIRE_MIN`, varsayılan **3 dk**) | Kayıt **İptal** edilir |
+| İşlem başlamış ama sonuçlanmamış (`PAYMENT_EXPIRE_MAX_MIN`, varsayılan **30 dk**) | Kayıt **İptal** edilir |
+| Yetki/yapılandırma hatası | **Dokunulmaz** (durum belirsiz), sonra tekrar denenir |
+| Çok taze ödeme (`RECONCILE_MIN_AGE_MIN`, varsayılan 2 dk) | Atlanır (3D adımı sürüyor olabilir) |
+| **İptal edilmiş** kayıt (`PAYMENT_LATE_CHECK_HOURS`, varsayılan **6 saat**) | İzlenir: gecikmiş onay varsa **tahsil edilir** |
+
+> **Güvenlik:** Onaylanmış ödeme asla düşürülmez. Süresi dolup İptal edilen bir kayıt **sonradan**
+> onaylanırsa (gecikmiş callback), `collectPayment` durumdan bağımsız çalıştığı için tahsilat
+> yine de cariye işlenir. Denetim kaydı: `payment_expired` / `payment_collected`.
+
 Mutabakat (reconcile) açılışta ve 15 dakikada bir, `Sanal POS Bekliyor` durumundaki ödemeleri
 `QUERYTRANSACTION` ile sunucudan sunucuya doğrulayıp onaylananları caride alacağa işler;
 dönüş (callback) kaçsa bile **tahsilat kaybolmaz** (yetki verildikten sonra).

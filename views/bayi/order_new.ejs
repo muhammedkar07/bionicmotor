@@ -14,6 +14,7 @@
       <div class="shop-grid" id="pgrid">
         <% products.forEach(p => { %>
         <div class="pcard" data-cat="<%= (String(p.name || '') + ' ' + String(p.category || '')).toLocaleLowerCase('tr') %>">
+          <% if (p.image) { %><img class="pimg" src="<%= p.image %>" alt="<%= p.name %>"><% } %>
           <h4><%= p.name %></h4>
           <div class="pcode"><%= p.code ? p.code + ' · ' : '' %><%= p.category || '' %></div>
           <div class="pprice"><%= money(p.price) %> ₺</div>

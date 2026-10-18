@@ -171,11 +171,12 @@ const RES = {
     title: 'Ürünler / Fiyat Listesi',
     table: 'products',
     group: 'Bayi Yönetimi',
-    list: ['kind', 'name', 'category', 'model_id', 'price', 'stock', 'max_qty', 'active'],
+    list: ['image', 'kind', 'name', 'category', 'model_id', 'price', 'stock', 'max_qty', 'active'],
     order: 'id DESC',
     fields: [
       S('kind', 'Tür', ['arac', 'parca'], { def: 'arac', help: 'arac: toptan fiyat listesi · parca: yedek parça sipariş listesi' }),
       T('name', 'Ürün Adı', { required: true }),
+      I('image', 'Ürün Görseli (JPG/PNG/WEBP)'),
       { name: 'category', label: 'Kategori', type: 'category', required: true },
       R('model_id', 'Ait Olduğu Araç Modeli', 'models', 'name', { help: 'Tür "yedek parça" ise zorunludur.' }),
       N('price', 'Toptan Fiyat (₺)'),

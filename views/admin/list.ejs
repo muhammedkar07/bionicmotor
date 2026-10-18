@@ -131,7 +131,7 @@
   <thead><tr><% cols.forEach(c => { %><th><%= c.label %></th><% }) %><th style="width:130px"></th></tr></thead>
   <tbody>
   <% rows.forEach(r => { %>
-    <tr><% cols.forEach(c => { %><td><%= cell(c, r[c.name], refs) %></td><% }) %>
+    <tr><% cols.forEach(c => { %><td><% if (c.type === 'image') { %><% if (r[c.name]) { %><a href="<%= r[c.name] %>" target="_blank" rel="noopener"><img src="<%= r[c.name] %>" alt="" style="max-height:36px;border-radius:4px"></a><% } else { %><span class="muted">—</span><% } %><% } else { %><%= cell(c, r[c.name], refs) %><% } %></td><% }) %>
       <td class="act"><a class="btn btn-sm" href="/admin/r/<%= res.key %>/<%= r._id %>">Düzenle</a>
         <form method="post" action="/admin/r/<%= res.key %>/<%= r._id %>/delete" class="inline" data-confirm="Bu kayıt silinsin mi?">
           <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form></td></tr>

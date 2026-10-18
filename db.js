@@ -192,6 +192,7 @@ db.exec('UPDATE spare_orders SET request_date=date(created_at) WHERE request_dat
 addCol('products', 'stock', 'REAL NOT NULL DEFAULT 0');
 addCol('products', 'model_id', 'INTEGER');
 addCol('products', 'max_qty', 'REAL');
+addCol('products', 'image', 'TEXT');
 // Finansal kayıtlar fiziksel silinmez; "storno" için deleted_at işaretlenir ve okuma
 // sorguları deleted_at IS NULL ile filtrelenir. Böylece denetim izi korunur.
 addCol('orders', 'deleted_at', 'TEXT');
