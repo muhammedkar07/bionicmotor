@@ -155,30 +155,35 @@ PUBLIC_URL = https://bionicmotorsiklet.com
 RETURNURL  = https://bionicmotorsiklet.com/odeme/paratika/sonuc
 ```
 
-### ⛔ Açık iş: `API_QUERYTRANSACTION` yetkisi (canlı ödeme öncesi ZORUNLU)
+### ✅ Çözüldü (18.10.2026): tam yetkili API kullanıcısı + ilk canlı tahsilat
 
-```
-ACTION=QUERYTRANSACTION
-=> responseCode=99 | errorCode=ERR10082
-   "Kullanıcının bu işlem için yetkisi yoktur."
-   violatorParam=User does not have API_QUERYTRANSACTION permission to perform this action
-```
+`QUERYTRANSACTION` yetkisi olmayan API kullanıcısının (`h.sancar288@gmail.com`) yerine
+**tam yetkili canlı API kullanıcısı** devreye alındı. Yeni kullanıcıda tüm ACTION'lar onaylı:
 
-Diğer tüm ACTION'lar (`QUERYINSTALLMENT`, `QUERYMERCHANTCOMMISSION`, `QUERYBIN`, `QUERYCARD`,
-`SESSIONTOKEN`) çalışıyor; **yalnızca** `QUERYTRANSACTION` yetkisiz.
+| ACTION | Sonuç |
+| --- | --- |
+| `SESSIONTOKEN` | `00` Approved |
+| **`QUERYTRANSACTION`** | **`00` Approved** ✅ (eskiden `ERR10082`) |
+| `QUERYINSTALLMENT` | `00` Approved |
+| `QUERYMERCHANTCOMMISSION` | `00` Approved |
+| `QUERYBIN` | `00` Approved |
 
-**Neden kritik:** `routes/odeme.js` → `paratikaResult()` ödeme sonucunu kullanıcıya güvenmeden
-**sunucudan sunucuya** bu çağrı ile doğrular; `lib/pay.collectPayment()` ancak bu onaydan sonra
-cariye alacak işler. Mutabakat işi de aynı çağrıyı kullanır. Yetki verilmezse **para çekilir ama
-cariye işlenmez**.
+Canlı kimlik bilgileri **yalnızca sunucudaki `.env`** içinde tutulur; depoya yazılmaz.
 
-**Çözüm:** Paratika paneli → **Ayarlar / API Kullanıcıları** → `h.sancar288@gmail.com` yetkilerine
-**İşlem Sorgulama (QUERYTRANSACTION)** ekleyin (veya tüm API yetkileri olan yeni API kullanıcısı).
-Yetki verildikten sonra doğrulama: aynı istek `ERR10082` yerine `responseCode=00` dönmelidir.
+**İlk gerçek tahsilat:** 1,00 TL kredi kartı → 3D → dönüş → sunucudan sunucuya doğrulama →
+**cariye alacak**. Uçtan uca çalıştı:
 
-> Alternatif (acil durum): yetki alınamıyorsa, callback gövdesindeki `responseCode`/`amount` +
-> Paratika hash doğrulaması ile geri dönüş doğrulaması yapılabilir — ancak bu daha zayıf bir
-> güvenlik modelidir; esas çözüm yetkinin verilmesidir.
+| Alan | Değer |
+| --- | --- |
+| Ödeme durumu | `Tahsil Edildi` |
+| Paratika işlem no (`pgTranId`) | `26291OybH05057566` |
+| Sipariş no (`MERCHANTPAYMENTID`) | `BNmvdrezuy11c7a6a5` |
+| Cari hareket | `Kredi Kartı Fişi` · **alacak** 1,00 TL |
+| Bakiye sonucu | **-1,00 TL** (bayi lehine) |
+
+> Yetki eksik/yapılandırma hatalı olsaydı `lib/paratika.query()` bunu **yapılandırma hatası** sayar,
+> ödemeyi **iptal etmez** (bekleyen kalır) ve mutabakat tekrar dener — denetim kaydı:
+> `payment_verify_denied`.
 
 Mutabakat (reconcile) açılışta ve 15 dakikada bir, `Sanal POS Bekliyor` durumundaki ödemeleri
 `QUERYTRANSACTION` ile sunucudan sunucuya doğrulayıp onaylananları caride alacağa işler;

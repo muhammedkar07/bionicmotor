@@ -76,6 +76,8 @@ ssh -i ~/.ssh/bionic_oracle ubuntu@130.61.231.148 \
    `deploy/reset-test.sh` ile temizlenir.
 6. Test alt alanı `noindex, nofollow` ile arama motorlarına kapalıdır ve `X-Env-Test: yes`
    başlığı döner (hangi ortamda olduğunuzu karıştırmayın).
+7. **Canlı artık gerçek veri içeriyor** (bayi, ödeme, cari hareket). Canlıda `npm run reset`,
+   `scripts/reset-data.js` **asla** çalıştırılmaz — sıfırlama/test yalnızca bu ortamda yapılır.
 
 ## Kurulum kaydı (18.10.2026)
 

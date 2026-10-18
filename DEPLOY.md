@@ -160,31 +160,15 @@ Yedeklenmesi gereken tek klasör: **`DATA_DIR`** (`/var/lib/bionic/data`).
 - [x] SSL (Let's Encrypt) kurulu, otomatik yenileme açık — geçerlilik **16.01.2027**.
 - [x] Ödeme sonrası yönlendirme: **bayi → `/bayi/hesap-ozeti`**, **servis → `/servis/hesap-ozeti`**, **sitedeki online ödeme → `/`** (ana sayfa) — doğrulandı.
 - [x] Çerez + oturum: `Secure; HttpOnly; SameSite=Lax`; panel girişleri HTTPS'te çalışıyor.
-- [ ] Ödeme: kart → 3D → dönüşte **cariye alacak** işleniyor — ⛔ **Paratika canlı API kullanıcısına `API_QUERYTRANSACTION` yetkisi verilmeli** (aşağıya bakın)
+- [x] Ödeme: kart → 3D → dönüşte **cariye alacak** işleniyor — ✅ **18.10.2026 ilk gerçek tahsilat** (1,00 TL, `Tahsil Edildi`, Paratika işlem `26291OybH05057566`)
+- [x] Canlı API kullanıcısı `QUERYTRANSACTION` yetkili (sistem testi yeşil).
 - [ ] `logs/error.log` boş; `pm2 logs bionic` temiz.
 
-> ### ⛔ Canlı ödeme öncesi zorunlu: `API_QUERYTRANSACTION` yetkisi
-> Canlı API kullanıcısı (`h.sancar288@gmail.com` / üye işyeri **10013443**) için `QUERYTRANSACTION`
-> çağrısı şu hatayı veriyor:
-> ```
-> responseCode=99 | errorCode=ERR10082
-> "Kullanıcının bu işlem için yetkisi yoktur."
-> violatorParam=User does not have API_QUERYTRANSACTION permission to perform this action
-> ```
-> Ödeme durumu **sunucudan sunucuya** bu çağrıyla doğrulanır (kullanıcıya güvenilmez). Yetki
-> verilmezse: para çekilir ama **cariye alacak işlenmez**, mutabakat da çalışamaz.
->
-> **Çözüm:** Paratika paneli → **Ayarlar / API Kullanıcıları** → kullanıcının yetkilerinde
-> **İşlem Sorgulama (QUERYTRANSACTION)** iznini açın (veya tüm API yetkileri olan yeni bir API
-> kullanıcısı oluşturun). Ardından doğrulama:
-> ```bash
-> curl -s -X POST https://vpos.paratika.com.tr/paratika/api/v2 \
->   -d MERCHANT=10013443 -d MERCHANTUSER=... -d MERCHANTPASSWORD=... \
->   -d ACTION=QUERYTRANSACTION -d MERCHANTPAYMENTID=TEST | head -c 300
-> ```
-> `responseCode=00` görmelisiniz (işlem bulunamasa bile yetki hatası vermemeli).
->
-> Dönüş adresi: `https://bionicmotorsiklet.com/odeme/paratika/sonuc`
+> ### 🚫 CANLI VERİ VAR — `npm run reset` ÇALIŞTIRILMAZ
+> Canlı veritabanında **gerçek bayi/ödeme kayıtları** vardır. `npm run reset` (ve
+> `scripts/reset-data.js`) canlı verisini **siler**, yalnızca "temiz başlangıç" için kullanılır.
+> Test/sıfırlama işlemleri **test ortamında** yapılır: `docs/STAGING.md`.
+> `data/baseline.db` her zaman **temiz** kalır (firma/ödeme içermez).
 
 ## Notlar
 - **SQLite** kullanıldığı için tek Node örneği (`instances: 1`) çalıştırın (dosya kilidi).
