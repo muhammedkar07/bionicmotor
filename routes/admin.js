@@ -176,7 +176,7 @@ const RES = {
     fields: [
       S('kind', 'Tür', ['arac', 'parca'], { def: 'arac', help: 'arac: toptan fiyat listesi · parca: yedek parça sipariş listesi' }),
       T('name', 'Ürün Adı', { required: true }),
-      I('image', 'Ürün Görseli (JPG/PNG/WEBP)'),
+      I('image', 'Ürün Görseli (JPG, PNG, WEBP, HEIC)'),
       { name: 'category', label: 'Kategori', type: 'category', required: true },
       R('model_id', 'Ait Olduğu Araç Modeli', 'models', 'name', { help: 'Tür "yedek parça" ise zorunludur.' }),
       N('price', 'Toptan Fiyat (₺)'),
@@ -282,7 +282,7 @@ const RES = {
     list: ['sort', 'title', 'new_price', 'active'],
     order: 'sort',
     fields: [
-      I('image', 'Görsel (yüklenirse yazılar gösterilmez)'),
+      I('image', 'Görsel (JPG, PNG, WEBP, HEIC — iPhone fotoğrafı yüklenebilir)'),
       T('title', 'Başlık'),
       T('subtitle', 'Alt Yazı'),
       T('old_price', 'Eski Fiyat'),
@@ -301,7 +301,7 @@ const RES = {
     order: 'sort, id',
     fields: [
       { name: 'model_id', label: 'Modelden Doldur (isteğe bağlı)', type: 'campaignModel' },
-      I('image', 'Görsel (model seçince otomatik gelir; kendi görselinizi yüklemek için dosya seçin)'),
+      I('image', 'Görsel (model seçince otomatik gelir; JPG, PNG, WEBP, HEIC)'),
       { name: 'image_path', label: '', type: 'hidden' },
       T('title', 'Başlık', { required: true }),
       T('subtitle', 'Alt Yazı'),
@@ -332,7 +332,7 @@ const RES = {
       A('description', 'Açıklama'),
       T('warranty_setup_desc', 'Garanti Başlatma Açıklaması'),
       N('warranty_setup_fee', 'Test/Devreye Alma Bedeli (₺)'),
-      I('image', 'Görsel'),
+      I('image', 'Görsel (JPG, PNG, WEBP, HEIC)'),
       N('price', 'Perakende Fiyat (₺)'),
       N('sort', 'Sıra', { def: 0 }),
       C('active')

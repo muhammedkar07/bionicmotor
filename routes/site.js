@@ -58,7 +58,9 @@ router.get('/', (req, res) => {
     )
     .all();
   const models = db.prepare('SELECT * FROM models WHERE active=1 ORDER BY sort,id LIMIT 6').all();
-  render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models, campaigns });
+  // Satış noktası sayısı /satis-ve-servis sayfasındaki kayıtlardan gelir (sabit değil).
+  const pointCount = db.prepare('SELECT COUNT(*) n FROM points WHERE active=1').get().n;
+  render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models, campaigns, pointCount });
 });
 
 router.get('/modeller', (req, res) => {

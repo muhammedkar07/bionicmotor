@@ -203,7 +203,13 @@ app.use('/', require('./routes/site'));
 app.use((req, res) => res.status(404).render('site/404', { title: 'Sayfa bulunamadı', active: '' }));
 app.use((err, req, res, next) => {
   logError(err);
-  if (err && err.name === 'MulterError') return res.status(400).send('Dosya yükleme hatası: ' + err.message);
+  if (err && err.name === 'MulterError')
+    return res
+      .status(400)
+      .send(
+        (err.code === 'LIMIT_FILE_SIZE' ? 'Dosya çok büyük (en fazla 12 MB).' : 'Dosya yükleme hatası: ' + err.message) +
+          ' Geri dönüp tekrar deneyin.'
+      );
   res.status(500).send('Beklenmeyen bir hata oluştu.');
 });
 process.on('uncaughtException', logError);
