@@ -37,11 +37,11 @@ h1,h2,h3,.g{font-family:'Space Grotesk','Raleway',sans-serif;letter-spacing:-.02
 .logo i{color:var(--ink);font-style:italic}
 .logo b{color:var(--red)}
 /* Logo görseli: kaynak logo gümüş/gri gradyan olduğu için açık zeminde soluk kalıyordu.
-   Tema rengine göre saf siyah/beyaza çevrilir; ince kontur ile netlik korunur. */
-.logo-img{max-height:92px;display:block;filter:brightness(0) drop-shadow(.3px 0 0 #000) drop-shadow(-.3px 0 0 #000) drop-shadow(0 .3px 0 #000) drop-shadow(0 -.3px 0 #000)}
-[data-theme="dark"] .logo-img{filter:brightness(0) invert(1) drop-shadow(.3px 0 0 #fff) drop-shadow(-.3px 0 0 #fff) drop-shadow(0 .3px 0 #fff) drop-shadow(0 -.3px 0 #fff)}
+   Tema rengine göre saf siyah/beyaza çevrilir (kalınlaştırma/kontur YOK). */
+.logo-img{max-height:92px;display:block;filter:brightness(0)}
+[data-theme="dark"] .logo-img{filter:brightness(0) invert(1)}
 /* Alt bilgi zemini her iki temada koyu → logo her zaman beyaz */
-.site-footer .logo-img{max-height:64px;filter:brightness(0) invert(1) drop-shadow(.3px 0 0 #fff) drop-shadow(-.3px 0 0 #fff) drop-shadow(0 .3px 0 #fff) drop-shadow(0 -.3px 0 #fff)}
+.site-footer .logo-img{max-height:64px;filter:brightness(0) invert(1)}
 .main-nav{flex:1;display:flex;justify-content:center;gap:26px;font-weight:600;font-size:13px;color:var(--ink-2)}
 .main-nav a{padding:6px 2px;position:relative}
 .main-nav a.on{color:var(--red)}
@@ -134,20 +134,23 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
 .band p{color:var(--footer-ink);margin:8px 0 0}
 .band .btn-line,.band .btn{background:var(--bg);color:var(--ink);border-color:transparent}
 
-/* ---------- Slider (diğer sayfalarla uyum için korunur) ---------- */
+/* ---------- Ana sayfa slider (slides tablosundan) ---------- */
 .slider{position:relative;height:520px;background:var(--surface-2);overflow:hidden;border-radius:0}
-.slide{position:absolute;inset:0;opacity:0;transition:opacity .8s;color:var(--ink)}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .8s;color:#fff}
 .slide.on{opacity:1}
-.slide-link{position:absolute;inset:0}
-.slide-in{height:100%;display:flex;flex-direction:column;justify-content:center;gap:10px}
-.slide-sub{font-style:italic;font-weight:700;max-width:520px;font-size:18px;margin:0}
-.slide h1{font-size:78px;margin:0;font-weight:800;letter-spacing:-2px}
-.price-old{font-size:22px;opacity:.7}
-.price-new{font-size:56px;font-weight:800}
-.sl-prev,.sl-next{position:absolute;top:50%;transform:translateY(-50%);background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:32px;width:44px;height:64px;cursor:pointer;border-radius:12px}
+.slide-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+/* Metnin her arka plan renginde okunması için karartma katmanı */
+.slide:before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(0,0,0,.62),rgba(0,0,0,.28) 60%,rgba(0,0,0,.06))}
+.slide-link{position:absolute;inset:0;z-index:3}
+.slide-in{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.slide-sub{font-style:italic;font-weight:700;max-width:520px;font-size:18px;margin:0;text-shadow:0 1px 12px rgba(0,0,0,.5)}
+.slide h1{font-size:78px;margin:0;font-weight:800;letter-spacing:-2px;text-shadow:0 2px 22px rgba(0,0,0,.5)}
+.slide .price-old{font-size:22px;opacity:.75;color:#fff}
+.slide .price-new{font-size:56px;font-weight:800;color:#fff}
+.sl-prev,.sl-next{position:absolute;top:50%;transform:translateY(-50%);background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:32px;width:44px;height:64px;cursor:pointer;border-radius:12px;z-index:4}
 .sl-prev{left:12px}.sl-next{right:12px}
-.dots{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:8px}
-.dots span{width:10px;height:10px;border-radius:50%;background:var(--line-2);cursor:pointer}
+.dots{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:4}
+.dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer}
 .dots span.on{background:var(--red)}
 
 /* ---------- Tables / support / faq / contact (diğer sayfalar) ---------- */
@@ -209,7 +212,7 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
   body.nav-open .main-nav{display:flex}
   .top-links,.contact .social{display:none}
   .mainbar-in{gap:10px;height:86px}.logo{font-size:26px}.logo-img{max-height:74px}
-  .slide h1{font-size:48px}.price-new{font-size:40px}.slider{height:440px}
+  .slide h1{font-size:48px}.slide .price-new{font-size:40px}.slider{height:440px}
   .contact-grid{grid-template-columns:1fr}
 }
 @media(max-width:620px){.cards,.strip{grid-template-columns:1fr}}

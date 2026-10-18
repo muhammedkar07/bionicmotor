@@ -7,7 +7,7 @@ a{color:inherit;text-decoration:none}
 .logo{font-family:Georgia,serif;font-style:italic;font-weight:900;font-size:30px}
 .logo i{color:#fff}.logo b{color:#e0252f}
 /* Sol menü zemini koyu (#15171c) → logo beyaz ve kalın görünmeli */
-.logo-img{max-height:48px;filter:brightness(0) invert(1) drop-shadow(.3px 0 0 #fff) drop-shadow(-.3px 0 0 #fff) drop-shadow(0 .3px 0 #fff) drop-shadow(0 -.3px 0 #fff)}
+.logo-img{max-height:48px;filter:brightness(0) invert(1)}
 .side nav a{display:flex;justify-content:space-between;padding:8px 18px;font-size:13.5px}
 .side nav a:hover{background:#20232a}.side nav a.on{background:#e0252f;color:#fff}
 .grp{padding:14px 18px 4px;font-size:11px;text-transform:uppercase;color:#6c7380;letter-spacing:.08em}

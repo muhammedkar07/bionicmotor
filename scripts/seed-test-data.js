@@ -44,6 +44,8 @@ tx(() => {
   db.prepare("DELETE FROM applications WHERE phone LIKE '0500%'").run();
   db.prepare("DELETE FROM points WHERE name LIKE 'TEST %'").run();
   db.prepare("DELETE FROM announcements WHERE author='TEST'").run();
+  db.prepare("DELETE FROM slides WHERE title LIKE 'TEST %'").run();
+  db.prepare("DELETE FROM campaigns WHERE title LIKE 'TEST %'").run();
   db.prepare("DELETE FROM warranty_records WHERE serial_no LIKE 'TEST%'").run();
   db.prepare("DELETE FROM work_orders WHERE serial_no LIKE 'TEST%'").run();
 });
@@ -177,6 +179,15 @@ const r1 = tx(() => {
   // --- duyurular ---
   const ann = db.prepare('INSERT INTO announcements(text,author,sort,active) VALUES(?,?,?,1)');
   ann.run('Test duyurusu: bu kayıt test ortamı içindir.', 'TEST', 90);
+
+  // --- ana sayfa slider + kampanyalar ---
+  const sl = db.prepare('INSERT INTO slides(title,subtitle,old_price,new_price,bg,sort,active) VALUES(?,?,?,?,?,?,1)');
+  sl.run('TEST Slide 1', 'Birinci test duyurusu', '100.000 TL', '89.000 TL', '#1d4e5f', 1);
+  sl.run('TEST Slide 2', 'İkinci test duyurusu', '150.000 TL', '129.000 TL', '#3b0d0d', 2);
+  sl.run('TEST Slide 3', 'Üçüncü test duyurusu', null, '99.000 TL', '#123b2a', 3);
+  const cp = db.prepare('INSERT INTO campaigns(title,subtitle,old_price,new_price,sort,active) VALUES(?,?,?,?,?,1)');
+  cp.run('TEST Kampanya 1', 'Birinci test kampanyası', '50.000 TL', '39.000 TL', 1);
+  cp.run('TEST Kampanya 2', 'İkinci test kampanyası', null, '59.000 TL', 2);
 
   // --- stok bildirimi ---
   db.prepare('INSERT OR REPLACE INTO stock_notify(product_id,firm_id,user_id) VALUES(?,?,?)').run(pids['YP-T02'], firmBayi, uBayi);

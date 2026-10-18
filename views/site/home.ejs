@@ -9,6 +9,31 @@
 
 <% if (flash) { %><div class="wrap"><div class="alert alert-<%= flash.type %>" style="margin-top:16px"><%= flash.msg %></div></div><% } %>
 
+<% if (slides.length) { %>
+<section class="slider" id="slider" aria-label="Öne çıkan duyurular">
+  <% slides.forEach(function (sl, i) { %>
+  <div class="slide<%= i === 0 ? ' on' : '' %>"<% if (sl.bg) { %> style="background:<%= sl.bg %>"<% } %>>
+    <% if (sl.image) { %><img class="slide-bg" src="<%= sl.image %>" alt=""<%= i === 0 ? '' : ' loading="lazy"' %> decoding="async"><% } %>
+    <a class="slide-link" href="<%= sl.link || '/modeller' %>" aria-label="<%= sl.title %>"></a>
+    <div class="wrap slide-in">
+      <% if (sl.subtitle) { %><p class="slide-sub"><%= sl.subtitle %></p><% } %>
+      <h1><%= sl.title %></h1>
+      <% if (sl.old_price || sl.new_price) { %>
+      <div class="price">
+        <% if (sl.old_price) { %><s class="price-old"><%= sl.old_price %></s><% } %>
+        <% if (sl.new_price) { %><b class="price-new"><%= sl.new_price %></b><% } %>
+      </div>
+      <% } %>
+    </div>
+  </div>
+  <% }) %>
+  <% if (slides.length > 1) { %>
+  <button class="sl-prev" type="button" aria-label="Önceki duyuru">‹</button>
+  <button class="sl-next" type="button" aria-label="Sonraki duyuru">›</button>
+  <div class="dots"><% slides.forEach(function (sl, i) { %><span class="<%= i === 0 ? 'on' : '' %>" role="button" aria-label="<%= i + 1 %>. duyuru"></span><% }) %></div>
+  <% } %>
+</section>
+<% } else { %>
 <section class="hero"><div class="wrap hero-in">
   <div>
     <span class="eyebrow"><i></i> 2026 Sezon · Stoklarla Sınırlı</span>
@@ -46,6 +71,7 @@
     </div>
   </div>
 </div></section>
+<% } %>
 
 <div class="wrap"><div class="strip">
   <div><b>18</b><span>Satış Noktası</span></div>
