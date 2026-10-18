@@ -58,10 +58,28 @@ ssh -i ~/.ssh/bionic_oracle ubuntu@130.61.231.148 \
 | --- | --- |
 | `npm run push:test` (yerelde) | Yerel kodu test ortamına yükler |
 | `npm run promote` (yerelde) | Test edilen kodu canlıya uygular (yedek + geri alma) |
+| `npm run smoke [url]` | **Duman testi**: tüm sayfalar, formlar, yetki, admin/bayi/servis panelleri |
+| `npm run seed:test` (sunucuda) | Test ortamına gerçekçi veri seti kurar (bayi 10001 / servis 20001) |
 | `bash deploy/reset-test.sh --evet` | Test veritabanını **temiz baseline**'a döndürür |
 | `bash deploy/snapshot-prod-db.sh --evet` | **Canlı verinin kopyasını** test ortamına alır (gerçekçi test) |
 | `pm2 restart bionic-test` | Test uygulamasını yeniden başlatır |
 | `pm2 logs bionic-test` | Test uygulaması logları |
+
+### Duman testi (smoke test)
+
+```bash
+# TEST ortamı — tam kapsam (form gönderimi ve CRUD dahil)
+cd /var/www/bionic-test
+SMOKE_ADMIN_PASS='<test yönetici parolası>' node scripts/smoke.js http://127.0.0.1:3100
+
+# CANLI — salt okunur (hiçbir veri oluşturmaz/göndermez)
+SMOKE_READONLY=1 SMOKE_SKIP_PANELS=1 SMOKE_ADMIN_PASS='<parola>' \
+  node scripts/smoke.js https://bionicmotorsiklet.com
+```
+
+Test verisi: `npm run seed:test` → **bayi girişi `10001`**, **servis girişi `20001`**
+(parola `TEST_DATA_PASSWORD`, varsayılan `Test1234Ab!x`).
+Test yönetici parolası: test ortamının `.env` → `ADMIN_PASSWORD`.
 
 ## Kurallar (önemli)
 

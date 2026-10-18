@@ -424,8 +424,7 @@ const SETTINGS = [
     [
       ['facebook', 'Facebook'],
       ['instagram', 'Instagram'],
-      ['youtube', 'YouTube'],
-      ['eticaret_url', 'E-Ticaret Adresi']
+      ['youtube', 'YouTube']
     ]
   ],
   ['Vergi Oranı (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)']]],

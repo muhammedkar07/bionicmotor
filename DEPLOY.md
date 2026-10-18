@@ -169,6 +169,28 @@ Yedeklenmesi gereken tek klasör: **`DATA_DIR`** (`/var/lib/bionic/data`).
 > `scripts/reset-data.js`) canlı verisini **siler**, yalnızca "temiz başlangıç" için kullanılır.
 > Test/sıfırlama işlemleri **test ortamında** yapılır: `docs/STAGING.md`.
 > `data/baseline.db` her zaman **temiz** kalır (firma/ödeme içermez).
+>
+> Ayrıca `reset`, yönetici parolasını `.env` içindeki `ADMIN_PASSWORD` değerine **geri döndürür**
+> (panelden değiştirdiğiniz parola kaybolur). Yönetim parolası panelden değiştirilir;
+> `.env`'deki değer yalnızca ilk kurulum/sıfırlama içindir.
+
+## Doğrulama (duman testi)
+
+Yükseltme sonrası **her zaman** çalıştırılır:
+
+```bash
+# Test ortamında (tam: form gönderimi + CRUD dahil)
+npm run push:test
+bash /var/www/bionic-test/deploy/promote.sh --evet   # doğruysa canlıya
+
+# Canlıda (salt okunur — hiçbir veri oluşturmaz)
+SMOKE_READONLY=1 SMOKE_SKIP_PANELS=1 SMOKE_ADMIN_PASS='...' \
+  node scripts/smoke.js https://bionicmotorsiklet.com
+```
+
+Kapsam: genel site sayfaları, iç bağlantı taraması, statik varlıklar, KVKK form doğrulaması,
+yetki kontrolleri, yönetim paneli (18 kaynak + formlar + CRUD + sistem testi), bayi ve servis
+panelleri. **Son sonuç: test 52/52 · canlı 44/44 + bayi 14/14 + servis 10/10 — tümü başarılı.**
 
 ## Notlar
 - **SQLite** kullanıldığı için tek Node örneği (`instances: 1`) çalıştırın (dosya kilidi).

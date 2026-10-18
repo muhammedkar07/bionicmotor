@@ -277,6 +277,10 @@ if (snapCols.length && !snapCols.some(c => c.name === 'id')) {
 
 // ÖTV kaldırıldı: eski ayar kaydı varsa temizlenir.
 db.prepare("DELETE FROM settings WHERE key='otv_rate'").run();
+// Kaldırılan özelliklerin kalıntıları: e-ticaret adresi ayarı ve taksit tanımları.
+// (Taksit seçimi artık Paratika'nın barındırılan ödeme sayfasında yapılır.)
+db.prepare("DELETE FROM settings WHERE key='eticaret_url'").run();
+db.exec('DROP TABLE IF EXISTS installments');
 
 // Varsayılan logo artık paket içinde kalıcı public/img klasöründedir
 // (public/uploads git'ten hariç tutulduğu için eski değer bozuk kalırdı).
@@ -433,14 +437,11 @@ function revertOrderStock(orderId) {
   db.prepare('DELETE FROM order_stock_snap WHERE order_id=?').run(orderId);
 }
 addCol('payments', 'movement_id', 'INTEGER');
-// Ödemenin cari hesaba alacak olarak yazılacak TL tutarı. Cari TL cinsindendir; döviz
-// ödemeler ayarlardaki kur ile TL'ye çevrilir. Komisyon cari borcunu değiştirmediği için
-// yalnızca ödemenin kendisi (amount) yazılır, komisyon dahil toplam (total) yazılmaz.
+// Ödemenin cari hesaba alacak olarak yazılacak tutarı (kuruş). Cari TL cinsindendir ve
+// ödemeler TL alınır; `amount_tl` önceliklidir. (Eski döviz kayıtları için `amount` yedeği.)
 function cariAmount(p) {
-  if (p.amount_tl != null) return Math.round(+p.amount_tl || 0);
-  const amt = +p.amount || 0;
-  const rate = p.currency === 'USD' ? parseFloat(get('usd_rate')) : p.currency === 'EUR' ? parseFloat(get('eur_rate')) : 1;
-  return Math.round(amt * (rate > 0 ? rate : 1));
+  const v = p.amount_tl != null ? p.amount_tl : p.amount;
+  return Math.round(+v || 0);
 }
 // Online ödeme "Tahsil Edildi" olunca firmanın ana carisine alacak olarak işlenir.
 // Yedek parça siparişine bağlı ödemeler sipariş cari kaydı (syncOrderDebit) tarafından zaten işlenir.

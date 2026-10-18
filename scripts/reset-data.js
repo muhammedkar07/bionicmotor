@@ -1,7 +1,7 @@
 'use strict';
 // TEMİZ VERİ (demo/sunum): işlemsel ve kullanıcı verilerini siler.
 // KORUNUR: admins (yönetici), settings, models, pages, categories, faqs, slides,
-//          campaigns, announcements, points (satış/servis noktaları), installments, products.
+//          campaigns, announcements, points (satış/servis noktaları), products.
 // SİLİNİR: firms, dealer_users, account_movements, payments, siparişler, garanti, iş emirleri,
 //          başvurular, mesajlar, stok hareketleri, audit_log, oturumlar, giriş denemeleri.
 //

@@ -40,11 +40,8 @@ function ensureSeed() {
       facebook: '#',
       instagram: '#',
       youtube: '#',
-      eticaret_url: '#',
       meta_description:
         'Bionic Motor — Mersin merkezli motosiklet ve scooter markası. Güncel modeller, yetkili bayi ve servis noktaları, online ödeme ve kampanyalar.',
-      eur_rate: '55.1724',
-      usd_rate: '49.2714',
       footer_note: '© Tüm hakları saklıdır.'
     };
     Object.entries(S).forEach(([k, v]) => set(k, v));
@@ -103,14 +100,6 @@ function ensureSeed() {
     page.run('kisisel-bilgi-guvenligi', 'Kişisel Bilgi Güvenliği', '<p>Kişisel verileriniz yasal mevzuata uygun olarak korunur.</p>');
     page.run('iptal-iade', 'İptal & İade', '<p>İptal ve iade koşulları.</p>');
     page.run('hizmet-sozlesmesi', 'Hizmet Sözleşmesi', '<p>Hizmet sözleşmesi metni.</p>');
-
-    const ins = db.prepare('INSERT INTO installments(label,count,rate) VALUES(?,?,?)');
-    ins.run('Tek Çekim', 1, 0);
-    ins.run('2 Taksit', 2, 2.5);
-    ins.run('3 Taksit', 3, 3.5);
-    ins.run('6 Taksit', 6, 6);
-    ins.run('9 Taksit', 9, 8.5);
-    ins.run('12 Taksit', 12, 11);
 
     const ann = db.prepare('INSERT INTO announcements(text,author,sort) VALUES(?,?,?)');
     const au = 'Satış Sonrası Hizmetler Müdürlüğü';
