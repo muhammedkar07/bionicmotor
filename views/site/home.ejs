@@ -13,7 +13,7 @@
 <div class="wrap">
 <section class="slider" id="slider" aria-label="Öne çıkan duyurular">
   <% slides.forEach(function (sl, i) { %>
-  <div class="slide<%= i === 0 ? ' on' : '' %>"<% if (sl.bg) { %> style="background:<%= sl.bg %>"<% } %>>
+  <div class="slide<%= i === 0 ? ' on' : '' %>">
     <a class="slide-link" href="<%= sl.link || '/modeller' %>" aria-label="<%= sl.title %>"></a>
     <div class="slide-in">
       <div class="slide-text">

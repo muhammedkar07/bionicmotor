@@ -287,7 +287,6 @@ const RES = {
       T('subtitle', 'Alt Yazı'),
       T('old_price', 'Eski Fiyat'),
       T('new_price', 'Yeni Fiyat'),
-      T('bg', 'Arka Plan Rengi (#hex)', { def: '#111111' }),
       T('link', 'Bağlantı'),
       N('sort', 'Sıra', { def: 0 }),
       C('active')

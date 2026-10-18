@@ -135,26 +135,25 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
 .band .btn-line,.band .btn{background:var(--bg);color:var(--ink);border-color:transparent}
 
 /* ---------- Ana sayfa slider (slides tablosundan) ----------
+   Renkler TEMAYA uyar: aydınlıkta beyaz zemin + koyu yazı, koyu temada siyah zemin + açık yazı.
    Genişlik içerik genişliğiyle aynı (.wrap içinde); düzen: solda bilgi, sağda görsel. */
 .slider{position:relative;height:460px;background:var(--surface-2);overflow:hidden;border-radius:20px;margin:24px 0 0}
-.slide{position:absolute;inset:0;opacity:0;transition:opacity .8s;color:#fff}
+.slide{position:absolute;inset:0;opacity:0;transition:opacity .8s;background:var(--surface);color:var(--ink)}
 .slide.on{opacity:1}
-/* Metnin okunması için soldan hafif karartma */
-.slide:before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(0,0,0,.55),rgba(0,0,0,.18) 55%,rgba(0,0,0,0))}
 .slide-link{position:absolute;inset:0;z-index:3}
 .slide-in{position:relative;z-index:2;height:100%;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:28px;padding:0 46px}
 .slide-text{display:flex;flex-direction:column;gap:10px;min-width:0}
 /* Görsel KIRPILMAZ/ESNETİLMEZ: kendi oranında, alanına sığdırılır */
 .slide-media{height:100%;display:flex;align-items:center;justify-content:center;padding:26px 0;min-width:0}
-.slide-media img{max-width:100%;max-height:100%;object-fit:contain;border-radius:16px;box-shadow:0 26px 60px -32px rgba(0,0,0,.8)}
-.slide-sub{font-style:italic;font-weight:700;max-width:520px;font-size:18px;margin:0;text-shadow:0 1px 12px rgba(0,0,0,.5)}
-.slide h1{font-size:64px;margin:0;font-weight:800;letter-spacing:-2px;text-shadow:0 2px 22px rgba(0,0,0,.5)}
-.slide .price-old{font-size:22px;opacity:.75;color:#fff}
-.slide .price-new{font-size:48px;font-weight:800;color:#fff}
+.slide-media img{max-width:100%;max-height:100%;object-fit:contain;border-radius:16px;box-shadow:0 26px 60px -32px rgba(0,0,0,.45)}
+.slide-sub{font-style:italic;font-weight:700;max-width:520px;font-size:18px;margin:0;color:var(--muted)}
+.slide h1{font-size:64px;margin:0;font-weight:800;letter-spacing:-2px}
+.slide .price-old{font-size:22px;opacity:.7}
+.slide .price-new{font-size:48px;font-weight:800;color:var(--red)}
 .sl-prev,.sl-next{position:absolute;top:50%;transform:translateY(-50%);background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:32px;width:44px;height:64px;cursor:pointer;border-radius:12px;z-index:4}
 .sl-prev{left:12px}.sl-next{right:12px}
 .dots{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:4}
-.dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.45);cursor:pointer}
+.dots span{width:10px;height:10px;border-radius:50%;background:var(--line-2);cursor:pointer}
 .dots span.on{background:var(--red)}
 
 /* ---------- Tables / support / faq / contact (diğer sayfalar) ---------- */
