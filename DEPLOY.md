@@ -71,14 +71,33 @@ sudo nginx -t && sudo systemctl reload nginx
 > **Önemli:** `proxy_pass http://bionic_app;` satırında **sonunda `/` OLMAMALI**.
 > Böylece `/bionic/` öneki korunur ve uygulama `BASE_PATH=/bionic` ile eşleşir.
 
-## 6) HTTPS (Let's Encrypt)
+## 6) HTTPS (Let's Encrypt) — ✅ KURULDU
+
+DNS (`bionicmotorsiklet.com` + `www` → sunucu IP'si) hazır olduktan sonra bir kez çalıştırılır:
 
 ```bash
-sudo certbot --nginx -d bionicmotorsiklet.com -d www.bionicmotorsiklet.com
+sudo certbot --nginx -d bionicmotorsiklet.com -d www.bionicmotorsiklet.com \
+  --redirect --agree-tos --non-interactive -m <yetkili-eposta> --no-eff-email
 ```
 
-Certbot 443 bloğunu oluşturur; `location /bionic/ { proxy_pass ... }` bloklarını aynı bırakın.
-Sonra `.env` içinde `COOKIE_SECURE=1` olduğundan emin olun ve `pm2 restart bionic`.
+**Mevcut durum (18.10.2026):**
+- Sertifika: `/etc/letsencrypt/live/bionicmotorsiklet.com/` — geçerlilik **16.01.2027**
+- Otomatik yenileme: `systemd` timer (`certbot renew`, günde 2 kez) — ek işlem gerekmez
+- HTTP → HTTPS yönlendirmesi açık (`--redirect`)
+- `https://bionicmotorsiklet.com/bionic/` → **200**, `https://bionicmotorsiklet.com/` → `/bionic/`
+- `.env`: `PUBLIC_URL=https://bionicmotorsiklet.com/bionic`, `COOKIE_SECURE=1` → `pm2 restart bionic`
+
+Doğrulama:
+
+```bash
+curl -sSI https://bionicmotorsiklet.com/bionic/ | head -1          # 200
+curl -sSI http://bionicmotorsiklet.com/bionic/ | grep -i location  # https'e 301
+sudo certbot certificates                                          # geçerlilik tarihi
+```
+
+> **Neden `PUBLIC_URL` kritik:** Paratika `RETURNURL`'ü bu değerden üretilir →
+> `https://bionicmotorsiklet.com/bionic/odeme/paratika/sonuc`. Bankanın 3D adımı bu adrese
+> dönebilmesi için alan adı + geçerli HTTPS zorunludur.
 
 ## 7) Güvenlik duvarı
 
@@ -124,13 +143,18 @@ Doğrulama: `node --env-file=.env scripts/backup.js` sonrası `rclone ls r2:bion
 Yedeklenmesi gereken tek klasör: **`DATA_DIR`** (`/var/lib/bionic/data`).
 
 ## 10) Canlıya geçiş kontrol listesi
-- [ ] `PARATIKA_ENV=prod` ve **canlı (VPOS) API kullanıcısı** girildi (entegrasyon kullanıcısı canlıda geçmez).
-- [ ] `PUBLIC_URL` tam adres (`/bionic` dahil) ve `BASE_PATH=/bionic`.
-- [ ] `ADMIN_PASSWORD` güçlü, `SEED_DEMO=0`.
-- [ ] `BACKUP_ENCRYPT_KEY` ayarlandı ve güvenli bir yerde saklandı.
-- [ ] `https://bionicmotorsiklet.com/bionic/` açılıyor; `/` → `/bionic/` yönleniyor.
-- [ ] Ödeme: kart → 3D → dönüşte **cariye alacak** işleniyor (gerçek kart veya canlı test).
+- [x] `PARATIKA_ENV=prod` ve **canlı (VPOS) API kullanıcısı** girildi — ✅ 18.10.2026 (üye işyeri 10013443; QUERYINSTALLMENT/SESSIONTOKEN onaylı)
+- [x] `PUBLIC_URL` tam adres (`/bionic` dahil) ve `BASE_PATH=/bionic` — ✅ `https://bionicmotorsiklet.com/bionic`
+- [x] `COOKIE_SECURE=1` (HTTPS) — ✅ çerezler `Secure; HttpOnly; SameSite=Lax`
+- [x] `ADMIN_PASSWORD` güçlü, `SEED_DEMO=0`.
+- [x] `BACKUP_ENCRYPT_KEY` ayarlandı ve güvenli bir yerde saklandı; off-site (R2) yükleme çalışıyor.
+- [x] `https://bionicmotorsiklet.com/bionic/` → **200**; `/` → `/bionic/`; **HTTP → HTTPS** yönleniyor.
+- [x] SSL (Let's Encrypt) kurulu, otomatik yenileme açık — geçerlilik **16.01.2027**.
+- [ ] Ödeme: kart → 3D → dönüşte **cariye alacak** işleniyor — ⏳ **gerçek kartla ilk canlı tahsilat bekleniyor**
 - [ ] `logs/error.log` boş; `pm2 logs bionic` temiz.
+
+> **Kalan tek iş:** gerçek kartla ilk canlı ödeme denemesi (3D SMS onayı sonrası cariye alacak düşmeli).
+> Dönüş adresi: `https://bionicmotorsiklet.com/bionic/odeme/paratika/sonuc`
 
 ## Notlar
 - **SQLite** kullanıldığı için tek Node örneği (`instances: 1`) çalıştırın (dosya kilidi).
