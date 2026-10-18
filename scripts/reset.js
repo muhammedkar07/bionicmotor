@@ -16,6 +16,16 @@ const BASELINE = process.env.BASELINE_DB || path.join(ROOT, 'data', 'baseline.db
 const BK_DIR = process.env.BACKUP_DIR || path.join(ROOT, 'backups');
 const APP = process.env.PM2_APP || 'bionic';
 
+// GÜVENLİK: Canlı ortamda veri silme KAPALIDIR. Bu ortam canlıya benziyorsa (DATA_DIR/PM2_APP
+// içinde "test/staging" geçmiyorsa) ek onay istenir: ALLOW_PROD_RESET=1
+const looksProd = !/test|staging/i.test(DATA_DIR) && !/test|staging/i.test(process.env.PM2_APP || '');
+if (looksProd && process.env.ALLOW_PROD_RESET !== '1') {
+  console.error('!! Bu ortam CANLI görünüyor: ' + DATA_DIR);
+  console.error('   Canlıda veri silme/geri yükleme KAPALI (gerçek müşteri verisi korunuyor).');
+  console.error('   Gerçekten istiyorsanız:  ALLOW_PROD_RESET=1 node --env-file=.env scripts/reset.js --evet');
+  process.exit(1);
+}
+
 const pm = args => {
   try {
     execFileSync('pm2', args, { stdio: 'ignore' });

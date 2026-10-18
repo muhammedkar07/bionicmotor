@@ -7,6 +7,17 @@
 //
 // Kullanım:  node --env-file=.env scripts/reset-data.js --evet
 const { db } = require('../db');
+const path = require('path');
+
+// GÜVENLİK: Canlı ortamda veri silme KAPALIDIR (gerçek müşteri verisi korunuyor).
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+const looksProd = !/test|staging/i.test(DATA_DIR) && !/test|staging/i.test(process.env.PM2_APP || '');
+if (looksProd && process.env.ALLOW_PROD_RESET !== '1') {
+  console.error('!! Bu ortam CANLI görünüyor: ' + DATA_DIR);
+  console.error('   Canlıda veri silme KAPALI. Test/sıfırlama işlemleri test ortamında yapılır (docs/STAGING.md).');
+  console.error('   Gerçekten istiyorsanız:  ALLOW_PROD_RESET=1 node --env-file=.env scripts/reset-data.js --evet');
+  process.exit(1);
+}
 
 const CLEAR = [
   // çocuk tablolar önce

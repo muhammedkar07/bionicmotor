@@ -7,6 +7,16 @@
 //
 // Kullanım:  node --env-file=.env scripts/clean-demo.js --evet
 const { db } = require('../db');
+const path = require('path');
+
+// GÜVENLİK: Canlı ortamda içerik silme KAPALIDIR (gerçek müşteri verisi korunuyor).
+const CD_DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+const CDlooksProd = !/test|staging/i.test(CD_DATA_DIR) && !/test|staging/i.test(process.env.PM2_APP || '');
+if (CDlooksProd && process.env.ALLOW_PROD_RESET !== '1') {
+  console.error('!! Bu ortam CANLI görünüyor: ' + CD_DATA_DIR);
+  console.error('   Canlıda içerik silme KAPALI. Gerçekten istiyorsanız: ALLOW_PROD_RESET=1 ekleyin.');
+  process.exit(1);
+}
 
 const SAMPLE_MODELS = ['SST125', 'Cruiser 150', 'Urban 50'];
 const SAMPLE_CATS = ['Scooter', 'Motosiklet'];
