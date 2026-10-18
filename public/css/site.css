@@ -141,11 +141,11 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
 .slide{position:absolute;inset:0;opacity:0;transition:opacity .8s;background:var(--surface);color:var(--ink)}
 .slide.on{opacity:1}
 .slide-link{position:absolute;inset:0;z-index:3}
-.slide-in{position:relative;z-index:2;height:100%;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:28px;padding:0 46px}
-.slide-text{display:flex;flex-direction:column;gap:10px;min-width:0}
-/* Görsel KIRPILMAZ/ESNETİLMEZ: kendi oranında, alanına sığdırılır */
-.slide-media{height:100%;display:flex;align-items:center;justify-content:center;padding:26px 0;min-width:0}
-.slide-media img{max-width:100%;max-height:100%;object-fit:contain;border-radius:16px;box-shadow:0 26px 60px -32px rgba(0,0,0,.45)}
+.slide-in{position:relative;z-index:2;height:100%;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:28px;padding:0 46px;overflow:hidden}
+.slide-text{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0}
+/* Görsel KIRPILMAZ/ESNETİLMEZ ve TAŞMAZ: kutusu slide yüksekliğiyle sınırlı, oran korunur */
+.slide-media{height:100%;min-height:0;min-width:0;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:20px 0}
+.slide-media img{display:block;height:100%;width:auto;max-width:100%;object-fit:contain;border-radius:14px}
 .slide-sub{font-style:italic;font-weight:700;max-width:520px;font-size:18px;margin:0;color:var(--muted)}
 .slide h1{font-size:64px;margin:0;font-weight:800;letter-spacing:-2px}
 .slide .price-old{font-size:22px;opacity:.7}
@@ -215,7 +215,7 @@ p.lead{color:var(--muted);max-width:520px;font-size:16.5px}
   body.nav-open .main-nav{display:flex}
   .top-links,.contact .social{display:none}
   .mainbar-in{gap:10px;height:86px}.logo{font-size:26px}.logo-img{max-height:74px}
-  .slide-in{grid-template-columns:1fr;gap:12px;padding:22px 24px}.slide-media{height:auto;padding:0}.slide-media img{max-height:150px}.slide h1{font-size:38px}.slide .price-new{font-size:34px}.slider{height:430px;border-radius:16px}
+  .slide-in{grid-template-columns:1fr;gap:10px;padding:20px 22px}.slide-media{height:auto;padding:0;overflow:visible}.slide-media img{height:auto;max-height:140px;width:auto}.slide h1{font-size:36px}.slide .price-new{font-size:32px}.slider{height:430px;border-radius:16px}
   .contact-grid{grid-template-columns:1fr}
 }
 @media(max-width:620px){.cards,.strip{grid-template-columns:1fr}}

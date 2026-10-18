@@ -1,5 +1,6 @@
 <%- include('../partials/admin_head') %>
 <% const isMoney = n => (moneyFields || []).includes(n); %>
+<a class="backlink" href="/admin/r/<%= res.key %>">‹ Listeye dön</a>
 <h1><%= title %></h1>
 <form method="post" action="/admin/r/<%= res.key %>/save" enctype="multipart/form-data" class="fcard">
   <input type="hidden" name="_csrf" value="<%= csrf %>">

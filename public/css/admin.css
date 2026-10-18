@@ -38,6 +38,9 @@ h1{font-size:22px;margin:0 0 18px;font-weight:600}h2{font-size:17px;margin:26px 
 .tbl td.lt{text-align:right;white-space:nowrap;font-weight:600;font-variant-numeric:tabular-nums;color:#333}
 .tbl input{width:100%;padding:6px 8px;border:1px solid #cdd2d9;border-radius:4px}
 .act{white-space:nowrap}.muted{color:#7a818c}
+/* Kayıt formlarında sol üste "geri" bağlantısı (listeye/üst sayfaya dön) */
+.backlink{display:inline-flex;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;font-weight:600;color:#6c757d;text-decoration:none}
+.backlink:hover{color:#e0252f}
 .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
 .stat{background:#fff;border:1px solid #e1e4e8;border-radius:6px;padding:20px;display:flex;flex-direction:column;gap:4px}
 .stat b{font-size:32px;color:#e0252f}.stat:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
