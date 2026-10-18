@@ -10,20 +10,23 @@
 <% if (flash) { %><div class="wrap"><div class="alert alert-<%= flash.type %>" style="margin-top:16px"><%= flash.msg %></div></div><% } %>
 
 <% if (slides.length) { %>
+<div class="wrap">
 <section class="slider" id="slider" aria-label="Öne çıkan duyurular">
   <% slides.forEach(function (sl, i) { %>
   <div class="slide<%= i === 0 ? ' on' : '' %>"<% if (sl.bg) { %> style="background:<%= sl.bg %>"<% } %>>
-    <% if (sl.image) { %><img class="slide-bg" src="<%= sl.image %>" alt=""<%= i === 0 ? '' : ' loading="lazy"' %> decoding="async"><% } %>
     <a class="slide-link" href="<%= sl.link || '/modeller' %>" aria-label="<%= sl.title %>"></a>
-    <div class="wrap slide-in">
-      <% if (sl.subtitle) { %><p class="slide-sub"><%= sl.subtitle %></p><% } %>
-      <h1><%= sl.title %></h1>
-      <% if (sl.old_price || sl.new_price) { %>
-      <div class="price">
-        <% if (sl.old_price) { %><s class="price-old"><%= sl.old_price %></s><% } %>
-        <% if (sl.new_price) { %><b class="price-new"><%= sl.new_price %></b><% } %>
+    <div class="slide-in">
+      <div class="slide-text">
+        <% if (sl.subtitle) { %><p class="slide-sub"><%= sl.subtitle %></p><% } %>
+        <h1><%= sl.title %></h1>
+        <% if (sl.old_price || sl.new_price) { %>
+        <div class="price">
+          <% if (sl.old_price) { %><s class="price-old"><%= sl.old_price %></s><% } %>
+          <% if (sl.new_price) { %><b class="price-new"><%= sl.new_price %></b><% } %>
+        </div>
+        <% } %>
       </div>
-      <% } %>
+      <% if (sl.image) { %><div class="slide-media"><img src="<%= sl.image %>" alt="<%= sl.title %>"<%= i === 0 ? '' : ' loading="lazy"' %> decoding="async"></div><% } %>
     </div>
   </div>
   <% }) %>
@@ -33,6 +36,7 @@
   <div class="dots"><% slides.forEach(function (sl, i) { %><span class="<%= i === 0 ? 'on' : '' %>" role="button" aria-label="<%= i + 1 %>. duyuru"></span><% }) %></div>
   <% } %>
 </section>
+</div>
 <% } else { %>
 <section class="hero"><div class="wrap hero-in">
   <div>
