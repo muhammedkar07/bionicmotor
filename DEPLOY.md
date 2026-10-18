@@ -1,6 +1,11 @@
-# Sunucu Kurulumu — bionicmotorsiklet.com/bionic
+# Sunucu Kurulumu — bionicmotorsiklet.com
 
-Uygulama **Node.js + SQLite** çalıştırır ve ters proxy (nginx) arkasında **`/bionic/` alt yolunda** yayınlanır.
+> **Çalışma kuralı:** Canlı müşteri kullanımında olduğu için hiçbir değişiklik doğrudan canlıda
+> denenmez. Sıra: **yerel → TEST (`test.bionicmotorsiklet.com`) → doğrula → CANLI**.
+> Ayrıntı: **[docs/STAGING.md](docs/STAGING.md)**
+
+Uygulama **Node.js + SQLite** çalıştırır ve ters proxy (nginx) arkasında **kök dizinde** (`/`)
+yayınlanır. Eski `/bionic/...` adresleri nginx'te 301 ile köke taşınır.
 
 ## 1) Sunucu hazırlığı (Ubuntu 24.04)
 

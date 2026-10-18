@@ -28,6 +28,8 @@
     "backup:verify": "node scripts/backup-verify.js",
     "restore": "node scripts/restore.js",
     "test": "node --test",
+    "push:test": "powershell -ExecutionPolicy Bypass -File deploy/push-to-test.ps1",
+    "promote": "powershell -ExecutionPolicy Bypass -File deploy/promote.ps1",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.js\"",
     "format:check": "prettier --check \"**/*.js\"",
