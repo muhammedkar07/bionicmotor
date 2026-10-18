@@ -7,6 +7,8 @@
   const scooter = '<svg viewBox="0 0 520 300" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><circle cx="120" cy="232" r="52"/><circle cx="404" cy="232" r="52"/><path d="M120 232 L210 156 L306 156 L372 122"/><path d="M210 156 L262 232"/><path d="M306 156 L338 232"/><path d="M186 156 q42 -40 104 -24"/><path d="M372 122 L412 66 M412 66 L448 90"/><circle cx="448" cy="90" r="11"/></g></svg>';
 %>
 
+<% if (flash) { %><div class="wrap"><div class="alert alert-<%= flash.type %>" style="margin-top:16px"><%= flash.msg %></div></div><% } %>
+
 <section class="hero"><div class="wrap hero-in">
   <div>
     <span class="eyebrow"><i></i> 2026 Sezon · Stoklarla Sınırlı</span>

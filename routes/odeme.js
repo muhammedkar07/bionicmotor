@@ -102,6 +102,24 @@ async function paratikaResult(req, res) {
     logAudit({ type: 'sistem', name: 'paratika' }, 'payment_pending', 'payments', payment.id, null, req.ip);
     return back(payment, 'warning', 'Ödeme sonucu henüz kesinleşmedi. Kısa süre sonra tekrar kontrol edin.');
   }
+  if (v.config) {
+    // Doğrulama yapılamadı (API yetkisi/yapılandırma): ödeme İPTAL EDİLMEZ. Müşteri ödemiş
+    // olabilir; kayıt "Sanal POS Bekliyor" olarak kalır, mutabakat yetki düzelince işler.
+    logAudit(
+      { type: 'sistem', name: 'paratika' },
+      'payment_verify_denied',
+      'payments',
+      payment.id,
+      { error: v.error || null, provider_order: payment.provider_order },
+      req.ip
+    );
+    return back(
+      payment,
+      'warning',
+      'Ödemeniz alınmış olabilir; şu an doğrulanamadı ve kaydınız sistemde bekletiliyor. En kısa sürede hesabınıza işlenecektir. Bilgi: ' +
+        (v.error || 'doğrulama yapılamadı')
+    );
+  }
   db.prepare('UPDATE payments SET status=? WHERE id=? AND status=?').run('İptal', payment.id, STATUS.POS_PENDING);
   logAudit({ type: 'sistem', name: 'paratika' }, 'payment_failed', 'payments', payment.id, { error: v.error || null }, req.ip);
   return back(payment, 'danger', 'Ödeme tamamlanamadı: ' + (v.error || 'bilinmeyen hata'));

@@ -40,13 +40,16 @@ Kritik değerler:
 
 | Değişken | Değer |
 | --- | --- |
-| `BASE_PATH` | `/bionic` |
-| `PUBLIC_URL` | `https://bionicmotorsiklet.com/bionic` |
+| `BASE_PATH` | *(boş — uygulama kökte çalışır)* |
+| `PUBLIC_URL` | `https://bionicmotorsiklet.com` |
 | `TRUST_PROXY` | `1` |
 | `COOKIE_SECURE` | `1` |
 | `DATA_DIR` | `/var/lib/bionic/data` |
 | `BACKUP_ENCRYPT_KEY` | güçlü, gizli (kaybetmeyin!) |
 | `PARATIKA_ENV` | `prod` (canlı) |
+
+> Alt yolda çalıştırmak isterseniz: `BASE_PATH=/bionic` + `PUBLIC_URL=https://site/bionic` ve
+> nginx'te `location /bionic/ { proxy_pass http://bionic_app; }` (önek korunur).
 
 ## 4) PM2 ile başlat
 
@@ -57,7 +60,7 @@ pm2 save
 pm2 startup           # çıkan komutu çalıştırın (açılışta otomatik başlasın)
 
 # Doğrulama:
-curl -I http://127.0.0.1:3000/bionic/
+curl -I http://127.0.0.1:3000/
 ```
 
 ## 5) nginx
@@ -69,7 +72,7 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 > **Önemli:** `proxy_pass http://bionic_app;` satırında **sonunda `/` OLMAMALI**.
-> Böylece `/bionic/` öneki korunur ve uygulama `BASE_PATH=/bionic` ile eşleşir.
+> Böylece kökte `/` öneki korunur ve uygulama `BASE_PATH` boş iken eşleşir.
 
 ## 6) HTTPS (Let's Encrypt) — ✅ KURULDU
 
@@ -148,14 +151,37 @@ Yedeklenmesi gereken tek klasör: **`DATA_DIR`** (`/var/lib/bionic/data`).
 - [x] `COOKIE_SECURE=1` (HTTPS) — ✅ çerezler `Secure; HttpOnly; SameSite=Lax`
 - [x] `ADMIN_PASSWORD` güçlü, `SEED_DEMO=0`.
 - [x] `BACKUP_ENCRYPT_KEY` ayarlandı ve güvenli bir yerde saklandı; off-site (R2) yükleme çalışıyor.
-- [x] `https://bionicmotorsiklet.com/bionic/` → **200**; `/` → `/bionic/`; **HTTP → HTTPS** yönleniyor.
+- [x] `https://bionicmotorsiklet.com/` → **200** (kök dizin); eski `/bionic/...` adresleri önek korunarak köke 301'lenir. **HTTP → HTTPS** yönleniyor.
 - [x] SSL (Let's Encrypt) kurulu, otomatik yenileme açık — geçerlilik **16.01.2027**.
-- [ ] Ödeme: kart → 3D → dönüşte **cariye alacak** işleniyor — ⏳ **gerçek kartla ilk canlı tahsilat bekleniyor**
+- [x] Ödeme sonrası yönlendirme: **bayi → `/bayi/hesap-ozeti`**, **servis → `/servis/hesap-ozeti`**, **sitedeki online ödeme → `/`** (ana sayfa) — doğrulandı.
+- [x] Çerez + oturum: `Secure; HttpOnly; SameSite=Lax`; panel girişleri HTTPS'te çalışıyor.
+- [ ] Ödeme: kart → 3D → dönüşte **cariye alacak** işleniyor — ⛔ **Paratika canlı API kullanıcısına `API_QUERYTRANSACTION` yetkisi verilmeli** (aşağıya bakın)
 - [ ] `logs/error.log` boş; `pm2 logs bionic` temiz.
 
-> **Kalan tek iş:** gerçek kartla ilk canlı ödeme denemesi (3D SMS onayı sonrası cariye alacak düşmeli).
-> Dönüş adresi: `https://bionicmotorsiklet.com/bionic/odeme/paratika/sonuc`
+> ### ⛔ Canlı ödeme öncesi zorunlu: `API_QUERYTRANSACTION` yetkisi
+> Canlı API kullanıcısı (`h.sancar288@gmail.com` / üye işyeri **10013443**) için `QUERYTRANSACTION`
+> çağrısı şu hatayı veriyor:
+> ```
+> responseCode=99 | errorCode=ERR10082
+> "Kullanıcının bu işlem için yetkisi yoktur."
+> violatorParam=User does not have API_QUERYTRANSACTION permission to perform this action
+> ```
+> Ödeme durumu **sunucudan sunucuya** bu çağrıyla doğrulanır (kullanıcıya güvenilmez). Yetki
+> verilmezse: para çekilir ama **cariye alacak işlenmez**, mutabakat da çalışamaz.
+>
+> **Çözüm:** Paratika paneli → **Ayarlar / API Kullanıcıları** → kullanıcının yetkilerinde
+> **İşlem Sorgulama (QUERYTRANSACTION)** iznini açın (veya tüm API yetkileri olan yeni bir API
+> kullanıcısı oluşturun). Ardından doğrulama:
+> ```bash
+> curl -s -X POST https://vpos.paratika.com.tr/paratika/api/v2 \
+>   -d MERCHANT=10013443 -d MERCHANTUSER=... -d MERCHANTPASSWORD=... \
+>   -d ACTION=QUERYTRANSACTION -d MERCHANTPAYMENTID=TEST | head -c 300
+> ```
+> `responseCode=00` görmelisiniz (işlem bulunamasa bile yetki hatası vermemeli).
+>
+> Dönüş adresi: `https://bionicmotorsiklet.com/odeme/paratika/sonuc`
 
 ## Notlar
 - **SQLite** kullanıldığı için tek Node örneği (`instances: 1`) çalıştırın (dosya kilidi).
-- `/bionic/` öneki `BASE_PATH` ile yönetilir; kökte çalıştırmak istersen `BASE_PATH` boş bırakılır (o zaman tüm bağlantılar köke göre üretilir).
+- Uygulama **kök dizinde** çalışır (`BASE_PATH` boş). Eski `/bionic/...` adresleri nginx'te önek korunarak köke 301'lenir.
+- Alt yolda (`/bionic`) çalıştırmak istersen `BASE_PATH=/bionic` yeterlidir; bağlantılar ve ödeme dönüş adresi otomatik uyum sağlar.

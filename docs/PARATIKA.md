@@ -139,21 +139,50 @@ PARATIKA_SIMULATE=0          # 1 = ağsız simülasyon (yalnızca geliştirme)
 | --- | --- |
 | `QUERYINSTALLMENT` | `00` Approved (Halkbank vPOS listeleniyor) |
 | `QUERYMERCHANTCOMMISSION` | `00` Approved |
+| `QUERYBIN` / `QUERYCARD` | `00` Approved |
 | `SESSIONTOKEN` | `sessionToken` döndü (`00` Approved) |
 | Uygulama içi HPP yönlendirmesi | `302 → https://vpos.paratika.com.tr/payment/<token>` |
 | Sistem testi (Teşhis) sayfası | API adresi `https://vpos.paratika.com.tr/paratika/api/v2` |
+| **`QUERYTRANSACTION`** | ⛔ **`ERR10082` — yetki yok** (aşağıya bakın) |
 
-> ⚠️ **Kalan tek koşul: alan adı + SSL.** Banka 3D adımında `RETURNURL`'ün gerçek,
-> HTTPS'li ve kayıtlı bir adres olması beklenir. `bionicmotorsiklet.com` şu an eski
-> sunucuya (`45.151.250.117`) baktığı için dönüş adresi geçici olarak
-> `http://130.61.231.148/bionic` üzerinden üretilir (`PUBLIC_URL` boş → `publicOrigin(req)`).
-> Alan adı bu sunucuya (`130.61.231.148`) alındığında:
-> `certbot --nginx -d bionicmotorsiklet.com -d www.bionicmotorsiklet.com` → ardından
-> `.env` içinde `PUBLIC_URL=https://bionicmotorsiklet.com/bionic` ve `COOKIE_SECURE=1`.
+### Alan adı + SSL — ✅ tamam (18.10.2026)
 
-Mutabakat (reconcile) açılışta ve 15 dakikada bir, `Ödeme Bekliyor` durumundaki ödemeleri
+`bionicmotorsiklet.com` + `www` → sunucu IP'si; Let's Encrypt sertifikası kurulu (geçerlilik
+**16.01.2027**), HTTP → HTTPS yönlendirmesi açık. Uygulama artık **kök dizinde**:
+
+```
+PUBLIC_URL = https://bionicmotorsiklet.com
+RETURNURL  = https://bionicmotorsiklet.com/odeme/paratika/sonuc
+```
+
+### ⛔ Açık iş: `API_QUERYTRANSACTION` yetkisi (canlı ödeme öncesi ZORUNLU)
+
+```
+ACTION=QUERYTRANSACTION
+=> responseCode=99 | errorCode=ERR10082
+   "Kullanıcının bu işlem için yetkisi yoktur."
+   violatorParam=User does not have API_QUERYTRANSACTION permission to perform this action
+```
+
+Diğer tüm ACTION'lar (`QUERYINSTALLMENT`, `QUERYMERCHANTCOMMISSION`, `QUERYBIN`, `QUERYCARD`,
+`SESSIONTOKEN`) çalışıyor; **yalnızca** `QUERYTRANSACTION` yetkisiz.
+
+**Neden kritik:** `routes/odeme.js` → `paratikaResult()` ödeme sonucunu kullanıcıya güvenmeden
+**sunucudan sunucuya** bu çağrı ile doğrular; `lib/pay.collectPayment()` ancak bu onaydan sonra
+cariye alacak işler. Mutabakat işi de aynı çağrıyı kullanır. Yetki verilmezse **para çekilir ama
+cariye işlenmez**.
+
+**Çözüm:** Paratika paneli → **Ayarlar / API Kullanıcıları** → `h.sancar288@gmail.com` yetkilerine
+**İşlem Sorgulama (QUERYTRANSACTION)** ekleyin (veya tüm API yetkileri olan yeni API kullanıcısı).
+Yetki verildikten sonra doğrulama: aynı istek `ERR10082` yerine `responseCode=00` dönmelidir.
+
+> Alternatif (acil durum): yetki alınamıyorsa, callback gövdesindeki `responseCode`/`amount` +
+> Paratika hash doğrulaması ile geri dönüş doğrulaması yapılabilir — ancak bu daha zayıf bir
+> güvenlik modelidir; esas çözüm yetkinin verilmesidir.
+
+Mutabakat (reconcile) açılışta ve 15 dakikada bir, `Sanal POS Bekliyor` durumundaki ödemeleri
 `QUERYTRANSACTION` ile sunucudan sunucuya doğrulayıp onaylananları caride alacağa işler;
-dönüş (callback) kaçsa bile **tahsilat kaybolmaz**.
+dönüş (callback) kaçsa bile **tahsilat kaybolmaz** (yetki verildikten sonra).
 
 ## Tam API v2 dokümanı (kritik)
 
