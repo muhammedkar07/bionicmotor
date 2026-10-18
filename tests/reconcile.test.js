@@ -23,6 +23,8 @@ const { accountSummary } = require('../lib/account');
 
 // Mutabakat TÜM bekleyen/iptal kayıtları taradığı için her test kendi verisiyle başlar.
 const reset = () => {
+  db.prepare('DELETE FROM spare_order_items').run();
+  db.prepare('DELETE FROM spare_orders').run();
   db.prepare('DELETE FROM account_movements').run();
   db.prepare('DELETE FROM payments').run();
   db.prepare('DELETE FROM firms').run();
@@ -121,6 +123,44 @@ test('mutabakat: izleme penceresinden eski iptal kayıtlar sorgulanmaz', async (
   });
   assert.strictEqual(statusOf(old), STATUS.CANCELLED, 'durum değişmemeli');
   assert.strictEqual(r.collected, 0);
+});
+
+test('mutabakat: süresi dolan ödemeye bağlı yedek parça siparişi de iptal edilir', async () => {
+  reset();
+  const f = firm();
+  const p = addPayment(f, 'R-SPARE', 10);
+  const oid = Number(
+    db
+      .prepare("INSERT INTO spare_orders(firm_id,no,status,payment_id,request_date) VALUES(?,?,?,?,date('now'))")
+      .run(f, 'YS-TEST-1', STATUS.PENDING, p).lastInsertRowid
+  );
+  const r = await withQuery(() => reconcile({ log: () => {} }), async () => ({ ok: false, pending: true, noTxn: true }));
+  assert.strictEqual(statusOf(p), STATUS.CANCELLED, 'ödeme iptal edilmeli');
+  assert.strictEqual(db.prepare('SELECT status FROM spare_orders WHERE id=?').get(oid).status, STATUS.CANCELLED, 'bağlı sipariş de iptal edilmeli');
+  assert.strictEqual(r.orders_cancelled, 1, 'özet bir sipariş iptali bildirmeli');
+
+  // idempotent: tekrar çalıştırıldığında yeniden iptal sayılmamalı
+  const r2 = await withQuery(() => reconcile({ log: () => {} }), async () => ({ ok: false, pending: true, noTxn: true }));
+  assert.strictEqual(r2.orders_cancelled, 0, 'ikinci kez iptal edilmemeli');
+});
+
+test('mutabakat: onaylı ödeme bağlı yedek parça siparişini dönüştürür', async () => {
+  reset();
+  const f = firm();
+  const p = addPayment(f, 'R-SPARE-OK', 10);
+  const oid = Number(
+    db
+      .prepare("INSERT INTO spare_orders(firm_id,no,status,payment_id,request_date) VALUES(?,?,?,?,date('now'))")
+      .run(f, 'YS-TEST-2', STATUS.PENDING, p).lastInsertRowid
+  );
+  db.prepare("INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)").run(oid, 'YP-X', 'Test Parça', 1, 100000);
+  await withQuery(() => reconcile({ log: () => {} }), async () => ({ ok: true, ref: 'REF-OK', status: 'AP' }));
+  assert.strictEqual(statusOf(p), STATUS.COLLECTED, 'ödeme tahsil edilmeli');
+  assert.strictEqual(
+    db.prepare('SELECT status FROM spare_orders WHERE id=?').get(oid).status,
+    STATUS.CONVERTED,
+    'bağlı sipariş siparişe dönüştürülmeli'
+  );
 });
 
 test('cari: iptal edilen ödeme bakiyeyi etkilemez', () => {

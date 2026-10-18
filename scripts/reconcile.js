@@ -39,7 +39,29 @@ async function reconcile({ log = console.log } = {}) {
         ORDER BY id`
     )
     .all(STATUS.POS_PENDING, '-' + minAge + ' minutes', STATUS.CANCELLED, '-' + lateCheckH + ' hours');
-  const res = { checked: rows.length, collected: 0, pending: 0, failed: 0, expired: 0 };
+  const res = { checked: rows.length, collected: 0, pending: 0, failed: 0, expired: 0, orders_cancelled: 0 };
+
+  // Ödemeye bağlı yedek parça siparişi "Beklemede" kaldıysa onu da iptal eder: kullanıcı
+  // "Onayla ve Öde" deyip ödemeyi tamamlamadan çıktıysa yarım sipariş listede takılı kalmasın.
+  // Idempotenttir; yalnızca hâlâ "Beklemede" olan siparişi değiştirir.
+  const cancelLinkedSpareOrder = paymentId => {
+    const so = db
+      .prepare('SELECT id, no FROM spare_orders WHERE payment_id=? AND status=? AND deleted_at IS NULL')
+      .get(paymentId, STATUS.PENDING);
+    if (!so) return null;
+    const n = db.prepare('UPDATE spare_orders SET status=? WHERE id=? AND status=?').run(STATUS.CANCELLED, so.id, STATUS.PENDING).changes;
+    if (!n) return null;
+    res.orders_cancelled++;
+    logAudit(
+      { type: 'sistem', name: 'mutabakat' },
+      'spare_order_cancelled',
+      'spare_orders',
+      so.id,
+      { payment: paymentId, reason: 'ödeme tamamlanmadı' },
+      null
+    );
+    return so;
+  };
 
   for (const p of rows) {
     const cancelled = p.status === STATUS.CANCELLED;
@@ -62,8 +84,13 @@ async function reconcile({ log = console.log } = {}) {
         continue;
       }
 
-      // Daha önce iptal edilmiş kayıt: onay yoksa DOKUNMA (yeniden iptal/işlem yapma).
-      if (cancelled) continue;
+      // Daha önce iptal edilmiş kayıt: onay yoksa YENİDEN iptal edilmez; ancak o ödemeye bağlı
+      // yarım kalmış bir yedek parça siparişi varsa temizlenir (eski kayıtlar için de idempotent).
+      if (cancelled) {
+        const so = cancelLinkedSpareOrder(p.id);
+        if (so) log('  ⏱ #' + p.id + ' (iptal) → bağlı yedek parça siparişi ' + so.no + ' da iptal edildi');
+        continue;
+      }
 
       // Yetki/yapılandırma hatası: durum BELİRSİZ — kaydı düşürme, sonra tekrar denenir.
       if (v.config) {
@@ -90,7 +117,11 @@ async function reconcile({ log = console.log } = {}) {
               { provider_order: p.provider_order, age_min: Math.round(age), no_txn: !!v.noTxn, via: 'reconcile' },
               null
             );
-            log('  ⏱ #' + p.id + ' süresi doldu → İptal (' + Math.round(age) + ' dk, işlem denemesi: ' + (v.noTxn ? 'yok' : 'var') + ')');
+            const so = cancelLinkedSpareOrder(p.id);
+            log(
+              '  ⏱ #' + p.id + ' süresi doldu → İptal (' + Math.round(age) + ' dk, işlem denemesi: ' + (v.noTxn ? 'yok' : 'var') + ')' +
+                (so ? ' · yedek parça siparişi ' + so.no + ' da iptal edildi' : '')
+            );
           }
         } else {
           res.pending++;
@@ -98,11 +129,13 @@ async function reconcile({ log = console.log } = {}) {
         continue;
       }
 
-      // Kesin başarısız işlem (FA): kaydı İptal et.
+      // Kesin başarısız işlem (FA): kaydı İptal et (varsa bağlı yedek parça siparişiyle birlikte).
       const changed = db.prepare('UPDATE payments SET status=? WHERE id=? AND status=?').run(STATUS.CANCELLED, p.id, STATUS.POS_PENDING).changes;
       res.failed++;
       if (changed) {
         logAudit({ type: 'sistem', name: 'mutabakat' }, 'payment_failed', 'payments', p.id, { provider_order: p.provider_order, error: v.error || null }, null);
+        const so = cancelLinkedSpareOrder(p.id);
+        if (so) log('     ↳ yedek parça siparişi ' + so.no + ' da iptal edildi');
       }
       log('  ❌ #' + p.id + ' onaylanmadı: ' + (v.error || 'bilinmiyor'));
     } catch (e) {

@@ -5,7 +5,7 @@ a{color:inherit;text-decoration:none}
 header{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .top{display:flex;justify-content:space-between;align-items:center;height:56px}
 .logo{font-family:Georgia,serif;font-style:italic;font-weight:900;font-size:32px}
-.logo i{color:#111}.logo b{color:#d9141e;letter-spacing:2px}.logo-img{max-height:56px;width:auto}
+.logo i{color:#111}.logo b{color:#d9141e;letter-spacing:2px}.logo-img{max-height:56px;width:auto;filter:brightness(0) drop-shadow(.7px 0 0 #000) drop-shadow(-.7px 0 0 #000) drop-shadow(0 .7px 0 #000) drop-shadow(0 -.7px 0 #000)}
 .topr{display:flex;gap:20px;align-items:center;font-size:12px}
 .flag{color:#d9141e}
 .uname{background:none;border:0;font:inherit;cursor:pointer;text-transform:uppercase}
