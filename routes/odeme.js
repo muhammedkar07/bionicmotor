@@ -170,10 +170,15 @@ router.get('/dekont/:id', (req, res) => {
   const p = id ? db.prepare('SELECT * FROM payments WHERE id=?').get(id) : null;
   if (!p) return res.status(404).send('Dekont bulunamadı.');
   const s = req.session || {};
+  // Ödemenin sahibi kullanıcı VEYA aynı firmanın kullanıcısı (hesap ekstresi firmaya ait)
+  // VEYA yönetici VEYA sipariş anahtarı (o=).
+  const firmOfSession =
+    (s.dealer && s.dealer.firmId) || (s.servis && s.servis.firmId) || (s.pay && s.pay.firmId) || null;
   const owner = !!(
     (s.dealer && s.dealer.userId === p.user_id) ||
     (s.servis && s.servis.userId === p.user_id) ||
-    (s.pay && s.pay.userId === p.user_id)
+    (s.pay && s.pay.userId === p.user_id) ||
+    (firmOfSession && Number(firmOfSession) === Number(p.firm_id))
   );
   const byKey = !!(req.query.o && String(req.query.o) === String(p.provider_order || ''));
   if (!owner && !byKey && !s.admin) return res.status(403).send('Bu dekontu görüntüleme yetkiniz yok.');
