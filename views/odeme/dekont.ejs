@@ -53,8 +53,15 @@
 
 <div class="actions noprint">
   <a class="btn" href="<%= p.source === 'servis' ? '/servis/hesap-ozeti' : p.source === 'bayi' ? '/bayi/hesap-ozeti' : '/' %>">‹ Hesabıma dön</a>
-  <button class="btn primary" onclick="window.print()">Yazdır / PDF kaydet</button>
+  <button class="btn primary" id="btnPrint" type="button">Yazdır / PDF kaydet</button>
 </div>
+<script nonce="<%= nonce %>">
+  // CSP satır içi (onclick) olayları engellediği için dinleyici nonce'lu script ile bağlanır.
+  (function () {
+    var b = document.getElementById('btnPrint');
+    if (b) b.addEventListener('click', function () { window.print(); });
+  })();
+</script>
 
 <div class="sheet">
   <div class="head">
