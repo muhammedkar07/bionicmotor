@@ -1,6 +1,12 @@
 <%- include('../partials/bayi_head') %>
 <div class="pc">
   <h1 class="h5"><%= heading %> (<%= bf.name %>)</h1>
+  <% if (typeof receipt !== 'undefined' && receipt) { %>
+  <div class="alert alert-success" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+    <span>✅ Ödemeniz alındı: <b><%= money(receipt.amount_tl) %> ₺</b> · hesabınıza alacak işlendi.</span>
+    <a class="btn btn-success btn-sm" href="/odeme/dekont/<%= receipt.id %>" target="_blank" rel="noopener">Dekont</a>
+  </div>
+  <% } %>
   <form method="get" class="dfilter">
     <label>Başlangıç<input type="date" name="from" value="<%= from || '' %>"></label>
     <label>Bitiş<input type="date" name="to" value="<%= to || '' %>"></label>

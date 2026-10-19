@@ -8,6 +8,12 @@
 %>
 
 <% if (flash) { %><div class="wrap"><div class="alert alert-<%= flash.type %>" style="margin-top:16px"><%= flash.msg %></div></div><% } %>
+<% if (typeof receipt !== 'undefined' && receipt) { %>
+<div class="wrap"><div class="alert alert-success" style="margin-top:16px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+  <span>✅ Ödemeniz alındı: <b><%= money(receipt.amount_tl) %> ₺</b></span>
+  <a class="btn btn-red" style="padding:8px 16px" href="/odeme/dekont/<%= receipt.id %>" target="_blank" rel="noopener">Dekont</a>
+</div></div>
+<% } %>
 
 <% if (slides.length) { %>
 <div class="wrap">

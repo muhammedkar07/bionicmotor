@@ -69,24 +69,53 @@ router.post('/firma-degistir', (req, res) => {
 // ---- Paratika dönüş/callback ----
 // Kullanıcıya asla güvenilmez: ödeme durumu sunucudan sunucuya `query` ile doğrulanır.
 // Tüm paneller (bayi/servis/odeme) için TEK callback adresi kullanılır.
+// Dönüş adresi: /odeme/paratika/sonuc/<oturum-anahtarı>?o=<sipariş>
+// (anahtar YOLDA çünkü Paratika sorgu parametrelerini dönüşte korumuyor.)
 async function paratikaResult(req, res) {
   const b = Object.assign({}, req.query, req.body);
   const orderId = b.o || b.orderId || b.ORDER_ID || b.order_id || b.orderid || b.merchantPaymentId || b.MERCHANTPAYMENTID;
   const payment = orderId ? db.prepare('SELECT * FROM payments WHERE provider_order=?').get(String(orderId)) : null;
-  // Banka dönüşü çapraz-site POST olabildiği için tarayıcı çerezi göndermez ve panel oturumu
-  // "kaybolur" (kullanıcı giriş ekranına düşer). Dönüş adresindeki tek kullanımlık anahtarla,
-  // yalnızca BU ödemenin sahibi kullanıcı için oturum geri yüklenir.
-  if (payment && b.s) resumeSession(req, res, b.s, payment.user_id);
-  const back = (p, type, msg) => {
+  // Banka dönüşü çapraz-site POST olabildiği için tarayıcı çerezi göndermiyor ve panel oturumu
+  // "kayboluyor". Yoldaki tek kullanımlık anahtarla yalnızca BU ödemenin sahibi için geri yüklenir.
+  const token = String((req.params && req.params.s) || b.s || '').slice(0, 128);
+  let restored = false;
+  if (payment && token && token !== '-') restored = resumeSession(req, res, token, payment.user_id);
+
+  const hasPanel = !!(req.session && (req.session.dealer || req.session.servis));
+  // Ödeme sonrası: bayi/servis → hesap hareketleri (orada dekont bağlantısı çıkar),
+  // diğer → ana sayfa. Oturum geri yüklenemediyse dekont sayfasına yönlendirilir
+  // (kullanıcı oradan giriş yapabilir; giriş ekranına "çıkış yapmış gibi" düşmez).
+  const back = (p, type, msg, withReceipt) => {
     if (req.session) flash(req, type, msg);
-    // Ödeme sonrası: bayi/servis panelindeyse HESAP HAREKETLERİNE, değilse ANA SAYFAYA yönlendir.
-    // (Kullanıcı /odeme/paratika/sonuc adresinde kalmaz.)
     const src = p && p.source;
-    const target = src === 'bayi' ? '/bayi/hesap-ozeti' : src === 'servis' ? '/servis/hesap-ozeti' : '/';
-    res.redirect(target);
+    const acct = src === 'servis' ? '/servis/hesap-ozeti' : src === 'bayi' ? '/bayi/hesap-ozeti' : '/';
+    if (withReceipt && p) {
+      if ((src === 'bayi' || src === 'servis') && !hasPanel)
+        return res.redirect('/odeme/dekont/' + p.id + '?o=' + encodeURIComponent(p.provider_order || ''));
+      return res.redirect(acct + '?odeme=' + p.id);
+    }
+    return res.redirect(acct);
   };
   if (!payment) return back(null, 'danger', 'Ödeme kaydı bulunamadı.');
-  if (payment.status === STATUS.COLLECTED) return back(payment, 'success', 'Bu ödeme zaten tahsil edilmiş.');
+
+  // Tanı: dönüşün nasıl geldiğini denetim kaydına yaz (ileride sorun çıkarsa görülebilsin).
+  logAudit(
+    { type: 'sistem', name: 'paratika' },
+    'payment_return',
+    'payments',
+    payment.id,
+    {
+      method: req.method,
+      path_token: !!(req.params && req.params.s),
+      query_token: !!b.s,
+      restored,
+      has_panel: hasPanel
+    },
+    req.ip
+  );
+
+  const done = (p, msg) => back(p, 'success', msg, true);
+  if (payment.status === STATUS.COLLECTED) return done(payment, 'Bu ödeme zaten tahsil edilmiş.');
 
   const v = await paratika.query({ orderId: payment.provider_order });
   if (v.ok) {
@@ -99,7 +128,7 @@ async function paratikaResult(req, res) {
       { amount: payment.amount, provider_order: payment.provider_order, firm: payment.firm_id },
       req.ip
     );
-    return back(payment, 'success', 'Ödemeniz başarıyla alındı ve hesabınıza işlendi.');
+    return done(payment, 'Ödemeniz başarıyla alındı ve hesabınıza işlendi.');
   }
   if (v.pending) {
     // Sonuç henüz kesinleşmedi: iptal etme, kullanıcıya bilgi ver (durum POS_PENDING kalır).
@@ -130,6 +159,28 @@ async function paratikaResult(req, res) {
 }
 router.get('/paratika/sonuc', paratikaResult);
 router.post('/paratika/sonuc', paratikaResult);
+// Oturum anahtarı yolda taşınan dönüş (Paratika sorgu parametrelerini korumadığı için asıl yol)
+router.get('/paratika/sonuc/:s', paratikaResult);
+router.post('/paratika/sonuc/:s', paratikaResult);
+
+// ---- Ödeme dekontu (yazdırılabilir) ----
+// Erişim: ödemenin sahibi (bayi/servis/odeme oturumu) VEYA yönetici VEYA sipariş anahtarı (o=).
+router.get('/dekont/:id', (req, res) => {
+  const id = +req.params.id || 0;
+  const p = id ? db.prepare('SELECT * FROM payments WHERE id=?').get(id) : null;
+  if (!p) return res.status(404).send('Dekont bulunamadı.');
+  const s = req.session || {};
+  const owner = !!(
+    (s.dealer && s.dealer.userId === p.user_id) ||
+    (s.servis && s.servis.userId === p.user_id) ||
+    (s.pay && s.pay.userId === p.user_id)
+  );
+  const byKey = !!(req.query.o && String(req.query.o) === String(p.provider_order || ''));
+  if (!owner && !byKey && !s.admin) return res.status(403).send('Bu dekontu görüntüleme yetkiniz yok.');
+  const firm = db.prepare('SELECT name, code, city, phone, email FROM firms WHERE id=?').get(p.firm_id) || {};
+  const user = db.prepare('SELECT name, email, code FROM dealer_users WHERE id=?').get(p.user_id) || {};
+  res.render('odeme/dekont', { title: 'Ödeme Dekontu', p, firm, user, layout: false });
+});
 
 router.get('/', (req, res) => {
   const u = payUser(req);

@@ -92,6 +92,13 @@ router.get('/hesap-ozeti', (req, res) => {
   if (!firm) return res.redirect('/servis');
   const from = String(req.query.from || '').slice(0, 10);
   const to = String(req.query.to || '').slice(0, 10);
+  // Ödeme sonrası dönüşte dekont bağlantısı için (yalnızca bu firmanın tahsil edilmiş ödemesi)
+  const pid = +req.query.odeme || 0;
+  const receipt = pid
+    ? db
+        .prepare('SELECT id, amount_tl, provider_ref, paid_at, status FROM payments WHERE id=? AND firm_id=? AND status=?')
+        .get(pid, firm, STATUS.COLLECTED) || null
+    : null;
   res.render('servis/account', {
     title: 'Hesap Özeti',
     heading: 'Hesap Özeti',
@@ -99,7 +106,8 @@ router.get('/hesap-ozeti', (req, res) => {
     showCards: true,
     from,
     to,
-    selfPath: req.path
+    selfPath: req.path,
+    receipt
   });
 });
 router.get('/yedek-parca-ekstre', (req, res) => {

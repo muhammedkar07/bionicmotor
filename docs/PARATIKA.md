@@ -152,8 +152,22 @@ PARATIKA_SIMULATE=0          # 1 = ağsız simülasyon (yalnızca geliştirme)
 
 ```
 PUBLIC_URL = https://bionicmotorsiklet.com
-RETURNURL  = https://bionicmotorsiklet.com/odeme/paratika/sonuc?o=<sipariş-no>&s=<oturum-anahtarı>
+RETURNURL  = https://bionicmotorsiklet.com/odeme/paratika/sonuc/<oturum-anahtarı>?o=<sipariş-no>
 ```
+
+> **Neden anahtar YOLDA?** Paratika dönüşte **sorgu parametrelerini korumuyor** (yalnızca kendi
+> `MERCHANTPAYMENTID` alanını gönderiyor). Bu yüzden oturum anahtarı yol segmentinde taşınır;
+> `o` yedek olarak sorguda kalır. Oturum anahtarı **tek kullanımlıktır**, kullanılınca eski kimlik
+> geçersiz kılınır ve yalnızca **o ödemenin sahibi** için kabul edilir (`tests/resume.test.js`).
+>
+> Oturum geri yüklenemezse kullanıcı giriş ekranına değil **dekont sayfasına** yönlendirilir
+> (`/odeme/dekont/<id>?o=<sipariş-no>`) — buradan hesabına giriş yapabilir.
+
+### Dekont
+
+Her tahsilat için yazdırılabilir **ödeme dekontu** üretilir: `/odeme/dekont/<id>`
+(tarih, firma, tutar, ödeme türü, Paratika işlem no, durum). Erişim: ödemenin sahibi,
+yönetici veya sipariş anahtarı. Ödeme sonrası hesap sayfasında **"Dekont"** bağlantısı çıkar.
 
 > **`s` (oturum anahtarı) nedir?** Banka/Paratika dönüşü tarayıcıya **çapraz-site POST** olarak
 > gelebildiği için `SameSite=Lax` çerez **gönderilmez**; bu yüzden ödeme biterken panel oturumu

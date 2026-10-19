@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const path = require('path');
 const fs = require('fs');
-const { db, logAudit } = require('../db');
+const { db, logAudit, STATUS } = require('../db');
 const { flash, throttle, publicOrigin } = require('../lib/core');
 const { clean } = require('../lib/sanitize');
 const { UPLOAD_DIR } = require('../lib/upload');
@@ -60,7 +60,14 @@ router.get('/', (req, res) => {
   const models = db.prepare('SELECT * FROM models WHERE active=1 ORDER BY sort,id LIMIT 6').all();
   // Satış noktası sayısı /satis-ve-servis sayfasındaki kayıtlardan gelir (sabit değil).
   const pointCount = db.prepare('SELECT COUNT(*) n FROM points WHERE active=1').get().n;
-  render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models, campaigns, pointCount });
+  // Online ödeme sonrası ana sayfaya dönüşte dekont bağlantısı (yalnızca ödemenin sahibi görür)
+  const odemeId = +req.query.odeme || 0;
+  let receipt = null;
+  if (odemeId && req.session && req.session.pay) {
+    const p = db.prepare('SELECT id, user_id, amount_tl, status FROM payments WHERE id=?').get(odemeId);
+    if (p && p.user_id === req.session.pay.userId && p.status === STATUS.COLLECTED) receipt = p;
+  }
+  render(res, 'site/home', 'Ana Sayfa', 'home', { slides, models, campaigns, pointCount, receipt });
 });
 
 router.get('/modeller', (req, res) => {

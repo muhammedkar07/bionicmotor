@@ -190,13 +190,21 @@ router.get('/stoklar', (req, res) => {
 router.get('/hesap-ozeti', (req, res) => {
   const from = String(req.query.from || '').slice(0, 10);
   const to = String(req.query.to || '').slice(0, 10);
+  // Ödeme sonrası dönüşte dekont bağlantısı için (yalnızca bu firmanın tahsil edilmiş ödemesi)
+  const pid = +req.query.odeme || 0;
+  const receipt = pid
+    ? db
+        .prepare('SELECT id, amount_tl, provider_ref, paid_at, status FROM payments WHERE id=? AND firm_id=? AND status=?')
+        .get(pid, res.locals.bf.id, STATUS.COLLECTED) || null
+    : null;
   page(res, 'account', 'Hesap Özeti', {
     a: accountSummary(res.locals.bf.id, 'ana', { from, to }),
     heading: 'Hesap Özeti',
     showCards: true,
     from,
     to,
-    selfPath: req.path
+    selfPath: req.path,
+    receipt
   });
 });
 router.get('/yedek-parca-ekstre', (req, res) => {

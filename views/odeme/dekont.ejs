@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ödeme Dekontu · #<%= p.id %></title>
+<style>
+  :root { --ink:#0d0f14; --muted:#6b7280; --line:#e6e9ef; --red:#d9141e; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin:0; background:#eef1f6; color:var(--ink); font-family:'Segoe UI',Arial,sans-serif; font-size:13px; line-height:1.55; }
+  .sheet { width:210mm; min-height:297mm; margin:14px auto; padding:18mm 16mm; background:#fff;
+           box-shadow:0 8px 28px rgba(13,15,20,.15); }
+  @page { size:A4; margin:0; }
+  @media print { body { background:#fff } .sheet { margin:0; box-shadow:none; width:auto; min-height:auto } .noprint { display:none !important } }
+
+  .head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--red); padding-bottom:14px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand img { height:64px; width:auto; filter:brightness(0); }
+  .brand .txt b { display:block; font-size:15px; letter-spacing:.5px; }
+  .brand .txt span { font-size:11px; color:var(--muted); }
+  .doc { text-align:right; }
+  .doc h1 { margin:0; font-size:22px; letter-spacing:.5px; }
+  .doc .no { font-size:12px; color:var(--muted); margin-top:4px; }
+  .status { display:inline-block; margin-top:8px; padding:4px 12px; border-radius:999px; font-size:11.5px; font-weight:700;
+            background:#e7f6ec; color:#146c2e; border:1px solid #b6e0c3; }
+  .status.off { background:#f8d7da; color:#842029; border-color:#f1aeb5; }
+
+  .parties { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:18px 0 6px; }
+  .box { border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .box h3 { margin:0 0 6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .box p { margin:0 0 2px; }
+  .box b { font-size:13.5px; }
+
+  table { width:100%; border-collapse:collapse; margin-top:14px; }
+  th, td { padding:9px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  th { width:32%; color:var(--muted); font-weight:600; font-size:12px; background:#fafbfc; }
+  .total { margin-top:16px; display:flex; justify-content:space-between; align-items:baseline;
+           background:#f7f8fa; border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .total span { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.06em; }
+  .total b { font-size:26px; color:var(--red); font-variant-numeric:tabular-nums; }
+
+  .foot { margin-top:22px; padding-top:10px; border-top:1px solid var(--line); font-size:10.5px; color:var(--muted);
+          display:flex; justify-content:space-between; gap:12px; }
+  .actions { width:210mm; margin:0 auto 18px; display:flex; gap:10px; justify-content:flex-end; }
+  .btn { display:inline-block; padding:9px 16px; border-radius:8px; border:1px solid #cdd2d9; background:#fff; color:var(--ink);
+         text-decoration:none; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+  .btn.primary { background:var(--red); border-color:var(--red); color:#fff; }
+  .sig { margin-top:26px; display:flex; justify-content:flex-end; }
+  .sig div { width:64mm; text-align:center; border-top:1px dashed #b9bfc9; padding-top:6px; font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="actions noprint">
+  <a class="btn" href="<%= p.source === 'servis' ? '/servis/hesap-ozeti' : p.source === 'bayi' ? '/bayi/hesap-ozeti' : '/' %>">‹ Hesabıma dön</a>
+  <button class="btn primary" onclick="window.print()">Yazdır / PDF kaydet</button>
+</div>
+
+<div class="sheet">
+  <div class="head">
+    <div class="brand">
+      <% if (s.logo_image) { %><img src="<%= s.logo_image %>" alt=""><% } %>
+      <div class="txt">
+        <b><%= (s.brand_1 || '') + (s.brand_2 || 'Bionic Motor') %></b>
+        <span><%= s.company || '' %></span>
+      </div>
+    </div>
+    <div class="doc">
+      <h1>ÖDEME DEKONTU</h1>
+      <div class="no">Dekont No: <b>#<%= p.id %></b> · <%= dt(p.created_at) %></div>
+      <div class="status <%= p.status === 'Tahsil Edildi' ? '' : 'off' %>"><%= p.status %></div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="box">
+      <h3>Ödeme Yapan</h3>
+      <p><b><%= firm.name || user.name || '—' %></b></p>
+      <% if (firm.code) { %><p>Bayi Kodu: <%= firm.code %></p><% } %>
+      <% if (user.code) { %><p>Kullanıcı Kodu: <%= user.code %></p><% } %>
+      <% if (firm.city) { %><p><%= firm.city %></p><% } %>
+      <% if (firm.phone) { %><p><%= firm.phone %></p><% } %>
+      <% if (user.email || firm.email) { %><p><%= user.email || firm.email %></p><% } %>
+    </div>
+    <div class="box">
+      <h3>Alıcı</h3>
+      <p><b><%= s.company || (s.brand_1 || '') + (s.brand_2 || '') %></b></p>
+      <% if (s.address) { %><p><%= s.address %></p><% } %>
+      <% if (s.phone) { %><p>Tel: <%= s.phone %></p><% } %>
+      <% if (s.email) { %><p><%= s.email %></p><% } %>
+    </div>
+  </div>
+
+  <table>
+    <tbody>
+      <tr><th>Açıklama</th><td><%= p.description || 'Online ödeme' %></td></tr>
+      <tr><th>Ödeme Türü</th><td><%= p.kind === 'havale' ? 'Havale / EFT' : 'Kredi Kartı (Sanal POS)' %></td></tr>
+      <tr><th>Taksit</th><td><%= p.installment || 'Tek Çekim' %></td></tr>
+      <tr><th>Ödeme Tarihi</th><td><%= p.paid_at ? dt(p.paid_at) : '—' %></td></tr>
+      <tr><th>Sipariş No (MERCHANTPAYMENTID)</th><td><%= p.provider_order || '—' %></td></tr>
+      <tr><th>Banka İşlem No</th><td><%= p.provider_ref || '—' %></td></tr>
+      <tr><th>Hesaba İşlendiği Yer</th><td><%= p.source === 'servis' ? 'Servis cari hesabı' : p.source === 'bayi' ? 'Bayi cari hesabı' : 'Bayi cari hesabı' %> (alacak)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="total">
+    <span>Toplam Tahsil Edilen</span>
+    <b><%= money(p.amount_tl != null ? p.amount_tl : p.amount) %> ₺</b>
+  </div>
+
+  <div class="sig"><div>Kaşe / İmza</div></div>
+
+  <div class="foot">
+    <span><%= s.company || '' %></span>
+    <span><%= s.phone || '' %> · <%= s.email || '' %></span>
+  </div>
+</div>
+
+</body>
+</html>

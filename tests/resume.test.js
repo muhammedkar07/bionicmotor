@@ -83,44 +83,51 @@ async function startBayiPayment(cookie) {
   return res.headers.get('location');
 }
 
+// Dönüş adresi artık: /odeme/paratika/sonuc/<oturum-anahtarı>?o=<sipariş>
+const tokenOf = loc => (loc.match(/\/odeme\/paratika\/sonuc\/([^?]+)/) || [])[1] || '';
+const withToken = (loc, token) => loc.replace(/\/odeme\/paratika\/sonuc\/[^?]+/, '/odeme/paratika/sonuc/' + token);
+
 test('ödeme dönüşünde oturum geri yüklenir (çerez gönderilmese bile)', async () => {
   const cookie = await loginBayi();
   const loc = await startBayiPayment(cookie);
-  assert.match(loc, /[?&]s=/, 'dönüş adresinde oturum anahtarı olmalı');
+  assert.ok(tokenOf(loc) && tokenOf(loc) !== '-', 'dönüş yolunda oturum anahtarı olmalı: ' + loc);
 
   // Bankadan dönen tarayıcı gibi: ÇEREZSİZ istek (çapraz-site POST)
   const cb = await fetch(base + loc, { redirect: 'manual' });
   assert.strictEqual(cb.status, 302);
-  assert.strictEqual(cb.headers.get('location'), '/bayi/hesap-ozeti', 'hesap hareketlerine yönlenmeli');
+  const target = cb.headers.get('location') || '';
+  assert.match(target, /^\/bayi\/hesap-ozeti\?odeme=\d+$/, 'hesap hareketlerine (dekont bağlantısıyla) yönlenmeli: ' + target);
 
   const newCookie = sidOf(cb);
   assert.ok(newCookie, 'geri yüklenen oturum için yeni çerez verilmeli');
   assert.notStrictEqual(newCookie, cookie, 'oturum kimliği yenilenmeli (anahtar tek kullanımlık)');
 
-  const acc = await get('/bayi/hesap-ozeti', newCookie);
+  const acc = await get(target, newCookie);
   assert.strictEqual(acc.res.status, 200, 'hesap hareketleri açılmalı (giriş ekranına düşmemeli)');
   assert.ok(/Hesap Özeti|Hesap Hareketleri/.test(acc.html), 'sayfa içeriği hesap özeti olmalı');
+  assert.ok(/Ödemeniz alındı/.test(acc.html) && /\/odeme\/dekont\/\d+/.test(acc.html), 'dekont bağlantısı görünmeli');
 });
 
-test('ödeme dönüşünde anahtar YOKSA oturum açılmaz', async () => {
+test('ödeme dönüşünde anahtar YOKSA oturum açılmaz, dekonta yönlenir', async () => {
   const cookie = await loginBayi();
   const loc = await startBayiPayment(cookie);
-  const locNoKey = loc.replace(/&s=[^&]*/, '');
+  const locNoKey = withToken(loc, '-');
   const cb = await fetch(base + locNoKey, { redirect: 'manual' });
   assert.strictEqual(cb.status, 302);
-  assert.strictEqual(cb.headers.get('location'), '/bayi/hesap-ozeti');
+  const target = cb.headers.get('location') || '';
+  assert.match(target, /^\/odeme\/dekont\/\d+\?o=/, 'anahtarsız dönüşte dekont sayfasına yönlenmeli: ' + target);
   const acc = await get('/bayi/hesap-ozeti', sidOf(cb));
-  assert.strictEqual(acc.res.status, 302, 'çerez olmadığı için giriş ekranına yönlenmeli');
+  assert.strictEqual(acc.res.status, 302, 'oturum açılmamış olmalı (giriş ekranına yönlenir)');
 });
 
 test('başka kullanıcının anahtarıyla oturum açılmaz', async () => {
   const bayi = await loginBayi();
   const servis = await loginServis(); // farklı kullanıcı
   const loc = await startBayiPayment(bayi);
-  const foreign = loc.replace(/&s=[^&]*/, '&s=' + encodeURIComponent(servis.split('=')[1]));
+  const foreign = withToken(loc, servis.split('=')[1]);
   const cb = await fetch(base + foreign, { redirect: 'manual' });
   assert.strictEqual(cb.status, 302);
-  assert.strictEqual(cb.headers.get('location'), '/bayi/hesap-ozeti');
+  assert.match(cb.headers.get('location') || '', /^\/odeme\/dekont\//, 'yabancı anahtarda oturum açılmamalı (dekonta yönlenir)');
   // Yabancı anahtar kabul edilmemeli → oturum açılmamış olmalı (giriş ekranına düşer)
   const acc = await get('/bayi/hesap-ozeti', sidOf(cb));
   assert.strictEqual(acc.res.status, 302, 'başka kullanıcının anahtarı kabul edilmemeli');
@@ -132,7 +139,7 @@ test('başka kullanıcının anahtarıyla oturum açılmaz', async () => {
 test('rastgele anahtarla oturum açılmaz', async () => {
   const bayi = await loginBayi();
   const loc = await startBayiPayment(bayi);
-  const bogus = loc.replace(/&s=[^&]*/, '&s=' + 'a'.repeat(64));
+  const bogus = withToken(loc, 'a'.repeat(64));
   const cb = await fetch(base + bogus, { redirect: 'manual' });
   assert.strictEqual(cb.status, 302);
   const acc = await get('/bayi/hesap-ozeti', sidOf(cb));
