@@ -128,15 +128,16 @@
 <p class="muted" style="margin:-6px 0 14px"><%= acctLabel %></p>
 <% } %>
 <div class="tw"><table class="tbl">
-  <thead><tr><% cols.forEach(c => { %><th><%= c.label %></th><% }) %><th style="width:130px"></th></tr></thead>
+  <thead><tr><% cols.forEach(c => { %><th><%= c.label %></th><% }) %><% if (receipts) { %><th>Dekont</th><% } %><th style="width:130px"></th></tr></thead>
   <tbody>
   <% rows.forEach(r => { %>
     <tr><% cols.forEach(c => { %><td><% if (c.type === 'image') { %><% if (r[c.name]) { %><a href="<%= r[c.name] %>" target="_blank" rel="noopener"><img src="<%= r[c.name] %>" alt="" style="max-height:36px;border-radius:4px"></a><% } else { %><span class="muted">—</span><% } %><% } else { %><%= cell(c, r[c.name], refs) %><% } %></td><% }) %>
+      <% if (receipts) { %><td><% if (receipts[r._id]) { %><a class="btn btn-sm" href="/odeme/dekont/<%= receipts[r._id] %>?print=1" target="_blank" rel="noopener" title="Dekontu aç ve yazdır / PDF kaydet">Dekont</a><% } else { %><span class="muted">—</span><% } %></td><% } %>
       <td class="act"><a class="btn btn-sm" href="/admin/r/<%= res.key %>/<%= r._id %>">Düzenle</a>
         <form method="post" action="/admin/r/<%= res.key %>/<%= r._id %>/delete" class="inline" data-confirm="Bu kayıt silinsin mi?">
           <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form></td></tr>
   <% }) %>
-  <% if (!rows.length) { %><tr><td colspan="<%= cols.length+1 %>" class="muted">Kayıt yok.</td></tr><% } %>
+  <% if (!rows.length) { %><tr><td colspan="<%= cols.length + (receipts ? 2 : 1) %>" class="muted">Kayıt yok.</td></tr><% } %>
   </tbody></table></div>
 <% if (typeof total !== 'undefined' && pages > 1) { %>
 <div class="bar" style="justify-content:center;gap:12px;margin-top:14px">

@@ -702,6 +702,19 @@ router.get('/r/:res', (req, res) => {
   const page = Math.min(pages, Math.max(1, parseInt(req.query.page, 10) || 1));
   const sql = `SELECT rowid AS _id, * FROM ${r.table} ${whereSql} ORDER BY ${r.order || 'rowid DESC'} LIMIT ${PAGE} OFFSET ${(page - 1) * PAGE}`;
   const rows = db.prepare(sql).all(params);
+  // Hesap Hareketleri listesinde: harekete bağlı ödeme varsa "Dekont" bağlantısı gösterilir.
+  let receipts = null;
+  if (r.table === 'account_movements' && rows.length) {
+    const ids = rows.map(x => x._id);
+    receipts = {};
+    db.prepare(
+      `SELECT id, movement_id FROM payments WHERE movement_id IN (${ids.map(() => '?').join(',')}) AND deleted_at IS NULL`
+    )
+      .all(...ids)
+      .forEach(p => {
+        receipts[p.movement_id] = p.id;
+      });
+  }
   const firmFilter = !!firmWhere;
   const firms = firmFilter ? db.prepare('SELECT id,name FROM firms ORDER BY name').all() : [];
   let acct, acctLabel;
@@ -727,6 +740,7 @@ router.get('/r/:res', (req, res) => {
     to,
     acct,
     acctLabel,
+    receipts,
     page,
     pages,
     total
