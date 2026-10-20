@@ -145,22 +145,40 @@
       })
       .then(function (d) {
         var reps = (d && d.repairs) || [];
+        var fixed = reps.filter(function (x) {
+          return x.fixed;
+        });
+        var TH = 'style="text-align:left;padding:8px 10px;background:#f7f8fa;font-size:12px;color:#6b7280;border-bottom:1px solid #eef0f3;font-weight:600"';
         if (repairBox) {
           repairBox.innerHTML =
             '<div class="alert ' +
-            (d.fixedCount > 0 ? 'alert-success' : 'alert') +
+            (fixed.length ? 'alert-success' : 'alert') +
             '">' +
-            'Otomatik onarım tamamlandı: <b>' +
-            (d.fixedCount || 0) +
-            '</b> düzeltme uygulandı.</div>' +
-            '<table class="tres"><tbody>' +
+            (fixed.length
+              ? 'Otomatik onarım tamamlandı: <b>' +
+                fixed.length +
+                '</b> düzeltme uygulandı.<br><b>Onarılan:</b> ' +
+                fixed
+                  .map(function (x) {
+                    return esc(x.name);
+                  })
+                  .join(', ')
+              : 'Otomatik onarım çalıştı: <b>düzeltme gerekmedi</b> — her şey yerinde.') +
+            '</div>' +
+            '<table class="tres"><thead><tr><th ' +
+            TH +
+            '>Durum</th><th ' +
+            TH +
+            '>Kontrol</th><th ' +
+            TH +
+            '>Sonuç</th></tr></thead><tbody>' +
             reps
               .map(function (x) {
                 return (
-                  '<tr><td style="width:26px" class="' +
-                  (x.fixed ? 'ok' : '') +
+                  '<tr><td class="' +
+                  (x.fixed ? 'ok' : 'muted') +
                   '">' +
-                  (x.fixed ? '✓' : '·') +
+                  (x.fixed ? '✓ Onarıldı' : '— Gerek yok') +
                   '</td><td>' +
                   esc(x.name) +
                   '</td><td class="muted">' +
