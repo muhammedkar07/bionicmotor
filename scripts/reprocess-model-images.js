@@ -39,20 +39,17 @@ const absOf = p => {
       continue;
     }
     try {
-      // Kaynağı güvenli biçimde KOPYALA (orijinal dosya korunur)
+      // Orijinali BOZMADAN kopyala (şeffaf piksellerin RGB'si korunsun → arka plan rengi
+      // doğru tespit edilsin), önce arka planı temizle, sonra boyutlandır.
       const base = crypto.randomBytes(12).toString('hex');
-      const tmp = path.join(UPLOAD_DIR, base + '.png');
-      await sharp(src, { failOn: 'none' })
-        .rotate()
-        .resize({ width: 1600, withoutEnlargement: true })
-        .png({ compressionLevel: 9 })
-        .toFile(tmp);
-      const file = { path: tmp, filename: path.basename(tmp), mimetype: 'image/png' };
+      const ext = path.extname(src).toLowerCase() || '.png';
+      const work = path.join(UPLOAD_DIR, base + ext);
+      fs.copyFileSync(src, work);
+      const file = { path: work, filename: path.basename(work), mimetype: 'image/png' };
       const changed = await removeBackground(file);
       if (!changed) {
-        // değişiklik yok → geçici dosyayı sil, mevcut görsel kalsın
         try {
-          fs.unlinkSync(tmp);
+          fs.unlinkSync(file.path);
         } catch {
           /* yok say */
         }
@@ -60,10 +57,22 @@ const absOf = p => {
         res.push(rec);
         continue;
       }
-      const newPath = '/static/uploads/' + file.filename;
+      const finalPath = path.join(UPLOAD_DIR, base + '.png');
+      await sharp(file.path, { failOn: 'none' })
+        .resize({ width: 1600, withoutEnlargement: true })
+        .png({ compressionLevel: 9 })
+        .toFile(finalPath);
+      if (file.path !== finalPath) {
+        try {
+          fs.unlinkSync(file.path);
+        } catch {
+          /* yok say */
+        }
+      }
+      const newPath = '/static/uploads/' + path.basename(finalPath);
       db.prepare('UPDATE models SET image=? WHERE id=?').run(newPath, m.id);
       rec.once = path.basename(src);
-      rec.sonra = file.filename;
+      rec.sonra = path.basename(finalPath);
       rec.durum = 'TEMİZLENDİ ✅';
       res.push(rec);
     } catch (e) {
