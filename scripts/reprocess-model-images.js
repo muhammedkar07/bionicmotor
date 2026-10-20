@@ -38,12 +38,13 @@ const absOf = p => {
       res.push(rec);
       continue;
     }
+    let work = null;
     try {
       // Orijinali BOZMADAN kopyala (şeffaf piksellerin RGB'si korunsun → arka plan rengi
       // doğru tespit edilsin), önce arka planı temizle, sonra boyutlandır.
       const base = crypto.randomBytes(12).toString('hex');
       const ext = path.extname(src).toLowerCase() || '.png';
-      const work = path.join(UPLOAD_DIR, base + ext);
+      work = path.join(UPLOAD_DIR, base + ext);
       fs.copyFileSync(src, work);
       const file = { path: work, filename: path.basename(work), mimetype: 'image/png' };
       const changed = await removeBackground(file);
@@ -57,7 +58,7 @@ const absOf = p => {
         res.push(rec);
         continue;
       }
-      const finalPath = path.join(UPLOAD_DIR, base + '.png');
+      const finalPath = path.join(UPLOAD_DIR, base + '-s.png');
       await sharp(file.path, { failOn: 'none' })
         .resize({ width: 1600, withoutEnlargement: true })
         .png({ compressionLevel: 9 })
@@ -76,6 +77,12 @@ const absOf = p => {
       rec.durum = 'TEMİZLENDİ ✅';
       res.push(rec);
     } catch (e) {
+      // Yarım kalan geçici dosyayı temizle
+      try {
+        if (work && fs.existsSync(work)) fs.unlinkSync(work);
+      } catch {
+        /* yok say */
+      }
       rec.durum = 'HATA: ' + e.message.slice(0, 40);
       res.push(rec);
     }
