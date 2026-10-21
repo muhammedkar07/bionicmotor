@@ -61,7 +61,7 @@ router.get('/robots.txt', (req, res) => {
 router.get('/sitemap.xml', (req, res) => {
   const origin = publicOrigin(req);
   const entries = [];
-  const add = (p, priority, freq) => entries.push({ loc: origin + p, priority, freq });
+  const add = (p, priority, freq, lastmod) => entries.push({ loc: origin + p, priority, freq, lastmod });
 
   add('/', '1.0', 'daily');
   add('/modeller', '0.9', 'weekly');
@@ -72,7 +72,7 @@ router.get('/sitemap.xml', (req, res) => {
   add('/iletisim', '0.6', 'monthly');
   add('/bayilik-basvurusu', '0.6', 'monthly');
   add('/medya', '0.5', 'monthly');
-  for (const p of db.prepare('SELECT slug FROM pages').all()) add('/sayfa/' + p.slug, '0.5', 'monthly');
+  for (const p of db.prepare('SELECT slug, updated_at FROM pages').all()) add('/sayfa/' + p.slug, '0.5', 'monthly', p.updated_at);
 
   const xml =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -82,7 +82,9 @@ router.get('/sitemap.xml', (req, res) => {
         e =>
           '  <url><loc>' +
           xmlEsc(e.loc) +
-          '</loc><changefreq>' +
+          '</loc>' +
+          (e.lastmod ? '<lastmod>' + xmlEsc(String(e.lastmod).slice(0, 10)) + '</lastmod>' : '') +
+          '<changefreq>' +
           e.freq +
           '</changefreq><priority>' +
           e.priority +
@@ -350,6 +352,7 @@ router.get('/sayfa/:slug', (req, res, next) => {
     seo: {
       ...seo.pageSeo(p, res.locals.s),
       jsonld: [
+        seo.pageJson(p, res.locals.s, res.locals.origin),
         seo.breadcrumbJson([
           { name: 'Ana Sayfa', url: res.locals.origin + '/' },
           { name: p.title, url: res.locals.origin + '/sayfa/' + p.slug }

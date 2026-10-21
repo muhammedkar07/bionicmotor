@@ -219,6 +219,9 @@ addCol('payments', 'source', 'TEXT');
 addCol('payments', 'amount_tl', 'INTEGER');
 // Dijital katalog sayfasına yüklenen PDF belgesi (tıklanınca indirilir).
 addCol('pages', 'catalog_pdf', 'TEXT');
+addCol('pages', 'meta_title', 'TEXT');
+addCol('pages', 'meta_description', 'TEXT');
+addCol('pages', 'updated_at', 'TEXT');
 db.exec('CREATE INDEX IF NOT EXISTS idx_payments_provider_order ON payments(provider_order)');
 db.exec(`CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY, admin_id INTEGER, admin_name TEXT,

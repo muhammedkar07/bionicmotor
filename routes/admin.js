@@ -370,6 +370,12 @@ const RES = {
     fields: [
       T('slug', 'Adres (slug)', { required: true, slug: true }),
       T('title', 'Başlık', { required: true }),
+      T('meta_title', 'SEO Başlık (opsiyonel)', {
+        help: 'Google sonuçlarında görünen başlık (~60 karakter). Boş bırakılırsa "Başlık | Marka" kullanılır.'
+      }),
+      T('meta_description', 'SEO Açıklama (opsiyonel)', {
+        help: 'Google açıklaması (~155 karakter). Boş bırakılırsa sayfa içeriğinin ilk satırları kullanılır.'
+      }),
       A('body', 'İçerik (HTML)', { rows: 14 }),
       { name: 'catalog_pdf', label: 'Katalog Belgesi (PDF)', type: 'file', help: 'Yalnızca "dijital-katalog" sayfasında görünür. Yüklenen PDF, katalog bağlantısına tıklanınca otomatik indirilir.' }
     ]
@@ -940,6 +946,8 @@ router.post('/r/:res/save', anyFiles, csrfCheck, (req, res) => {
       }
       if (r.table === 'orders') syncOrderStock(rowid);
       if (r.table === 'payments') syncPaymentCredit(rowid);
+      // SEO: sayfa güncellenince sitemap'teki "lastmod" tarihi yenilenir.
+      if (r.table === 'pages') db.prepare("UPDATE pages SET updated_at=datetime('now') WHERE slug=?").run(data.slug);
       if (r.table === 'work_orders' && id) {
         if (rowid && data.status !== undefined) {
           const locked = ['Beklemede', 'İnceleniyor'].includes(data.status) ? 0 : 1;

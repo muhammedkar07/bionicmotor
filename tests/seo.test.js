@@ -213,3 +213,27 @@ test('404 sayfası: 404 durum kodu + noindex; paneller de noindex', async () => 
   const login = await page('/bayi/giris');
   assert.ok(/name="robots" content="noindex/.test(login.html), 'giriş ekranı indekslenmemeli');
 });
+
+test('içerik sayfası: SEO başlık/açıklama alanları ve WebPage yapısal verisi', async () => {
+  db.prepare(
+    "INSERT OR REPLACE INTO pages(slug,title,body,meta_title,meta_description,updated_at) VALUES(?,?,?,?,?,datetime('now'))"
+  ).run(
+    '50-cc-motor-rehberi',
+    '50 cc Motor Rehberi',
+    '<p>50 cc sınıfı motosikletler hakkında bilmeniz gerekenler.</p>',
+    '50 cc Motor Rehberi 2026 | BIONIC MOTOR',
+    '50 cc motor modelleri, kullanım avantajları, bakım ve yetkili satış noktaları hakkında rehber.'
+  );
+
+  const r = await page('/sayfa/50-cc-motor-rehberi');
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(titleOf(r.html), '50 cc Motor Rehberi 2026 | BIONIC MOTOR', 'meta_title kullanılmalı');
+  assert.ok(descOf(r.html).includes('50 cc motor modelleri'), 'meta_description kullanılmalı');
+  assert.strictEqual(h1s(r.html), 1);
+  const t = types(r.html);
+  assert.ok(t.includes('WebPage'), 'WebPage yapısal verisi olmalı');
+  assert.ok(t.includes('BreadcrumbList'));
+
+  const sm = await page('/sitemap.xml');
+  assert.ok(sm.html.includes('<lastmod>'), 'sitemap güncelleme tarihi içermeli');
+});
