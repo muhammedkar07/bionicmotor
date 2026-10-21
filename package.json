@@ -38,7 +38,8 @@
     "typecheck": "tsc --noEmit",
     "mail:test": "node --env-file=.env scripts/mail-test.js",
     "seo:audit": "node scripts/seo-audit.js",
-    "mail:check": "node --env-file=.env scripts/mail-check.js"
+    "mail:check": "node --env-file=.env scripts/mail-check.js",
+    "mail:auth": "node --env-file=.env scripts/mail-auth-test.js"
   },
   "engines": {
     "node": ">=24"
