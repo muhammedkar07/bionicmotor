@@ -92,7 +92,8 @@ const txt = async name => {
   let dkimFound = null;
   for (const s of [...new Set(selectors)]) {
     const v = (await txt(s + '._domainkey.' + DOMAIN))[0];
-    if (v && /v=DKIM1/i.test(v)) {
+    // DKIM TXT'i ya "v=DKIM1;..." ya da doğrudan "k=rsa;p=..." biçiminde olabilir (CNAME zinciri).
+    if (v && (/v=DKIM1/i.test(v) || /(^|;)\s*k=rsa/i.test(v))) {
       console.log('  ✅ ' + s + '._domainkey yayında');
       if (!dkimFound) dkimFound = s;
     }
