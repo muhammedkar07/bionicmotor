@@ -8,6 +8,13 @@
 //   node scripts/mail-check.js --domain=bionicmotorsiklet.com
 const dns = require('dns').promises;
 
+// Önbelleksiz ve tutarlı sonuç için genel çözücüler kullanılır.
+try {
+  require('dns').setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  /* yok say */
+}
+
 const args = process.argv.slice(2);
 const argOf = name => {
   const hit = args.find(a => a.startsWith('--' + name + '='));
