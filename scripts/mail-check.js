@@ -21,7 +21,6 @@ const argOf = name => {
   return hit ? hit.split('=').slice(1).join('=') : null;
 };
 const DOMAIN = argOf('domain') || String(process.env.MAIL_CHECK_DOMAIN || 'bionicmotorsiklet.com');
-const OCI_INCLUDE = 'oracleemaildelivery';
 
 let pass = 0;
 const fails = [];
@@ -62,8 +61,17 @@ const txt = async name => {
   const spfAll = (await txt(DOMAIN)).filter(t => /^v=spf1/i.test(t));
   ok(spfAll.length === 1, 'Tek SPF kaydı var', spfAll.length === 1 ? '' : spfAll.length + ' kayıt bulundu (birden fazla SPF hata verir!)');
   const spf = spfAll[0] || '';
+  // Sağlayıcıya göre beklenen SPF include'u
+  const mailCfg = require('../lib/mail').cfg();
+  const PROVIDERS = [
+    { re: /oci\.oraclecloud\.com$/i, inc: 'oracleemaildelivery', label: 'Oracle Email Delivery' },
+    { re: /brevo\.com$/i, inc: 'spf.brevo.com', label: 'Brevo' },
+    { re: /veridyen\.com$/i, inc: '_spf.protection.veridyen.com', label: 'Veridyen' }
+  ];
+  const provider = PROVIDERS.find(p => p.re.test(mailCfg.host || ''));
   if (spf) {
-    ok(spf.includes(OCI_INCLUDE), 'Oracle Email Delivery yetkili (include:' + OCI_INCLUDE + ')');
+    ok(spf.includes('include:'), 'SPF include içeriyor');
+    if (provider) ok(spf.includes('include:' + provider.inc), provider.label + ' yetkili (include:' + provider.inc + ')');
     console.log('     kayıt: ' + spf);
     const lookups = (spf.match(/include:/g) || []).length + (spf.match(/a[: ]/g) || []).length + (spf.match(/mx/g) || []).length;
     warn(lookups <= 8, 'SPF DNS sorgu sayısı sınırda değil', lookups + ' include/mx');
@@ -80,7 +88,7 @@ const txt = async name => {
   const selectors = [];
   const given = argOf('dkim');
   if (given) selectors.push(given);
-  ['default', 'mail', 'dkim', 'oci', 'selector1', 'google'].forEach(s => selectors.push(s));
+  ['default', 'brevo1', 'brevo2', 'mail', 'dkim', 'oci', 'selector1', 'google'].forEach(s => selectors.push(s));
   let dkimFound = null;
   for (const s of [...new Set(selectors)]) {
     const v = (await txt(s + '._domainkey.' + DOMAIN))[0];
@@ -107,8 +115,6 @@ const txt = async name => {
   const c = mail.cfg();
   ok(mail.configured(), 'SMTP yapılandırıldı', mail.configured() ? c.host + ':' + c.port : 'eksik');
   warn(/bionicmotorsiklet\.com$/i.test(c.from || ''), 'Gönderen adresi kendi alan adımızda', c.from);
-  const ociHost = /oci\.oraclecloud\.com$/i.test(c.host || '');
-  if (ociHost) ok(spf.includes(OCI_INCLUDE), 'SPF, Oracle uç noktasını yetkilendiriyor');
 
   // ---- Özet ----
   console.log('\n' + '='.repeat(58));
