@@ -3,7 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= title %> | <%= s.brand_1 %><%= s.brand_2 %></title>
+  <%
+    const plainSiteName = [s.brand_1, s.brand_2].map(v => String(v == null ? '' : v).trim()).filter(Boolean).join(' ') || 'Bionic Motor';
+    const plainSeo = (typeof seo !== 'undefined' && seo) ? seo : {};
+    const plainTitle = plainSeo.title || (title ? title + ' | ' + plainSiteName : plainSiteName);
+    const plainDesc = plainSeo.description ||
+      (s.meta_description && String(s.meta_description).trim()) ||
+      (plainSiteName + ' — yetkili satış ve servis noktaları, güncel modeller ve kampanyalar.');
+    const plainCanonical = plainSeo.canonical || (origin + path);
+    const plainImage = plainSeo.image || (origin + '/static/img/og-default.jpg');
+    const plainJsonLd = plainSeo.jsonld || [];
+  %>
+  <title><%= plainTitle %></title>
+  <meta name="description" content="<%= plainDesc %>">
+  <link rel="canonical" href="<%= plainCanonical %>">
+  <% if (plainSeo.robots) { %><meta name="robots" content="<%= plainSeo.robots %>"><% } %>
+  <% if (s.google_site_verification) { %><meta name="google-site-verification" content="<%= s.google_site_verification %>"><% } %>
+  <meta property="og:site_name" content="<%= plainSiteName %>">
+  <meta property="og:locale" content="tr_TR">
+  <meta property="og:type" content="<%= plainSeo.ogType || 'website' %>">
+  <meta property="og:title" content="<%= plainTitle %>">
+  <meta property="og:description" content="<%= plainDesc %>">
+  <meta property="og:url" content="<%= plainCanonical %>">
+  <meta property="og:image" content="<%= plainImage %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json" nonce="<%= nonce %>"><%- JSON.stringify(orgJsonLd).replace(/</g, '\\u003c') %></script>
+  <% plainJsonLd.forEach(j => { %><script type="application/ld+json" nonce="<%= nonce %>"><%- JSON.stringify(j).replace(/</g, '\\u003c') %></script><% }) %>
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/portal.css">
 </head>

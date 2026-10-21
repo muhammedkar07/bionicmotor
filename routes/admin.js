@@ -431,7 +431,13 @@ const SETTINGS = [
   ],
   ['Vergi Oranı (sipariş formunda gösterilir)', [['kdv_rate', 'KDV (%)']]],
   ['Diğer', [['footer_note', 'Alt Bilgi Metni']]],
-  ['SEO', [['meta_description', 'Site Açıklaması (meta description, ~150 karakter)']]],
+  [
+    'SEO / Arama Motorları',
+    [
+      ['meta_description', 'Site Açıklaması (meta description, ~150 karakter)'],
+      ['google_site_verification', 'Google Search Console doğrulama kodu (meta içeriği)']
+    ]
+  ],
   ['Banka Bilgileri', [['bank_info_image', 'Banka Hesap Bilgileri Görseli', 'image']]]
 ];
 

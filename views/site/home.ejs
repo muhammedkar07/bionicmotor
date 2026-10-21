@@ -24,7 +24,7 @@
     <div class="slide-in">
       <div class="slide-text">
         <% if (sl.subtitle) { %><p class="slide-sub"><%= sl.subtitle %></p><% } %>
-        <h1><%= sl.title %></h1>
+        <% if (i === 0) { %><h1><%= sl.title %></h1><% } else { %><h2><%= sl.title %></h2><% } %>
         <% if (sl.old_price || sl.new_price) { %>
         <div class="price">
           <% if (sl.old_price) { %><s class="price-old"><%= sl.old_price %></s><% } %>
@@ -117,8 +117,8 @@
   <div class="h2"><h2>Modeller<span>imiz</span></h2><a href="/modeller">Tümünü gör ›</a></div>
   <div class="cards">
     <% models.slice(0, 6).forEach(m => { %>
-    <a class="model-card" href="/model/<%= m.id %>">
-      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async"><% } else { %><%- scooter %><% } %></div>
+    <a class="model-card" href="<%= m.path %>">
+      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %> – <%= m.category || 'motosiklet' %>" loading="lazy" decoding="async"><% } else { %><%- scooter %><% } %></div>
       <div class="model-body">
         <h3><%= m.name %></h3>
         <p><%= m.category || '' %><%= m.cc ? ' · ' + m.cc : '' %></p>
@@ -139,7 +139,7 @@
     </div>
   </div>
   <div>
-    <h1 style="font-size:clamp(32px,4.2vw,56px);margin:0 0 14px">Dijital<br><span class="rd">bayi ağı.</span></h1>
+    <h2 style="font-size:clamp(32px,4.2vw,56px);margin:0 0 14px">Dijital<br><span class="rd">bayi ağı.</span></h2>
     <p class="lead">Bayi ve servis panelinizden sipariş, stok, cari ve garanti işlemlerinizi tek ekrandan yönetin.</p>
     <div class="cta"><a class="btn btn-red" href="/bayi">Bayi Girişi ›</a><a class="btn btn-line" href="/odeme">Online Ödeme</a></div>
   </div>

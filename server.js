@@ -7,6 +7,7 @@ const { allSettings, db } = require('./db');
 const core = require('./lib/core');
 const { UPLOAD_DIR } = require('./lib/upload');
 const paratika = require('./lib/paratika');
+const seo = require('./lib/seo');
 
 // Hatalar hem konsola hem de logs/error.log dosyasına yazılır.
 const LOG_DIR = path.join(__dirname, 'logs');
@@ -163,6 +164,12 @@ app.use((req, res, next) => {
   res.locals.path = req.path;
   res.locals.base = BASE;
   res.locals.origin = process.env.PUBLIC_URL || req.protocol + '://' + req.get('host') + BASE;
+  // Tüm sayfalarda yayınlanan kuruluş (Organization) yapısal verisi — tek yerden üretilir.
+  res.locals.orgJsonLd = seo.orgJson(
+    res.locals.s,
+    res.locals.origin,
+    res.locals.origin + (res.locals.s.logo_image || '/static/img/bionic-logo.png')
+  );
   // Sunucu taraflı yönlendirmeleri de alt yol öneki ile üret.
   if (BASE) {
     const _redirect = res.redirect.bind(res);
@@ -201,7 +208,13 @@ app.use('/odeme', require('./routes/odeme'));
 app.use('/servis', require('./routes/servis'));
 app.use('/', require('./routes/site'));
 
-app.use((req, res) => res.status(404).render('site/404', { title: 'Sayfa bulunamadı', active: '' }));
+app.use((req, res) =>
+  res.status(404).render('site/404', {
+    title: 'Sayfa bulunamadı',
+    active: '',
+    seo: { ...seo.staticSeo('notfound', res.locals.s), robots: 'noindex, follow', jsonld: [] }
+  })
+);
 app.use((err, req, res, next) => {
   logError(err);
   if (err && err.name === 'MulterError')

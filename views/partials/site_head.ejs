@@ -3,29 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><%= title %> | <%= s.brand_1 %><%= s.brand_2 %></title>
   <%
-    const siteName = (((s.brand_1 || '') + (s.brand_2 || '')).trim()) || 'Bionic Motor';
-    const metaDesc = (s.meta_description && String(s.meta_description).trim()) ||
+    const siteName = [s.brand_1, s.brand_2].map(v => String(v == null ? '' : v).trim()).filter(Boolean).join(' ') || 'Bionic Motor';
+    const seoObj = (typeof seo !== 'undefined' && seo) ? seo : {};
+    const pageTitle = seoObj.title || (title ? title + ' | ' + siteName : siteName);
+    const metaDesc = seoObj.description ||
+      (s.meta_description && String(s.meta_description).trim()) ||
       (siteName + ' — ' + (s.company || '') + ' yetkili satış ve servis noktaları, güncel modeller ve kampanyalar.').trim();
-    const canonical = origin + path;
-    const ogImage = origin + (s.logo_image || '/static/img/bionic-logo.png');
+    const canonical = seoObj.canonical || (origin + path);
+    const ogImage = seoObj.image || (origin + '/static/img/og-default.jpg');
+    const ogType = seoObj.ogType || 'website';
+    const pageJsonLd = seoObj.jsonld || [];
   %>
+  <title><%= pageTitle %></title>
   <meta name="description" content="<%= metaDesc %>">
   <link rel="canonical" href="<%= canonical %>">
+  <% if (seoObj.robots) { %><meta name="robots" content="<%= seoObj.robots %>"><% } %>
+  <% if (s.google_site_verification) { %><meta name="google-site-verification" content="<%= s.google_site_verification %>"><% } %>
   <meta property="og:site_name" content="<%= siteName %>">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="<%= title %> | <%= siteName %>">
+  <meta property="og:locale" content="tr_TR">
+  <meta property="og:type" content="<%= ogType %>">
+  <meta property="og:title" content="<%= pageTitle %>">
   <meta property="og:description" content="<%= metaDesc %>">
   <meta property="og:url" content="<%= canonical %>">
   <meta property="og:image" content="<%= ogImage %>">
+  <meta property="og:image:alt" content="<%= seoObj.imageAlt || siteName %>">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="<%= title %> | <%= siteName %>">
+  <meta name="twitter:title" content="<%= pageTitle %>">
   <meta name="twitter:description" content="<%= metaDesc %>">
   <meta name="twitter:image" content="<%= ogImage %>">
   <script type="application/ld+json" nonce="<%= nonce %>">
-  <%- JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: siteName, url: origin, logo: ogImage, telephone: s.phone || undefined, email: s.email || undefined, address: { '@type': 'PostalAddress', streetAddress: s.address || undefined, addressLocality: s.branch || undefined } }).replace(/</g, '\\u003c') %>
+  <%- JSON.stringify(orgJsonLd).replace(/</g, '\\u003c') %>
   </script>
+  <% pageJsonLd.forEach(j => { %><script type="application/ld+json" nonce="<%= nonce %>">
+  <%- JSON.stringify(j).replace(/</g, '\\u003c') %>
+  </script><% }) %>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="/static/js/theme.js?v=<%= v %>"></script>

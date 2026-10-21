@@ -1,12 +1,22 @@
 <%- include('../partials/site_head') %>
 <section class="wrap section">
-  <h2 class="title-red">MODELLER</h2>
+  <nav class="crumb" aria-label="Sayfa yolu"><a href="/">Ana Sayfa</a> <span>›</span> <b><%= typeof heading !== 'undefined' && heading ? heading : 'Modeller' %></b></nav>
+  <h1 class="title-red"><%= typeof heading !== 'undefined' && heading ? heading : 'MODELLER' %></h1>
+  <% if (typeof intro !== 'undefined' && intro) { %>
+  <p class="mlead"><%= intro %></p>
+  <% } %>
+  <% if (typeof cats !== 'undefined' && cats && cats.length) { %>
+  <nav class="catnav" aria-label="Model kategorileri">
+    <a href="/modeller" class="<%= !activeCat ? 'on' : '' %>">Tüm Modeller<span><%= models.length %></span></a>
+    <% cats.forEach(c => { %><a href="<%= c.path %>" class="<%= activeCat === c.slug ? 'on' : '' %>"><%= c.label %><span><%= c.count %></span></a><% }) %>
+  </nav>
+  <% } %>
   <div class="cards">
     <% models.forEach(m => { %>
-    <a class="model-card" href="/model/<%= m.id %>">
-      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" loading="lazy" decoding="async"><% } else { %><span><%= m.name %></span><% } %></div>
+    <a class="model-card" href="<%= m.path %>">
+      <div class="model-img"><% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %> – <%= m.category || 'motosiklet' %>" loading="lazy" decoding="async"><% } else { %><span><%= m.name %></span><% } %></div>
       <div class="model-body">
-        <h3><%= m.name %></h3>
+        <h2><%= m.name %></h2>
         <p><%= m.description %></p>
         <ul class="specs">
           <% if (m.cc) { %><li><b>Hız</b> <%= m.cc %></li><% } %>
@@ -21,5 +31,6 @@
     </a>
     <% }) %>
   </div>
+  <% if (!models.length) { %><p class="muted">Bu kategoride şu anda aktif model bulunmuyor. <a href="/modeller">Tüm modelleri görün</a>.</p><% } %>
 </section>
 <%- include('../partials/site_foot') %>

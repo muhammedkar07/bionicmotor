@@ -1,13 +1,13 @@
 <%- include('../partials/site_head') %>
 <section class="wrap section">
-  <nav class="crumb"><a href="/">Ana Sayfa</a> <span>›</span> <a href="/modeller">Modeller</a> <span>›</span> <b><%= m.name %></b></nav>
+  <nav class="crumb" aria-label="Sayfa yolu"><a href="/">Ana Sayfa</a> <span>›</span> <a href="/modeller">Modeller</a><% if (catPath) { %> <span>›</span> <a href="<%= catPath %>"><%= catLabel %></a><% } %> <span>›</span> <b><%= m.name %></b></nav>
 
   <div class="mpage">
     <div class="mpage-img">
-      <% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %>" decoding="async"><% } else { %><span><%= m.name %></span><% } %>
+      <% if (m.image) { %><img src="<%= m.image %>" alt="<%= m.name %> – <%= catLabel || 'motosiklet' %>" decoding="async"><% } else { %><span><%= m.name %></span><% } %>
     </div>
     <div class="mpage-info">
-      <% if (m.category) { %><span class="mtag"><%= m.category %></span><% } %>
+      <% if (m.category) { %><a class="mtag" href="<%= catPath %>"><%= catLabel %></a><% } %>
       <h1><%= m.name %></h1>
       <ul class="mpage-specs">
         <% if (m.cc) { %><li><b>Hız</b><span><%= m.cc %></span></li><% } %>
@@ -32,6 +32,23 @@
   </div>
   <% } %>
 
+  <% if (typeof related !== 'undefined' && related && related.length) { %>
+  <div class="mpage-related">
+    <h2 class="title-red">BENZER MODELLER</h2>
+    <div class="cards">
+      <% related.forEach(r => { %>
+      <a class="model-card" href="<%= r.path %>">
+        <div class="model-img"><% if (r.image) { %><img src="<%= r.image %>" alt="<%= r.name %> – <%= r.category || 'motosiklet' %>" loading="lazy" decoding="async"><% } else { %><span><%= r.name %></span><% } %></div>
+        <div class="model-body">
+          <h3><%= r.name %></h3>
+          <p><%= r.category || '' %><%= r.cc ? ' · ' + r.cc : '' %></p>
+        </div>
+      </a>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
   <div class="mpage-back"><a class="btn btn-line" href="/modeller">‹ Tüm Modeller</a></div>
 </section>
 <style>
@@ -43,7 +60,9 @@
   .mpage-img{background:linear-gradient(160deg,var(--surface-2),var(--bg));border:1px solid var(--line);border-radius:var(--r);display:flex;align-items:center;justify-content:center;padding:26px;min-height:340px}
   .mpage-img img{max-width:100%;max-height:420px;object-fit:contain}
   .mpage-img span{font-weight:800;font-size:26px;color:var(--muted)}
-  .mtag{display:inline-block;background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .mtag{display:inline-block;background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,transparent);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}
+  .mpage-related{margin-top:46px}
+  .mpage-related .cards{margin-top:18px}
   .mpage-info h1{margin:12px 0 18px;font-size:34px}
   .mpage-specs{list-style:none;padding:0;margin:0 0 20px}
   .mpage-specs li{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:12px 2px;font-size:15px}
