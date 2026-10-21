@@ -39,6 +39,8 @@ const mail = require('../lib/mail');
       port: c.port,
       secure: c.secure,
       auth: c.user ? { user: c.user, pass: c.pass } : undefined,
+      requireTLS: !c.secure,
+      tls: { minVersion: 'TLSv1.2' },
       connectionTimeout: 15000,
       greetingTimeout: 15000,
       socketTimeout: 20000
