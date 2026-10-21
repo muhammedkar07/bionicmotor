@@ -133,7 +133,10 @@
   <% rows.forEach(r => { %>
     <tr><% cols.forEach(c => { %><td><% if (c.type === 'image') { %><% if (r[c.name]) { %><a href="<%= r[c.name] %>" target="_blank" rel="noopener"><img src="<%= r[c.name] %>" alt="" style="max-height:36px;border-radius:4px"></a><% } else { %><span class="muted">—</span><% } %><% } else { %><%= cell(c, r[c.name], refs) %><% } %></td><% }) %>
       <% if (receipts) { %><td><% if (receipts[r._id]) { %><a class="btn btn-sm" href="/odeme/dekont/<%= receipts[r._id] %>?print=1" target="_blank" rel="noopener" title="Dekontu aç ve yazdır / PDF kaydet">Dekont</a><% } else { %><span class="muted">—</span><% } %></td><% } %>
-      <td class="act"><a class="btn btn-sm" href="/admin/r/<%= res.key %>/<%= r._id %>">Düzenle</a>
+      <td class="act"><% if (res.key === 'payments' && ['nakit', 'havale'].includes(r.kind) && r.status === 'Talimat Oluşturuldu') { %>
+        <form method="post" action="/admin/r/payments/<%= r._id %>/onayla" class="inline" data-confirm="Bu ödeme tahsil edildi olarak işaretlensin ve cari hesaba alacak yazılsın mı?">
+          <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-primary">Onayla</button></form>
+        <% } %><a class="btn btn-sm" href="/admin/r/<%= res.key %>/<%= r._id %>">Düzenle</a>
         <form method="post" action="/admin/r/<%= res.key %>/<%= r._id %>/delete" class="inline" data-confirm="Bu kayıt silinsin mi?">
           <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm btn-danger">Sil</button></form></td></tr>
   <% }) %>

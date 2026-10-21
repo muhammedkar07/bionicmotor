@@ -140,7 +140,7 @@ const RES = {
       FIRM,
       S('ledger', 'Hesap', ['ana', 'parca'], { def: 'ana' }),
       D('date', 'Tarih'),
-      S('doc_type', 'Ödeme Türü', ['Nakit', 'Kart', 'Çek/Senet']),
+      S('doc_type', 'Ödeme Türü', ['Nakit', 'Havale / EFT', 'Kart', 'Çek/Senet']),
       T('bank', 'Banka', { nullable: true }),
       T('cheque_no', 'Çek/Senet No', { nullable: true }),
       S('cheque_type', 'Çek Türü', ['Senet', 'Çek'], { def: 'Çek' }),
@@ -272,7 +272,9 @@ const RES = {
       RO('card_last4', 'Kart Son 4'),
       RO('paid_at', 'Ödeme Tarihi'),
       RO('description', 'Açıklama'),
-      S('status', 'Durum', ['Sanal POS Bekliyor', 'Talimat Oluşturuldu', 'Onaylandı', 'Tahsil Edildi', 'İptal'])
+      S('status', 'Durum', ['Sanal POS Bekliyor', 'Talimat Oluşturuldu', 'Onaylandı', 'Tahsil Edildi', 'İptal'], {
+        help: 'Nakit / Havale-EFT bildirimlerini onaylamak için "Tahsil Edildi" (veya "Onaylandı") seçip kaydedin → tutar cari hesaba otomatik alacak işlenir. "İptal" seçilirse hesaba işlenmez.'
+      })
     ]
   },
   slides: {
@@ -1112,6 +1114,38 @@ router.post('/stok-parca', (req, res) => {
   });
   flash(req, 'success', 'Yedek parça stokları güncellendi.');
   res.redirect('/admin/stok-parca');
+});
+
+// Nakit / Havale-EFT bildirimini tek tıkla onayla: kayıt "Tahsil Edildi" olur ve tutar
+// cari hesaba alacak işlenir. Kart (Sanal POS) ödemeleri buradan onaylanmaz; onlar
+// Paratika'dan sunucu tarafı doğrulanarak (mutabakat) işlenir.
+router.post('/r/payments/:id/onayla', (req, res) => {
+  const id = +req.params.id;
+  const back = '/admin/r/payments';
+  const p = db.prepare('SELECT * FROM payments WHERE id=? AND deleted_at IS NULL').get(id);
+  if (!p) {
+    flash(req, 'danger', 'Ödeme bulunamadı.');
+    return res.redirect(back);
+  }
+  if (!['nakit', 'havale'].includes(p.kind)) {
+    flash(req, 'danger', 'Yalnızca nakit / havale-EFT bildirimleri elle onaylanabilir (kart ödemeleri otomatik doğrulanır).');
+    return res.redirect(back);
+  }
+  if (p.status === 'Tahsil Edildi') {
+    flash(req, 'info', 'Bu ödeme zaten tahsil edilmiş.');
+    return res.redirect(back);
+  }
+  if (p.status === 'İptal') {
+    flash(req, 'danger', 'İptal edilmiş bir bildirim onaylanamaz.');
+    return res.redirect(back);
+  }
+  tx(() => {
+    db.prepare("UPDATE payments SET status='Tahsil Edildi', paid_at=COALESCE(paid_at,datetime('now')) WHERE id=?").run(id);
+    syncPaymentCredit(id);
+    logAudit(res.locals.admin, 'payment_approved', 'payments', id, { kind: p.kind, amount: p.amount }, req.ip);
+  });
+  flash(req, 'success', 'Ödeme onaylandı; tutar cari hesaba alacak işlendi.');
+  res.redirect(back);
 });
 
 router.post('/r/:res/:id/delete', (req, res) => {

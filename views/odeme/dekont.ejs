@@ -107,11 +107,15 @@
   <table>
     <tbody>
       <tr><th>Açıklama</th><td><%= p.description || 'Online ödeme' %></td></tr>
-      <tr><th>Ödeme Türü</th><td><%= p.kind === 'havale' ? 'Havale / EFT' : 'Kredi Kartı (Sanal POS)' %></td></tr>
+      <tr><th>Ödeme Türü</th><td><%= p.kind === 'havale' ? 'Havale / EFT' : p.kind === 'nakit' ? 'Nakit' : 'Kredi Kartı (Sanal POS)' %></td></tr>
       <tr><th>Taksit</th><td><%= p.installment || 'Tek Çekim' %></td></tr>
       <tr><th>Ödeme Tarihi</th><td><%= p.paid_at ? dt(p.paid_at) : '—' %></td></tr>
+      <% if (p.kind === 'odeme') { %>
       <tr><th>Sipariş No (MERCHANTPAYMENTID)</th><td><%= p.provider_order || '—' %></td></tr>
       <tr><th>Banka İşlem No</th><td><%= p.provider_ref || '—' %></td></tr>
+      <% } else { %>
+      <tr><th>Bildirim / Tahsilat</th><td><%= p.paid_at ? dt(p.paid_at) : 'Yönetici onayı bekliyor' %></td></tr>
+      <% } %>
       <tr><th>Hesaba İşlendiği Yer</th><td><%= p.source === 'servis' ? 'Servis cari hesabı' : p.source === 'bayi' ? 'Bayi cari hesabı' : 'Bayi cari hesabı' %> (alacak)</td></tr>
     </tbody>
   </table>

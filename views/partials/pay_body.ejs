@@ -5,6 +5,7 @@
   <div class="paymethods">
     <label><input type="radio" name="method" value="kart" checked> Kredi Kartı ile Öde</label>
     <label><input type="radio" name="method" value="havale"> Havale / EFT</label>
+    <label><input type="radio" name="method" value="nakit"> Nakit</label>
   </div>
 </div>
 <div class="pw grid3" id="cardgrid">
@@ -27,7 +28,7 @@
 <div class="pw" id="havalebox" hidden>
   <section>
     <h2><span class="cico"></span>Havale / EFT Bilgileri</h2>
-    <p class="havale-uyari">Havale / EFT işlemlerinde açıklama kısmına <b>bayi kodunuzu ve adınızı soyadınızı</b> yazmayı unutmayınız.</p>
+    <p class="havale-uyari">Havale / EFT işlemlerinde açıklama kısmına <b>bayi kodunuzu ve adınızı soyadınızı</b> yazmayı unutmayınız. Bildiriminiz <b>yönetici onayından sonra</b> hesabınıza alacak işlenir.</p>
     <label>Ödeme Tutarı
       <div class="amount"><span>💵</span><input id="amount2" name="amount" inputmode="decimal" placeholder="Örn. 1.250,50" required disabled><b class="cur">TL</b></div></label>
     <label>Ödeme Açıklaması<textarea name="description" id="desc2" rows="4" placeholder="Açıklama giriniz" maxlength="500" disabled></textarea></label>
@@ -37,16 +38,33 @@
 <div class="pw" id="havalebtn" hidden style="padding-top:16px">
   <button class="btn-green" type="submit">HAVALE / EFT BİLDİRİMİ GÖNDER <span>›</span></button>
 </div>
+<div class="pw" id="nakitbox" hidden>
+  <section>
+    <h2><span class="cico"></span>Nakit Ödeme Bildirimi</h2>
+    <p class="havale-uyari">Nakit ödemeyi <b>şubede/elden</b> yaptıysanız tutarı girip bildirin. Kaydınız <b>yönetici onayından sonra</b> hesabınıza alacak işlenir.</p>
+    <label>Ödeme Tutarı
+      <div class="amount"><span>💵</span><input id="amount3" name="amount" inputmode="decimal" placeholder="Örn. 1.250,50" required disabled><b class="cur">TL</b></div></label>
+    <label>Ödeme Açıklaması<textarea name="description" id="desc3" rows="4" placeholder="Açıklama giriniz (ör. şube tahsilatı)" maxlength="500" disabled></textarea></label>
+  </section>
+</div>
+<div class="pw" id="nakitbtn" hidden style="padding-top:16px">
+  <button class="btn-green" type="submit">NAKİT ÖDEME BİLDİRİMİ GÖNDER <span>›</span></button>
+</div>
 </form>
 <script nonce="<%= nonce %>">
   const $ = id => document.getElementById(id);
   function applyMethod() {
-    const havale = document.querySelector('input[name=method]:checked').value === 'havale';
-    $('cardgrid').hidden = havale; $('havalebox').hidden = !havale; $('havalebtn').hidden = !havale;
+    const m = document.querySelector('input[name=method]:checked').value;
+    const kart = m === 'kart', havale = m === 'havale', nakit = m === 'nakit';
+    $('cardgrid').hidden = !kart;
+    $('havalebox').hidden = !havale; $('havalebtn').hidden = !havale;
+    $('nakitbox').hidden = !nakit; $('nakitbtn').hidden = !nakit;
     // Kapalı tarafın alanları devre dışı bırakılır; aksi halde aynı isimli alanlar çift gönderilir.
-    $('amount').disabled = havale; $('desc').disabled = havale;
+    $('amount').disabled = !kart; $('desc').disabled = !kart;
     $('amount2').disabled = !havale; $('desc2').disabled = !havale; $('payer_name').disabled = !havale;
-    $('amount2').required = havale; $('payer_name').required = havale; $('amount').required = !havale;
+    $('amount3').disabled = !nakit; $('desc3').disabled = !nakit;
+    $('amount').required = kart; $('amount2').required = havale; $('amount3').required = nakit;
+    $('payer_name').required = havale;
   }
   document.querySelectorAll('input[name=method]').forEach(r => r.onchange = applyMethod);
   applyMethod();

@@ -136,6 +136,20 @@ test('başka kullanıcının anahtarıyla oturum açılmaz', async () => {
   assert.strictEqual(own.res.status, 200, 'diğer kullanıcının oturumu etkilenmemeli');
 });
 
+test('Paratika dönüşü CSRF muaftır (bankanın POST dönüşü engellenmemeli)', async () => {
+  // Banka dönüşü bizim CSRF token'ımızı taşımaz → 403 (Geçersiz istek) OLMAMALI.
+  // Dönüş adresi artık /odeme/paratika/sonuc/<oturum-anahtarı> biçiminde.
+  const bogus = 'YOK-' + Date.now();
+  const r = await fetch(base + '/odeme/paratika/sonuc/abc123?o=' + encodeURIComponent(bogus), {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ MERCHANTPAYMENTID: bogus })
+  });
+  assert.notStrictEqual(r.status, 403, 'CSRF muafiyeti dönüş yolunu kapsamalı');
+  assert.strictEqual(r.status, 302, 'ödeme bulunamasa da yönlendirme yapılmalı');
+});
+
 test('rastgele anahtarla oturum açılmaz', async () => {
   const bayi = await loginBayi();
   const loc = await startBayiPayment(bayi);

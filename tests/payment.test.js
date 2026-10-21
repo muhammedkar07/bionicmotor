@@ -17,7 +17,7 @@ process.env.PARATIKA_SIMULATE = '1';
 process.env.NODE_ENV = 'test';
 
 const app = require('../server');
-const { db, STATUS } = require('../db');
+const { db, STATUS, syncPaymentCredit } = require('../db');
 const { accountSummary } = require('../lib/account');
 
 let server, base;
@@ -246,4 +246,78 @@ test('kartla yedek parça siparişi: ödeme sonrası sipariş dönüşür, cari 
     )
     .get(firmId).s;
   assert.ok(borc > 0, 'sipariş borcu işlenmeli');
+});
+
+test('nakit bildirimi: hesaba hemen işlenmez, yönetici onaylayınca "Nakit" olarak işlenir', async () => {
+  const cookie = await loginBayi();
+  const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
+  const before = balance(firmId);
+  const page = await get('/bayi/odeme', cookie);
+  const res = await postForm(
+    '/bayi/odeme/ode',
+    { method: 'nakit', amount: '750.00', description: 'şube tahsilatı', _csrf: csrfOf(page.html) },
+    cookie
+  );
+  assert.strictEqual(res.status, 302, 'bildirimden sonra panele dönmeli');
+  const p = lastPayment();
+  assert.strictEqual(p.kind, 'nakit');
+  assert.strictEqual(p.status, STATUS.TALIMAT, 'onay bekleyen bildirim olarak kaydedilmeli');
+  assert.strictEqual(p.amount, 75000);
+  assert.strictEqual(p.firm_id, firmId);
+  assert.strictEqual(balance(firmId), before, 'onaydan önce cariye işlenmemeli');
+
+  // Yönetici onayı: kayıt "Tahsil Edildi" yapılınca tutar cariye alacak işlenir.
+  db.prepare('UPDATE payments SET status=? WHERE id=?').run(STATUS.COLLECTED, p.id);
+  syncPaymentCredit(p.id);
+  assert.strictEqual(balance(firmId), before - 75000, 'onaydan sonra alacak işlenmeli');
+  const mv = db.prepare('SELECT * FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id);
+  assert.ok(mv, 'cari hareketi oluşmalı');
+  assert.strictEqual(mv.doc_type, 'Nakit');
+  assert.strictEqual(mv.kind, 'alacak');
+});
+
+test('havale bildirimi: gönderen adı zorunlu, onaylanınca "Havale / EFT" olarak işlenir', async () => {
+  const cookie = await loginBayi();
+  const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
+  const page = await get('/bayi/odeme', cookie);
+  const cnt = () => db.prepare('SELECT COUNT(*) c FROM payments').get().c;
+
+  const before = cnt();
+  await postForm('/bayi/odeme/ode', { method: 'havale', amount: '250', _csrf: csrfOf(page.html) }, cookie);
+  assert.strictEqual(cnt(), before, 'gönderen adı olmadan kayıt oluşmamalı');
+
+  const res = await postForm(
+    '/bayi/odeme/ode',
+    { method: 'havale', amount: '250,50', payer_name: 'Ali Veli', _csrf: csrfOf(page.html) },
+    cookie
+  );
+  assert.strictEqual(res.status, 302);
+  const p = lastPayment();
+  assert.strictEqual(p.kind, 'havale');
+  assert.strictEqual(p.status, STATUS.TALIMAT);
+  assert.strictEqual(p.amount, 25050);
+  assert.ok(String(p.description).includes('Ali Veli'), 'gönderen adı açıklamaya yazılmalı');
+
+  const bal = balance(firmId);
+  db.prepare('UPDATE payments SET status=? WHERE id=?').run(STATUS.APPROVED, p.id);
+  syncPaymentCredit(p.id);
+  assert.strictEqual(balance(firmId), bal - 25050, 'onaydan sonra alacak işlenmeli');
+  const mv = db.prepare('SELECT * FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id);
+  assert.strictEqual(mv.doc_type, 'Havale / EFT');
+});
+
+test('iptal edilen nakit/havale bildirimi cariye işlenmez', async () => {
+  const cookie = await loginBayi();
+  const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
+  const page = await get('/bayi/odeme', cookie);
+  await postForm('/bayi/odeme/ode', { method: 'nakit', amount: '100', _csrf: csrfOf(page.html) }, cookie);
+  const p = lastPayment();
+  const before = balance(firmId);
+  db.prepare('UPDATE payments SET status=? WHERE id=?').run(STATUS.CANCELLED, p.id);
+  syncPaymentCredit(p.id);
+  assert.strictEqual(balance(firmId), before, 'iptal edilen bildirim bakiyeyi değiştirmemeli');
+  assert.strictEqual(
+    db.prepare('SELECT COUNT(*) n FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id).n,
+    0
+  );
 });

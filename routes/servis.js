@@ -140,9 +140,9 @@ router.post('/odeme/ode', async (req, res) => {
   }
   const b = req.body;
   const ctx = { userId: res.locals.su.id, firmId: req.session.servis.firmId, source: 'servis', origin: publicOrigin(req), ip: req.ip, sid: req.sid };
-  const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
-  if (method === 'havale') {
-    const r = pay.havale(ctx, b);
+  const method = ['kart', 'havale', 'nakit'].includes(b.method) ? b.method : 'kart';
+  if (method !== 'kart') {
+    const r = pay.manual(ctx, b, method);
     flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
     return res.redirect('/servis/odeme');
   }

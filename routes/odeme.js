@@ -215,11 +215,11 @@ const payCtx = (req, res) => ({
 
 router.post('/ode', async (req, res) => {
   const b = req.body;
-  const method = ['kart', 'havale'].includes(b.method) ? b.method : 'kart';
-  if (method === 'havale') {
-    const r = pay.havale(payCtx(req, res), b);
+  const method = ['kart', 'havale', 'nakit'].includes(b.method) ? b.method : 'kart';
+  if (method !== 'kart') {
+    const r = pay.manual(payCtx(req, res), b, method);
     if (!r.error)
-      logAudit({ type: 'odeme', id: res.locals.pu.id, name: res.locals.pu.email }, 'create', 'payments', null, { kind: 'havale' }, req.ip);
+      logAudit({ type: 'odeme', id: res.locals.pu.id, name: res.locals.pu.email }, 'create', 'payments', null, { kind: method }, req.ip);
     flash(req, r.error ? 'danger' : 'success', r.error || r.msg);
     return res.redirect('/odeme');
   }

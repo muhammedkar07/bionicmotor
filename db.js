@@ -466,7 +466,7 @@ function syncPaymentCredit(paymentId) {
   if (p.movement_id) {
     db.prepare('UPDATE account_movements SET amount=? WHERE id=?').run(amt, p.movement_id);
   } else {
-    const docType = p.kind === 'odeme' ? 'Kredi Kartı Fişi' : 'Nakit';
+    const docType = p.kind === 'odeme' ? 'Kredi Kartı Fişi' : p.kind === 'havale' ? 'Havale / EFT' : 'Nakit';
     const mid = db
       .prepare(
         "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount,has_detail) VALUES(?,?,date('now'),?,?,?,?,0)"
