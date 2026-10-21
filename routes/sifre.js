@@ -38,7 +38,8 @@ function renderUnuttum(res, p) {
     title: 'Şifremi Unuttum',
     panel: p,
     panelLabel: PANELS[p].label,
-    loginUrl: PANELS[p].login
+    loginUrl: PANELS[p].login,
+    mailOn: mail.enabled()
   });
 }
 

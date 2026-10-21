@@ -35,7 +35,8 @@
     "lint": "eslint .",
     "format": "prettier --write \"**/*.js\"",
     "format:check": "prettier --check \"**/*.js\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mail:test": "node --env-file=.env scripts/mail-test.js"
   },
   "engines": {
     "node": ">=24"

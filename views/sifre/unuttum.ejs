@@ -12,6 +12,13 @@
 <main class="login-box">
   <div class="logo-center big"><%- include('../partials/logo') %></div>
   <h1 class="h6">Şifremi Unuttum · <%= panelLabel %></h1>
+  <% if (!mailOn) { %>
+  <div class="alert alert-danger" style="border-radius:6px;margin:0 0 18px;max-width:none">
+    <b>Şifre sıfırlama e-postası henüz yapılandırılmadı.</b><br>
+    Lütfen bizimle iletişime geçin<%= s && s.phone ? ' · ' + s.phone : '' %><%= s && s.email ? ' · ' + s.email : '' %>; yeni şifreniz tanımlansın.
+  </div>
+  <p style="text-align:center;margin-top:18px"><a href="<%= loginUrl %>">← Girişe dön</a></p>
+  <% } else { %>
   <p class="muted" style="margin-top:-6px">Kayıtlı e-posta adresinizi girin. Adres sistemde kayıtlıysa tek kullanımlık bir sıfırlama bağlantısı gönderilir. Bağlantı <b>60 dakika</b> geçerlidir.</p>
   <form method="post" action="/sifre/unuttum" class="stack">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -22,6 +29,7 @@
     <button class="btn btn-info btn-block" type="submit">SIFIRLAMA BAĞLANTISI GÖNDER</button>
   </form>
   <p style="text-align:center;margin-top:18px"><a href="<%= loginUrl %>">← Girişe dön</a></p>
+  <% } %>
 </main>
 </body>
 </html>
