@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body class="portal">
+<% if (flash) { %><div class="alert alert-<%= flash.type %> top"><%= flash.msg %></div><% } %>
+<main class="login-box">
+  <div class="logo-center big"><%- include('../partials/logo') %></div>
+  <h1 class="h6">Şifremi Unuttum · <%= panelLabel %></h1>
+  <p class="muted" style="margin-top:-6px">Kayıtlı e-posta adresinizi girin. Adres sistemde kayıtlıysa tek kullanımlık bir sıfırlama bağlantısı gönderilir. Bağlantı <b>60 dakika</b> geçerlidir.</p>
+  <form method="post" action="/sifre/unuttum" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="p" value="<%= panel %>">
+    <label>E-posta Adresi:
+      <input class="tint" type="email" name="email" required autofocus autocomplete="email" maxlength="160" placeholder="ornek@firma.com">
+    </label>
+    <button class="btn btn-info btn-block" type="submit">SIFIRLAMA BAĞLANTISI GÖNDER</button>
+  </form>
+  <p style="text-align:center;margin-top:18px"><a href="<%= loginUrl %>">← Girişe dön</a></p>
+</main>
+</body>
+</html>

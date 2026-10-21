@@ -195,6 +195,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/admin', require('./routes/admin'));
+app.use('/sifre', require('./routes/sifre'));
 app.use('/bayi', require('./routes/bayi'));
 app.use('/odeme', require('./routes/odeme'));
 app.use('/servis', require('./routes/servis'));

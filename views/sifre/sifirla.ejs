@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body class="portal">
+<% if (flash) { %><div class="alert alert-<%= flash.type %> top"><%= flash.msg %></div><% } %>
+<main class="login-box">
+  <div class="logo-center big"><%- include('../partials/logo') %></div>
+  <h1 class="h6">Yeni Şifre Belirle</h1>
+  <p class="muted" style="margin-top:-6px">
+    <%= row.name %><% if (row.code) { %> · Kullanıcı Kodu: <b><%= row.code %></b><% } %>
+    <br>Parola en az <b><%= minLen %></b> karakter olmalı; büyük harf, küçük harf, rakam ve simge içermelidir.
+  </p>
+  <form method="post" action="/sifre/sifirla/<%= token %>?p=<%= panel %>" class="stack" autocomplete="off">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="p" value="<%= panel %>">
+    <label>Yeni Parola:
+      <input class="tint" type="password" name="password" required minlength="<%= minLen %>" maxlength="200" autocomplete="new-password">
+    </label>
+    <label>Yeni Parola (tekrar):
+      <input class="tint" type="password" name="password2" required minlength="<%= minLen %>" maxlength="200" autocomplete="new-password">
+    </label>
+    <button class="btn btn-info btn-block" type="submit">ŞİFREMİ GÜNCELLE</button>
+  </form>
+  <p style="text-align:center;margin-top:18px"><a href="/sifre/unuttum?p=<%= panel %>">Yeni bağlantı iste</a> · <a href="<%= loginUrl %>">Girişe dön</a></p>
+</main>
+</body>
+</html>

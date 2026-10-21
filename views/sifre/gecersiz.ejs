@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body class="portal">
+<main class="login-box">
+  <div class="logo-center big"><%- include('../partials/logo') %></div>
+  <h1 class="h6">Bağlantı geçersiz veya süresi dolmuş</h1>
+  <p class="muted">Şifre sıfırlama bağlantıları <b>60 dakika</b> geçerlidir ve yalnızca <b>bir kez</b> kullanılabilir. Yeni bir bağlantı isteyebilirsiniz.</p>
+  <p style="margin-top:24px"><a class="btn btn-info btn-block" href="/sifre/unuttum?p=<%= panel %>">YENİ BAĞLANTI İSTE</a></p>
+  <p style="text-align:center;margin-top:18px"><a href="<%= loginUrl %>">← Girişe dön</a></p>
+</main>
+</body>
+</html>
