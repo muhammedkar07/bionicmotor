@@ -89,8 +89,9 @@ router.post('/unuttum', async (req, res) => {
   );
 
   const link = publicOrigin(req) + '/sifre/sifirla/' + token + '?p=' + p;
-  const content = mail.resetMail({ name: u.name, link, minutes: TTL_MIN, panel: PANELS[p].label });
-  const sent = await mail.send({ to: u.email, ...content });
+  const site = res.locals.s || {};
+  const content = mail.resetMail({ name: u.name, link, minutes: TTL_MIN, panel: PANELS[p].label, site });
+  const sent = await mail.send({ to: u.email, replyTo: site.email || undefined, ...content });
 
   logAudit(
     { type: 'sistem', name: 'sifre' },

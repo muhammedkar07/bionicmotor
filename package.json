@@ -37,7 +37,8 @@
     "format:check": "prettier --check \"**/*.js\"",
     "typecheck": "tsc --noEmit",
     "mail:test": "node --env-file=.env scripts/mail-test.js",
-    "seo:audit": "node scripts/seo-audit.js"
+    "seo:audit": "node scripts/seo-audit.js",
+    "mail:check": "node --env-file=.env scripts/mail-check.js"
   },
   "engines": {
     "node": ">=24"
