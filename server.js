@@ -240,9 +240,14 @@ const rootApp = BASE
   : app;
 
 // Sunucuyu başlatır; zarif kapanış (SIGTERM/SIGINT) ve otomatik bakım işlerini kurar.
+// NOT: Varsayılan olarak yalnızca localhost'a bağlanır (nginx aynı sunucudan proxy'ler).
+// Dışarıya açmak gerekirse HOST=0.0.0.0 verilebilir.
 function start(port) {
   port = port || process.env.PORT || 3000;
-  const server = rootApp.listen(port, () => console.log(`Sunucu çalışıyor: http://localhost:${port}${BASE}`));
+  const host = (process.env.HOST || '127.0.0.1').trim();
+  const server = rootApp.listen(port, host, () =>
+    console.log(`Sunucu çalışıyor: http://${host}:${port}${BASE}`)
+  );
 
   let closing = false;
   const shutdown = sig => {
