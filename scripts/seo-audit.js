@@ -77,8 +77,14 @@ const jsonLd = html => {
   console.log('\nsitemap.xml');
   ok(sm.status === 200, 'sitemap erişilebilir', sm.status);
   ok(paths.length >= 10, 'sitemap yeterli URL içeriyor', paths.length + ' adres');
-  ok(paths.some(u => /^\/model\/\d+\/[a-z0-9-]+/.test(u)), 'sitemap: modeller slug’lı');
-  ok(paths.some(u => /^\/modeller\/[a-z0-9-]+/.test(u)), 'sitemap: kategori sayfaları var');
+  ok(
+    paths.some(u => /^\/model\/\d+\/[a-z0-9-]+/.test(u)),
+    'sitemap: modeller slug’lı'
+  );
+  ok(
+    paths.some(u => /^\/modeller\/[a-z0-9-]+/.test(u)),
+    'sitemap: kategori sayfaları var'
+  );
 
   // 3) Sayfalar
   const home = await get('/');
@@ -140,7 +146,10 @@ const jsonLd = html => {
   ok(homeTypes.includes('WebSite'), 'ana sayfa: WebSite');
   ok(homeTypes.includes('MotorcycleDealer'), 'ana sayfa: MotorcycleDealer (yerel işletme)');
   const support = await get('/destek');
-  ok(jsonLd(support.html).some(j => j['@type'] === 'FAQPage'), 'destek: FAQPage');
+  ok(
+    jsonLd(support.html).some(j => j['@type'] === 'FAQPage'),
+    'destek: FAQPage'
+  );
   if (modelPath) {
     const mp = await get(modelPath);
     const mt = jsonLd(mp.html).map(j => j['@type']);

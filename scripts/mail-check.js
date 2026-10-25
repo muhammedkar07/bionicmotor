@@ -102,7 +102,9 @@ const txt = async name => {
     ok(!!(await txt(given + '._domainkey.' + DOMAIN))[0], 'Belirtilen DKIM selector yayında', given);
   } else if (!dkimFound) {
     warns++;
-    console.log('  ⚠️  Bilinen selector adlarında DKIM bulunamadı (Oracle selector adı farklı olabilir: --dkim=<selector> ile kontrol edin)');
+    console.log(
+      '  ⚠️  Bilinen selector adlarında DKIM bulunamadı (Oracle selector adı farklı olabilir: --dkim=<selector> ile kontrol edin)'
+    );
   }
 
   // ---- MX ----

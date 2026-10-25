@@ -21,7 +21,7 @@ const FAQS = [
     'Fabrikadan doğrudan yedek parça satışımız bulunmamaktadır. Yedek parça taleplerinizi yetkili servislerimiz aracılığıyla iletebilirsiniz.'
   ],
   [
-    'Müşteri Hizmetleri\'ne nasıl ulaşabilirim?',
+    "Müşteri Hizmetleri'ne nasıl ulaşabilirim?",
     '0544 733 73 73 numaralı hattımızdan veya info@bionicmotorsiklet.com e-posta adresimizden bize ulaşabilirsiniz. Ayrıca sosyal medya kanallarımızdan (Instagram, Facebook) öneri ve taleplerinizi iletebilirsiniz.'
   ],
   [
@@ -66,5 +66,7 @@ FAQS.forEach(([q, a], i) => {
   ins.run(q, a, i + 1);
   added++;
 });
-console.log(`SSS yüklendi: eklenen=${added} atlanan=${skipped} (toplam ${FAQS.length}) — tabloda ${db.prepare('SELECT COUNT(*) n FROM faqs').get().n}`);
+console.log(
+  `SSS yüklendi: eklenen=${added} atlanan=${skipped} (toplam ${FAQS.length}) — tabloda ${db.prepare('SELECT COUNT(*) n FROM faqs').get().n}`
+);
 db.close();

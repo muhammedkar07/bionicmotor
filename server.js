@@ -47,9 +47,7 @@ if (BASE) {
       .replace(/\b(href|src|action)=(["'])\/(?!\/)/g, '$1=$2' + BASE + '/')
       .replace(/\b(fetch|location\.assign|location\.replace)\((["'])\/(?!\/)/g, '$1($2' + BASE + '/')
       .replace(/\blocation(\.href)?=(["'])\/(?!\/)/g, 'location$1=$2' + BASE + '/');
-  app.engine('ejs', (file, opts, cb) =>
-    ejsExpr(file, opts, (err, str) => (err ? cb(err) : cb(null, rewrite(str))))
-  );
+  app.engine('ejs', (file, opts, cb) => ejsExpr(file, opts, (err, str) => (err ? cb(err) : cb(null, rewrite(str)))));
 }
 if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
 // Varlık sürümü: css/js içeriği değişmediği sürece sabit kalır (tarayıcı önbelleği korunur).
@@ -245,9 +243,7 @@ const rootApp = BASE
 function start(port) {
   port = port || process.env.PORT || 3000;
   const host = (process.env.HOST || '127.0.0.1').trim();
-  const server = rootApp.listen(port, host, () =>
-    console.log(`Sunucu çalışıyor: http://${host}:${port}${BASE}`)
-  );
+  const server = rootApp.listen(port, host, () => console.log(`Sunucu çalışıyor: http://${host}:${port}${BASE}`));
 
   let closing = false;
   const shutdown = sig => {

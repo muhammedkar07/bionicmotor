@@ -139,7 +139,14 @@ router.post('/odeme/ode', async (req, res) => {
     return res.redirect('/servis');
   }
   const b = req.body;
-  const ctx = { userId: res.locals.su.id, firmId: req.session.servis.firmId, source: 'servis', origin: publicOrigin(req), ip: req.ip, sid: req.sid };
+  const ctx = {
+    userId: res.locals.su.id,
+    firmId: req.session.servis.firmId,
+    source: 'servis',
+    origin: publicOrigin(req),
+    ip: req.ip,
+    sid: req.sid
+  };
   const method = ['kart', 'havale', 'nakit'].includes(b.method) ? b.method : 'kart';
   if (method !== 'kart') {
     const r = pay.manual(ctx, b, method);

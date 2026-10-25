@@ -63,7 +63,7 @@ function session() {
   };
   const html = async (path, opts) => (await req(path, opts)).text();
   const csrf = h => (h.match(/name="_csrf" value="([^"]+)"/) || [])[1];
-  const form = (obj) => ({
+  const form = obj => ({
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(obj)
@@ -120,7 +120,15 @@ async function testPublic() {
   log(bad.length === 0, 'İç bağlantı taraması (' + list.length + ' bağlantı)', bad.slice(0, 5).join(', '));
 
   // Statik varlıklar
-  const assets = [...new Set([...Object.values(bodies).join('').matchAll(/(?:href|src)="(\/static\/[^"]*)"/g)].map(m => m[1].split('?')[0]))];
+  const assets = [
+    ...new Set(
+      [
+        ...Object.values(bodies)
+          .join('')
+          .matchAll(/(?:href|src)="(\/static\/[^"]*)"/g)
+      ].map(m => m[1].split('?')[0])
+    )
+  ];
   let badAssets = [];
   for (const a of assets.slice(0, 30)) {
     const r = await s.req(a);
@@ -147,17 +155,34 @@ async function testPublicForms() {
   log(r.status === 302 && /KVKK/i.test(h), 'İletişim: KVKK onayı zorunlu', 'HTTP ' + r.status);
   // KVKK ile gönderim kabul edilmeli
   h = await s.html('/iletisim');
-  r = await s.req('/iletisim', s.form({ _csrf: s.csrf(h), name: 'Duman Test', email: 'duman@test.local', message: 'Duman testi mesajı', kvkk: '1' }));
+  r = await s.req(
+    '/iletisim',
+    s.form({ _csrf: s.csrf(h), name: 'Duman Test', email: 'duman@test.local', message: 'Duman testi mesajı', kvkk: '1' })
+  );
   h = await s.html('/iletisim');
   log(r.status === 302 && /alert-success|alındı/i.test(h), 'İletişim: geçerli gönderim kabul edildi', 'HTTP ' + r.status);
 
   // Bayilik başvurusu
   h = await s.html('/bayilik-basvurusu');
-  r = await s.req('/bayilik-basvurusu', s.form({ _csrf: s.csrf(h), name: 'Duman Test', city: 'Mersin', phone: '0555 000 00 00', kvkk: '' }));
+  r = await s.req(
+    '/bayilik-basvurusu',
+    s.form({ _csrf: s.csrf(h), name: 'Duman Test', city: 'Mersin', phone: '0555 000 00 00', kvkk: '' })
+  );
   h = await s.html('/bayilik-basvurusu');
   log(r.status === 302 && /KVKK/i.test(h), 'Bayilik: KVKK onayı zorunlu', 'HTTP ' + r.status);
   h = await s.html('/bayilik-basvurusu');
-  r = await s.req('/bayilik-basvurusu', s.form({ _csrf: s.csrf(h), name: 'Duman Test', city: 'Mersin', district: 'Akdeniz', phone: '0555 000 00 00', note: 'Duman testi', kvkk: '1' }));
+  r = await s.req(
+    '/bayilik-basvurusu',
+    s.form({
+      _csrf: s.csrf(h),
+      name: 'Duman Test',
+      city: 'Mersin',
+      district: 'Akdeniz',
+      phone: '0555 000 00 00',
+      note: 'Duman testi',
+      kvkk: '1'
+    })
+  );
   h = await s.html('/bayilik-basvurusu');
   log(r.status === 302 && /alert-success|alındı/i.test(h), 'Bayilik: geçerli başvuru kabul edildi', 'HTTP ' + r.status);
 }
@@ -215,8 +240,24 @@ async function testAdmin() {
   }
 
   const resources = [
-    'firms', 'users', 'orders', 'movements', 'announcements', 'products', 'warranty', 'workorders', 'spareorders',
-    'payments', 'slides', 'campaigns', 'models', 'faqs', 'points', 'pages', 'messages', 'applications'
+    'firms',
+    'users',
+    'orders',
+    'movements',
+    'announcements',
+    'products',
+    'warranty',
+    'workorders',
+    'spareorders',
+    'payments',
+    'slides',
+    'campaigns',
+    'models',
+    'faqs',
+    'points',
+    'pages',
+    'messages',
+    'applications'
   ];
   let badList = [],
     badNew = [],
@@ -234,11 +275,7 @@ async function testAdmin() {
     if (b.status !== 200) badNew.push(k + '→' + b.status);
   }
   log(badList.length === 0, 'Tüm kaynak listeleri (' + resources.length + ')', badList.join(', '));
-  log(
-    badNew.length === 0,
-    'Tüm "yeni kayıt" formları (' + (resources.length - skippedNew.length) + ')',
-    badNew.join(', ')
-  );
+  log(badNew.length === 0, 'Tüm "yeni kayıt" formları (' + (resources.length - skippedNew.length) + ')', badNew.join(', '));
   log(true, 'Salt okunur kaynaklar (yeni kayıt yok)', skippedNew.join(', ') || '-');
 
   // Duyuru oluştur → düzenle → sil (CRUD)
@@ -254,7 +291,10 @@ async function testAdmin() {
     if (idMatch) {
       const id = idMatch[1];
       const el = await s.html('/admin/r/announcements/' + id);
-      r = await s.req('/admin/r/announcements/save', s.form({ _csrf: s.csrf(el), id, text: marker + ' (güncellendi)', author: 'Duman Test', active: '1' }));
+      r = await s.req(
+        '/admin/r/announcements/save',
+        s.form({ _csrf: s.csrf(el), id, text: marker + ' (güncellendi)', author: 'Duman Test', active: '1' })
+      );
       log(r.status === 302, 'Kayıt güncelleme', 'HTTP ' + r.status);
       const dl = await s.html('/admin/r/announcements/' + id);
       r = await s.req('/admin/r/announcements/' + id + '/delete', s.form({ _csrf: s.csrf(dl), _method: 'delete' }));

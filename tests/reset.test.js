@@ -189,11 +189,7 @@ test('geçerli parola güncellenir; eski oturumlar kapanır; bağlantı tek kull
 
   const row = db.prepare('SELECT * FROM password_resets WHERE user_id=?').get(id);
   assert.ok(row.used_at, 'token kullanıldı olarak işaretlenmeli');
-  assert.strictEqual(
-    db.prepare('SELECT COUNT(*) c FROM sessions WHERE id=?').get('test-session-' + id).c,
-    0,
-    'eski oturum kapatılmalı'
-  );
+  assert.strictEqual(db.prepare('SELECT COUNT(*) c FROM sessions WHERE id=?').get('test-session-' + id).c, 0, 'eski oturum kapatılmalı');
 
   // Aynı bağlantı ikinci kez kullanılamaz
   const again = await get('/sifre/sifirla/' + token + '?p=bayi');

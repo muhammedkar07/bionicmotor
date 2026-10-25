@@ -53,7 +53,19 @@ try {
 }
 
 console.log('--- kalan ---');
-for (const t of ['models', 'products', 'categories', 'pages', 'settings', 'slides', 'campaigns', 'announcements', 'faqs', 'points', 'admins']) {
+for (const t of [
+  'models',
+  'products',
+  'categories',
+  'pages',
+  'settings',
+  'slides',
+  'campaigns',
+  'announcements',
+  'faqs',
+  'points',
+  'admins'
+]) {
   try {
     console.log('  ' + t + ': ' + db.prepare('SELECT COUNT(*) n FROM ' + t).get().n);
   } catch {

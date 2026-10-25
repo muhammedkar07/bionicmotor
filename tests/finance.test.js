@@ -45,9 +45,7 @@ test('stok yetersizse dönüştürme reddedilir ve stok değişmez', () => {
 
 test('tarih filtresi: seçilen aralıktaki hareketler + dönem başı bakiye', () => {
   const firm = db.prepare('INSERT INTO firms(code,name,devir) VALUES(?,?,?)').run('901.01.004', 'F4', 100000).lastInsertRowid;
-  const ins = db.prepare(
-    "INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',?,?,?,?,?)"
-  );
+  const ins = db.prepare("INSERT INTO account_movements(firm_id,ledger,date,doc_no,doc_type,kind,amount) VALUES(?,'ana',?,?,?,?,?)");
   ins.run(firm, '2025-01-10', 'A', 'Sipariş', 'borc', 50000); // aralık öncesi
   ins.run(firm, '2025-03-05', 'B', 'Sipariş', 'borc', 30000); // aralık içi
   ins.run(firm, '2025-03-20', 'C', 'Kredi Kartı Fişi', 'alacak', 20000); // aralık içi

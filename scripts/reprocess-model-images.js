@@ -25,9 +25,7 @@ const absOf = p => {
 };
 
 (async () => {
-  const rows = db
-    .prepare("SELECT id, name, image FROM models WHERE image IS NOT NULL AND TRIM(image) <> '' ORDER BY sort, id")
-    .all();
+  const rows = db.prepare("SELECT id, name, image FROM models WHERE image IS NOT NULL AND TRIM(image) <> '' ORDER BY sort, id").all();
   console.log('işlenecek model:', rows.length, '\n');
   const res = [];
   for (const m of rows) {
@@ -90,6 +88,13 @@ const absOf = p => {
   console.log('--- sonuç ---');
   console.table(res.map(r => ({ id: r.id, model: r.ad, durum: r.durum })));
   const ok = res.filter(r => r.durum.startsWith('TEMİZLENDİ')).length;
-  console.log('\n temizlenen:', ok, '| değişiklik yok:', res.filter(r => r.durum === 'değişiklik yok').length, '| hata:', res.filter(r => r.durum.startsWith('HATA')).length);
+  console.log(
+    '\n temizlenen:',
+    ok,
+    '| değişiklik yok:',
+    res.filter(r => r.durum === 'değişiklik yok').length,
+    '| hata:',
+    res.filter(r => r.durum.startsWith('HATA')).length
+  );
   db.close();
 })();

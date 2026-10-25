@@ -54,12 +54,12 @@ const r1 = tx(() => {
   // --- firmalar ---
   const firmBayi = Number(
     db
-      .prepare("INSERT INTO firms(code,name,city,phone,email,devir,devir_parca) VALUES(?,?,?,?,?,?,?)")
+      .prepare('INSERT INTO firms(code,name,city,phone,email,devir,devir_parca) VALUES(?,?,?,?,?,?,?)')
       .run('120.01.001', 'TEST BAYİ MERSİN', 'Mersin', '0555 111 22 33', 'bayi@test.local', 250000, 40000).lastInsertRowid
   );
   const firmServis = Number(
     db
-      .prepare("INSERT INTO firms(code,name,city,phone,email,devir) VALUES(?,?,?,?,?,?)")
+      .prepare('INSERT INTO firms(code,name,city,phone,email,devir) VALUES(?,?,?,?,?,?)')
       .run('120.02.001', 'TEST SERVİS ADANA', 'Adana', '0555 444 55 66', 'servis@test.local', 0).lastInsertRowid
   );
 
@@ -79,9 +79,7 @@ const r1 = tx(() => {
 
   // --- ürünler (araç + yedek parça) ---
   const models = db.prepare('SELECT id,name FROM models ORDER BY sort,id LIMIT 6').all();
-  const prod = db.prepare(
-    'INSERT INTO products(kind,code,name,category,price,active,stock,model_id,max_qty) VALUES(?,?,?,?,?,1,?,?,?)'
-  );
+  const prod = db.prepare('INSERT INTO products(kind,code,name,category,price,active,stock,model_id,max_qty) VALUES(?,?,?,?,?,1,?,?,?)');
   const araclar = [
     ['arac', 'TP-100', 'Test Scooter 125', 'Scooter', 8990000, 12, models[0] ? models[0].id : null, 5],
     ['arac', 'TP-200', 'Test Motosiklet 250', 'Motosiklet', 15490000, 4, models[1] ? models[1].id : null, 3],
@@ -138,18 +136,16 @@ const r1 = tx(() => {
   wr.run(firmServis, 'TEST0002', 'Test Motosiklet 250', 'Test Müşteri B', '2026-09-01', '2028-09-01', 'Aktif', 'FTR-002', 0);
 
   // --- iş emirleri ---
-  const wo = db.prepare(
-    'INSERT INTO work_orders(firm_id,user_id,no,serial_no,model,km,type,description,status) VALUES(?,?,?,?,?,?,?,?,?)'
-  );
+  const wo = db.prepare('INSERT INTO work_orders(firm_id,user_id,no,serial_no,model,km,type,description,status) VALUES(?,?,?,?,?,?,?,?,?)');
   wo.run(firmServis, uServis, 'IE2026001', 'TEST0002', 'Test Motosiklet 250', '1250', 'Garanti', 'İlk bakım (test)', 'Beklemede');
   wo.run(firmServis, uServis, 'IE2026002', 'TEST0002', 'Test Motosiklet 250', '3400', 'Ücretli', 'Yağ değişimi (test)', 'Tamamlandı');
 
   // --- yedek parça siparişleri ---
-  const so = db.prepare(
-    'INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,delivery_method) VALUES(?,?,?,?,?,?,?)'
-  );
+  const so = db.prepare('INSERT INTO spare_orders(firm_id,user_id,no,status,note,request_date,delivery_method) VALUES(?,?,?,?,?,?,?)');
   const soi = db.prepare('INSERT INTO spare_order_items(order_id,part_code,part_name,qty,unit_price) VALUES(?,?,?,?,?)');
-  const s1 = Number(so.run(firmBayi, uBayi, 'YS2026001', 'Beklemede', 'Test bekleyen parça siparişi', '2026-09-05', 'Kargo').lastInsertRowid);
+  const s1 = Number(
+    so.run(firmBayi, uBayi, 'YS2026001', 'Beklemede', 'Test bekleyen parça siparişi', '2026-09-05', 'Kargo').lastInsertRowid
+  );
   soi.run(s1, 'YP-T01', 'Test Fren Balatası', 2, 32000);
   const s2 = Number(so.run(firmBayi, uBayi, 'YS2026002', 'Siparişe Dönüştürüldü', null, '2026-08-28', 'Kargo').lastInsertRowid);
   soi.run(s2, 'YP-T03', 'Test Ayna Takımı', 1, 41000);
@@ -159,8 +155,42 @@ const r1 = tx(() => {
     `INSERT INTO payments(user_id,firm_id,kind,amount,currency,amount_tl,description,installment,commission,total,status,provider,provider_ref,provider_order,source,paid_at)
      VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   );
-  pay.run(uBayi, firmBayi, 'havale', 250000, 'TL', 250000, 'Test havale bildirimi', 'Tek Çekim', 0, 250000, 'Talimat Oluşturuldu', null, null, null, 'odeme', null);
-  pay.run(uBayi, firmBayi, 'odeme', 100000, 'TL', 100000, 'Test kart ödemesi', 'Tek Çekim', 0, 100000, 'Tahsil Edildi', 'paratika', 'TESTREF1', 'BNTEST0001', 'odeme', '2026-09-12');
+  pay.run(
+    uBayi,
+    firmBayi,
+    'havale',
+    250000,
+    'TL',
+    250000,
+    'Test havale bildirimi',
+    'Tek Çekim',
+    0,
+    250000,
+    'Talimat Oluşturuldu',
+    null,
+    null,
+    null,
+    'odeme',
+    null
+  );
+  pay.run(
+    uBayi,
+    firmBayi,
+    'odeme',
+    100000,
+    'TL',
+    100000,
+    'Test kart ödemesi',
+    'Tek Çekim',
+    0,
+    100000,
+    'Tahsil Edildi',
+    'paratika',
+    'TESTREF1',
+    'BNTEST0001',
+    'odeme',
+    '2026-09-12'
+  );
 
   // --- satış/servis noktaları ---
   const pt = db.prepare('INSERT INTO points(name,type,city,address,phone,active) VALUES(?,?,?,?,?,1)');

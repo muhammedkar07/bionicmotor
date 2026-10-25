@@ -172,8 +172,7 @@ router.get('/dekont/:id', (req, res) => {
   const s = req.session || {};
   // Ödemenin sahibi kullanıcı VEYA aynı firmanın kullanıcısı (hesap ekstresi firmaya ait)
   // VEYA yönetici VEYA sipariş anahtarı (o=).
-  const firmOfSession =
-    (s.dealer && s.dealer.firmId) || (s.servis && s.servis.firmId) || (s.pay && s.pay.firmId) || null;
+  const firmOfSession = (s.dealer && s.dealer.firmId) || (s.servis && s.servis.firmId) || (s.pay && s.pay.firmId) || null;
   const owner = !!(
     (s.dealer && s.dealer.userId === p.user_id) ||
     (s.servis && s.servis.userId === p.user_id) ||

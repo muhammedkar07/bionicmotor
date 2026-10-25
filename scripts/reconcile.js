@@ -119,7 +119,13 @@ async function reconcile({ log = console.log } = {}) {
             );
             const so = cancelLinkedSpareOrder(p.id);
             log(
-              '  ⏱ #' + p.id + ' süresi doldu → İptal (' + Math.round(age) + ' dk, işlem denemesi: ' + (v.noTxn ? 'yok' : 'var') + ')' +
+              '  ⏱ #' +
+                p.id +
+                ' süresi doldu → İptal (' +
+                Math.round(age) +
+                ' dk, işlem denemesi: ' +
+                (v.noTxn ? 'yok' : 'var') +
+                ')' +
                 (so ? ' · yedek parça siparişi ' + so.no + ' da iptal edildi' : '')
             );
           }
@@ -130,10 +136,19 @@ async function reconcile({ log = console.log } = {}) {
       }
 
       // Kesin başarısız işlem (FA): kaydı İptal et (varsa bağlı yedek parça siparişiyle birlikte).
-      const changed = db.prepare('UPDATE payments SET status=? WHERE id=? AND status=?').run(STATUS.CANCELLED, p.id, STATUS.POS_PENDING).changes;
+      const changed = db
+        .prepare('UPDATE payments SET status=? WHERE id=? AND status=?')
+        .run(STATUS.CANCELLED, p.id, STATUS.POS_PENDING).changes;
       res.failed++;
       if (changed) {
-        logAudit({ type: 'sistem', name: 'mutabakat' }, 'payment_failed', 'payments', p.id, { provider_order: p.provider_order, error: v.error || null }, null);
+        logAudit(
+          { type: 'sistem', name: 'mutabakat' },
+          'payment_failed',
+          'payments',
+          p.id,
+          { provider_order: p.provider_order, error: v.error || null },
+          null
+        );
         const so = cancelLinkedSpareOrder(p.id);
         if (so) log('     ↳ yedek parça siparişi ' + so.no + ' da iptal edildi');
       }

@@ -34,7 +34,9 @@ const withPath = rows => rows.map(r => ({ ...r, path: seo.modelPath(r) }));
 // Aktif modellerden kategori listesi (slug + etiket + adet)
 function categories() {
   const rows = db
-    .prepare("SELECT category, COUNT(*) AS n FROM models WHERE active=1 AND category IS NOT NULL AND TRIM(category) <> '' GROUP BY category ORDER BY n DESC, category")
+    .prepare(
+      "SELECT category, COUNT(*) AS n FROM models WHERE active=1 AND category IS NOT NULL AND TRIM(category) <> '' GROUP BY category ORDER BY n DESC, category"
+    )
     .all();
   return rows.map(r => ({
     category: r.category,
@@ -120,7 +122,10 @@ router.get('/', (req, res) => {
     receipt,
     seo: {
       ...seo.homeSeo(res.locals.s),
-      jsonld: [seo.websiteJson(res.locals.s, res.locals.origin), seo.dealerJson(res.locals.s, res.locals.origin, res.locals.origin + (res.locals.s.logo_image || '/static/img/bionic-logo.png'))]
+      jsonld: [
+        seo.websiteJson(res.locals.s, res.locals.origin),
+        seo.dealerJson(res.locals.s, res.locals.origin, res.locals.origin + (res.locals.s.logo_image || '/static/img/bionic-logo.png'))
+      ]
     }
   });
 });
@@ -336,7 +341,14 @@ router.post('/bayilik-basvurusu', (req, res) => {
     phone,
     clip(b.note, 2000)
   );
-  logAudit({ type: 'ziyaretci', name }, 'create', 'applications', null, { city: clip(b.city, 60), phone, pazarlama: b.marketing ? 1 : 0 }, req.ip);
+  logAudit(
+    { type: 'ziyaretci', name },
+    'create',
+    'applications',
+    null,
+    { city: clip(b.city, 60), phone, pazarlama: b.marketing ? 1 : 0 },
+    req.ip
+  );
   t.hit();
   flash(req, 'success', 'Başvurunuz alındı. Sizinle iletişime geçeceğiz.');
   res.redirect('/bayilik-basvurusu');

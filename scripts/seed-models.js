@@ -43,9 +43,7 @@ console.log(`Modeller yüklendi: eklenen=${added} atlanan=${skipped} (toplam ${r
 
 // Modelleri "Ürünler / Fiyat Listesi"ne de ekle (kind='arac'), eksik olanları (idempotent).
 const findProd = db.prepare("SELECT id FROM products WHERE kind='arac' AND model_id=?");
-const insProd = db.prepare(
-  "INSERT INTO products(kind,name,category,model_id,price,stock,max_qty,active) VALUES('arac',?,?,?,?,0,NULL,?)"
-);
+const insProd = db.prepare("INSERT INTO products(kind,name,category,model_id,price,stock,max_qty,active) VALUES('arac',?,?,?,?,0,NULL,?)");
 let pAdd = 0;
 for (const m of db.prepare('SELECT id,name,category,price,active FROM models').all()) {
   if (findProd.get(m.id)) continue;

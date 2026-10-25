@@ -316,8 +316,5 @@ test('iptal edilen nakit/havale bildirimi cariye işlenmez', async () => {
   db.prepare('UPDATE payments SET status=? WHERE id=?').run(STATUS.CANCELLED, p.id);
   syncPaymentCredit(p.id);
   assert.strictEqual(balance(firmId), before, 'iptal edilen bildirim bakiyeyi değiştirmemeli');
-  assert.strictEqual(
-    db.prepare('SELECT COUNT(*) n FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id).n,
-    0
-  );
+  assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id).n, 0);
 });

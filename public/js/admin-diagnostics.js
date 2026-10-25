@@ -148,7 +148,8 @@
         var fixed = reps.filter(function (x) {
           return x.fixed;
         });
-        var TH = 'style="text-align:left;padding:8px 10px;background:#f7f8fa;font-size:12px;color:#6b7280;border-bottom:1px solid #eef0f3;font-weight:600"';
+        var TH =
+          'style="text-align:left;padding:8px 10px;background:#f7f8fa;font-size:12px;color:#6b7280;border-bottom:1px solid #eef0f3;font-weight:600"';
         if (repairBox) {
           repairBox.innerHTML =
             '<div class="alert ' +

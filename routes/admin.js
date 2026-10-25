@@ -377,7 +377,12 @@ const RES = {
         help: 'Google açıklaması (~155 karakter). Boş bırakılırsa sayfa içeriğinin ilk satırları kullanılır.'
       }),
       A('body', 'İçerik (HTML)', { rows: 14 }),
-      { name: 'catalog_pdf', label: 'Katalog Belgesi (PDF)', type: 'file', help: 'Yalnızca "dijital-katalog" sayfasında görünür. Yüklenen PDF, katalog bağlantısına tıklanınca otomatik indirilir.' }
+      {
+        name: 'catalog_pdf',
+        label: 'Katalog Belgesi (PDF)',
+        type: 'file',
+        help: 'Yalnızca "dijital-katalog" sayfasında görünür. Yüklenen PDF, katalog bağlantısına tıklanınca otomatik indirilir.'
+      }
     ]
   },
   messages: {
@@ -721,9 +726,7 @@ router.get('/r/:res', (req, res) => {
   if (r.table === 'account_movements' && rows.length) {
     const ids = rows.map(x => x._id);
     receipts = {};
-    db.prepare(
-      `SELECT id, movement_id FROM payments WHERE movement_id IN (${ids.map(() => '?').join(',')}) AND deleted_at IS NULL`
-    )
+    db.prepare(`SELECT id, movement_id FROM payments WHERE movement_id IN (${ids.map(() => '?').join(',')}) AND deleted_at IS NULL`)
       .all(...ids)
       .forEach(p => {
         receipts[p.movement_id] = p.id;

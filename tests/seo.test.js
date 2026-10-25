@@ -215,9 +215,7 @@ test('404 sayfası: 404 durum kodu + noindex; paneller de noindex', async () => 
 });
 
 test('içerik sayfası: SEO başlık/açıklama alanları ve WebPage yapısal verisi', async () => {
-  db.prepare(
-    "INSERT OR REPLACE INTO pages(slug,title,body,meta_title,meta_description,updated_at) VALUES(?,?,?,?,?,datetime('now'))"
-  ).run(
+  db.prepare("INSERT OR REPLACE INTO pages(slug,title,body,meta_title,meta_description,updated_at) VALUES(?,?,?,?,?,datetime('now'))").run(
     '50-cc-motor-rehberi',
     '50 cc Motor Rehberi',
     '<p>50 cc sınıfı motosikletler hakkında bilmeniz gerekenler.</p>',
