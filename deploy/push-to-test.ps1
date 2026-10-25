@@ -34,4 +34,6 @@ Write-Host '== 4/4) Test uygulamasi yeniden baslatiliyor ==' -ForegroundColor Cy
 ssh -i $SshKey $SshHost "pm2 restart bionic-test >/dev/null && sleep 4 && printf '   test ortami -> ' && curl -sS -o /dev/null -w '%{http_code}\n' --max-time 15 -H 'Host: test.bionicmotorsiklet.com' http://127.0.0.1/"
 
 Write-Host ''
-Write-Host 'TAMAM. Test adresi: https://test.bionicmotorsiklet.com' -ForegroundColor Green
+Write-Host 'TAMAM. Test ortami sunucu icinde hazir: http://127.0.0.1:3100' -ForegroundColor Green
+Write-Host '     Not: test.bionicmotorsiklet.com icin DNS A kaydi + TLS sertifikasi eklenmeden disaridan erisilemez.'
+Write-Host '     (Ayrintilar: docs/STAGING.md)'

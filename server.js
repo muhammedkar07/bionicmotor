@@ -129,6 +129,11 @@ app.use((req, res, next) => {
 // Yüklenen dosya adları rastgele olduğundan uzun süreli (immutable) önbellek güvenlidir.
 app.use('/static/uploads', express.static(UPLOAD_DIR, { maxAge: '30d', immutable: true }));
 app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
+// Tarayıcılar ve bazı botlar /favicon.ico ister; 404 yerine PNG ikon sunulur.
+app.get('/favicon.ico', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=604800');
+  res.sendFile(path.join(__dirname, 'public', 'img', 'favicon-32.png'));
+});
 
 app.use(core.sessionMiddleware);
 app.use(express.urlencoded({ extended: true, limit: '1mb', inflate: false }));

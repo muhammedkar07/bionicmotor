@@ -17,6 +17,9 @@
   %>
   <title><%= pageTitle %></title>
   <meta name="description" content="<%= metaDesc %>">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/img/favicon-32.png?v=<%= v %>">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/img/favicon-16.png?v=<%= v %>">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/img/apple-touch-icon.png?v=<%= v %>">
   <link rel="canonical" href="<%= canonical %>">
   <% if (seoObj.robots) { %><meta name="robots" content="<%= seoObj.robots %>"><% } %>
   <% if (s.google_site_verification) { %><meta name="google-site-verification" content="<%= s.google_site_verification %>"><% } %>
