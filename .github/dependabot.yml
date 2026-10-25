@@ -5,11 +5,23 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Major sürüm atlamaları elle planlanır (express 5, ejs 7 gibi kırıcı değişiklikler).
+    # Güvenlik güncellemeleri bu kuraldan etkilenmez; yine PR olarak gelir.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    # Node 24 LTS'te kalıyoruz; 26 "Current" hattına otomatik geçiş yok.
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
