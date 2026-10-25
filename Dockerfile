@@ -1,5 +1,5 @@
 # Bionic B2B — üretim imajı (Node 24, yerleşik SQLite).
-FROM node:24-slim
+FROM node:24.22.1-slim
 
 WORKDIR /app
 ENV NODE_ENV=production

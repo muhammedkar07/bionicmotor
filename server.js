@@ -133,7 +133,7 @@ app.use('/static/uploads', express.static(UPLOAD_DIR, { maxAge: '30d', immutable
 app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
 
 app.use(core.sessionMiddleware);
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb', inflate: false }));
 // multipart/form-data yalnızca dosya yükleyen rotalarda kabul edilir. Bu rotalarda CSRF
 // kontrolü, gövde Multer ile ayrıştırıldıktan sonra rota içinde yapılır. Tüm diğer
 // isteklerde CSRF kontrolü burada, dosya diske yazılmadan önce yapılır.
