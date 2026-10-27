@@ -119,13 +119,19 @@ async function paratikaResult(req, res) {
 
   const v = await paratika.query({ orderId: payment.provider_order });
   if (v.ok) {
-    pay.collectPayment(payment.id, v.ref); // idempotent: cariye alacak işler
+    pay.collectPayment(payment.id, v.ref, v); // idempotent: cariye alacak işler, taksiti kaydeder
     logAudit(
       { type: payment.source === 'servis' ? 'servis' : payment.source === 'bayi' ? 'bayi' : 'odeme', id: payment.user_id, name: null },
       'payment_collected',
       'payments',
       payment.id,
-      { amount: payment.amount, provider_order: payment.provider_order, firm: payment.firm_id },
+      {
+        amount: payment.amount,
+        provider_order: payment.provider_order,
+        firm: payment.firm_id,
+        installment: v.installment || null,
+        commission_rate: v.commissionRate || null
+      },
       req.ip
     );
     return done(payment, 'Ödemeniz başarıyla alındı ve hesabınıza işlendi.');

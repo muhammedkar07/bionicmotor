@@ -69,14 +69,19 @@ async function reconcile({ log = console.log } = {}) {
       const v = await paratika.query({ orderId: p.provider_order });
 
       if (v.ok) {
-        if (collectPayment(p.id, v.ref)) {
+        if (collectPayment(p.id, v.ref, v)) {
           res.collected++;
           logAudit(
             { type: 'sistem', name: 'mutabakat' },
             'payment_collected',
             'payments',
             p.id,
-            { provider_order: p.provider_order, via: cancelled ? 'reconcile-late' : 'reconcile' },
+            {
+              provider_order: p.provider_order,
+              via: cancelled ? 'reconcile-late' : 'reconcile',
+              installment: v.installment || null,
+              commission_rate: v.commissionRate || null
+            },
             null
           );
           log('  ✅ #' + p.id + (cancelled ? ' GECİKMİŞ ONAY → tahsil edildi' : ' tahsil edildi') + ' (' + p.provider_order + ')');

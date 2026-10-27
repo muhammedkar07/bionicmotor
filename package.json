@@ -20,6 +20,7 @@
     "seed:kvkk": "node scripts/seed-kvkk.js",
     "pack": "node scripts/pack.js",
     "reconcile": "node scripts/reconcile.js",
+    "sync:installments": "node --env-file=.env scripts/sync-installments.js",
     "reset:data": "node scripts/reset-data.js",
     "clean:demo": "node scripts/clean-demo.js",
     "baseline": "node scripts/baseline.js",

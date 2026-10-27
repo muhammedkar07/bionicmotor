@@ -80,7 +80,14 @@ Yanıt `transactionList[]` döner. `transactionType = "SALE"` kaleminin
 | `IP` | İşlemde (In Progress) |
 
 Ek alanlar: `pgTranId`, `pgTranReturnCode`, `pgTranErrorCode`, `pgTranErrorText`, `pgApprCode`,
-`amount`, `panLast4`, `bin`, `merchantCommissionRate`.
+`amount`, `firstAmount`, `panLast4`, `bin`, **`installmentCount`**, **`merchantCommissionRate`**, `posType`.
+
+**Taksit bilgisi:** Onaylı `SALE` kalemindeki `installmentCount` alanı taksit sayısıdır
+(`1` = tek çekim, `6` = altı taksit). `lib/paratika.query()` bu alanı `installment` olarak döndürür;
+`lib/pay.collectPayment()` ödeme kaydına (`payments.installment`) **"6 Taksit"** biçiminde yazar ve
+dekontta bu değer görünür. Taksit seçimi Paratika'nın ödeme sayfasında yapıldığı için bu bilgi
+yalnızca **sunucudan sunucuya doğrulama** yanıtından alınır (kullanıcı girdisine güvenilmez).
+Geçmiş kayıtlar `npm run sync:installments` ile kaynaktan yenilenebilir.
 
 ## Diğer doğrulanan ACTION'lar
 

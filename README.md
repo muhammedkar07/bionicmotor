@@ -62,7 +62,9 @@ Kurulum:
 4. Test için `PARATIKA_SIMULATE=1` ile ağ isteği yapılmadan başarılı ödeme simüle edilebilir.
 
 Cari kuralı: alacak, ödemenin **kendisi** (`amount`) kadardır; taksit komisyonu cari borcunu
-değiştirmediği için alacağa eklenmez. Döviz ödemeler, ödeme anındaki kur ile TL'ye çevrilip işlenir.
+değiştirmediği için alacağa eklenmez. Taksit sayısı ödeme sonrası Paratika'dan
+(`QUERYTRANSACTION` → `installmentCount`) okunur ve dekontta gösterilir. Döviz ödemeler, ödeme
+anındaki kur ile TL'ye çevrilip işlenir.
 
 Yedek parça siparişinde kart seçilirse: sanal POS tahsilatı yapılmadan sipariş **"Beklemede"**
 kalır ve tahsil edilmiş sayılmaz; ödeme onayı/callback'i sonrası cariye işlenir.

@@ -19,6 +19,7 @@ process.env.NODE_ENV = 'test';
 const app = require('../server');
 const { db, STATUS, syncPaymentCredit } = require('../db');
 const { accountSummary } = require('../lib/account');
+const payLib = require('../lib/pay');
 
 let server, base;
 test.before(async () => {
@@ -317,4 +318,33 @@ test('iptal edilen nakit/havale bildirimi cariye işlenmez', async () => {
   syncPaymentCredit(p.id);
   assert.strictEqual(balance(firmId), before, 'iptal edilen bildirim bakiyeyi değiştirmemeli');
   assert.strictEqual(db.prepare('SELECT COUNT(*) n FROM account_movements WHERE doc_no=? AND deleted_at IS NULL').get('POS-' + p.id).n, 0);
+});
+
+test('Paratika taksit bilgisi kayda ve dekonta yansır', async () => {
+  const cookie = await loginBayi();
+  const firmId = db.prepare('SELECT id FROM firms LIMIT 1').get().id;
+  const before = balance(firmId);
+  const { cb } = await payByCard(cookie, '/bayi', '100.00');
+  assert.strictEqual(cb.status, 302);
+  const p = lastPayment();
+  assert.strictEqual(p.installment, 'Tek Çekim', 'simülasyonda taksit seçilmedi');
+
+  // Paratika QUERYTRANSACTION yanıtı 6 taksit bildirdiğinde (callback/mutabakat aynı yolu kullanır)
+  // kayıt güncellenir; ödeme zaten tahsil edildiği için cari tekrar işlenmez.
+  assert.strictEqual(payLib.collectPayment(p.id, 'PGREF-6', { installment: 6, commissionRate: 13.5 }), false);
+  assert.strictEqual(db.prepare('SELECT installment FROM payments WHERE id=?').get(p.id).installment, '6 Taksit');
+  assert.strictEqual(balance(firmId), before - 10000, 'taksit güncellemesi bakiyeyi değiştirmemeli');
+
+  const r = await get('/odeme/dekont/' + p.id + '?o=' + encodeURIComponent(p.provider_order), cookie);
+  assert.strictEqual(r.res.status, 200);
+  assert.match(r.html, /6 Taksit/, 'dekontta Paratika taksit sayısı görünmeli');
+});
+
+test('taksit etiketi: 1 → Tek Çekim, 6 → 6 Taksit, geçersiz → null', () => {
+  assert.strictEqual(payLib.installmentLabel(1), 'Tek Çekim');
+  assert.strictEqual(payLib.installmentLabel('1'), 'Tek Çekim');
+  assert.strictEqual(payLib.installmentLabel(6), '6 Taksit');
+  assert.strictEqual(payLib.installmentLabel(0), null);
+  assert.strictEqual(payLib.installmentLabel(null), null);
+  assert.strictEqual(payLib.installmentLabel('abc'), null);
 });
